@@ -2,38 +2,37 @@ module public_val
   ! constants
   implicit none
   ! topology
-  double precision, parameter :: xmax = 0.5 ! x size
-  double precision, parameter :: ymax = 0.01 ! y sizw
-  double precision, parameter :: zmax = 0.3 ! z size
-  double precision, parameter :: zb = 2.0e-2 ! initial bed height
-  double precision, parameter :: zu = 4.0e-2 ! altitude above which grid becomes parallel
-  double precision, parameter :: hrlx0 = zu - zb
+  double precision, parameter :: xmax = 1.0 ! x size
+  double precision, parameter :: ymax = 0.2 ! y size
+  double precision, parameter :: zmax = 0.5 ! z size
+  double precision, parameter :: zb = 0.05 ! initial bed height
+  double precision, parameter :: zu = 0.1 ! altitude above which grid becomes parallel
   ! domain
-  integer, parameter :: mx = 402 ! x grid num +2
-  integer, parameter :: my = 10 ! y grid num +2
-  integer, parameter :: mz = 170 ! z grid num
-  integer, parameter :: xpnum = mx ! x key point num +2
-  integer, parameter :: ypnum = my ! y key point num +2
+  integer, parameter :: mx = 502 ! x grid num +2
+  integer, parameter :: my = 102 ! y grid num +2
+  integer, parameter :: mz = 250 ! z grid num
+  integer, parameter :: xpnum = 1002 ! x key point num +2
+  integer, parameter :: ypnum = 202 ! y key point num +2
   integer, parameter :: nxprocs = 5 ! num of subdomain
   ! time
-  double precision, parameter :: dt = 5.0e-5 ! time step
-  double precision, parameter :: tla = 381.0 ! time last
+  double precision, parameter :: dt = 1.0e-4 ! time step
+  double precision, parameter :: tla = 600.0 ! time last
   ! fluid
-  double precision, parameter :: wind = 0.3 ! fractional velocity
+  double precision, parameter :: wind = 0.5 ! fractional velocity
   double precision, parameter :: rho = 1.263 ! fluid density
   double precision, parameter :: nu = 1.49e-5 ! kinetic viscosity
   double precision, parameter :: kapa = 0.4 ! von Kaman's constant
-  integer, parameter :: nna = 1
+  integer, parameter :: nna = 1 ! num of particle time steps between two fluid time steps
   ! particle
   integer, parameter :: ikl = 1 ! calculating particles: ikl = 0: no, 1: yes
-  integer, parameter :: nnps = 10 ! initial particle num
+  integer, parameter :: nnps = 100 ! initial particle num
   double precision, parameter :: els = 0.9 ! normal restitution coefficient
   double precision, parameter :: fric = 0.0 ! tangential restitution coefficient
   double precision, parameter :: els1 = 0.9 ! normal restitution coefficient (mid-air collision)
   double precision, parameter :: fric1 = 0.0 ! tangential restitution coefficient (mid-air collision)
-  double precision, parameter :: dpa = 250.0e-6 ! average particle diameter
-  double precision, parameter :: dcgma = 200.0e-6 ! particle diameter standard deviation x 2
-  integer, parameter :: npdf = 2 ! bin num of particle distribution. must be odd number when iud=0
+  double precision, parameter :: dpa = 2.5e-4 ! average particle diameter
+  double precision, parameter :: dcgma = 2.0e-4 ! particle diameter standard deviation x 2
+  integer, parameter :: npdf = 3 ! bin num of particle distribution. must be odd number when iud=0
   double precision, parameter :: szpdf = dpa*5.0 ! thickness of the thin surface layer on particle bed
   double precision, parameter :: rhos = 2650.0 ! particle density
   double precision, parameter :: nkl = 1.0 ! one particle stands for x particles
@@ -42,8 +41,10 @@ module public_val
   integer, parameter :: nspmax = 10000 ! max eject particle num in one time step
   ! method
   integer, parameter :: isp = 0 ! splash function: isp=0:lammel, isp=1:kok.
-  ! boundary condition of particles: 0 per, 1 IO
+  ! boundary condition of particles: 0 periodic, 1 IO, 2 wall
   integer, parameter :: ikbx = 0 ! x direction
+  integer, parameter :: ikby = 0 ! y direction
+  integer, parameter :: ikbz = 1 ! uppper surface (never be 0)
   ! particle diameter: iud = 0: polydisperse, 1: monodisperse, 2: bidisperse
   ! if iud=0, normal distribution, mu=dpa, sigma=dcgma, dpa-3dcgma~dpa+3dcgma
   ! if iud=1, d=dpa.
@@ -52,25 +53,25 @@ module public_val
   integer, parameter :: icol = 1 ! mid-air collision: icol=1: on, icol=0: off
   integer, parameter :: irsf = 0 ! surface irsf=0: erodable, irsf=1: rigid
   ! output per x steps
-  integer, parameter :: nnf = 1000000 ! concentrition
-  integer, parameter :: nns = 40000 ! htao
-  integer, parameter :: nnc = 1000 ! particle num
-  integer, parameter :: nnkl = 4000 ! particle loc
-  integer, parameter :: nnsf = 40000 ! surface, surfaced
-  integer, parameter :: nnfx = 40000 ! flux 
-  ! calculate after x steps
-  integer, parameter :: tstart = 1 ! particle
-  integer, parameter :: pstart = 7600000 ! surface
-  integer, parameter :: klstart = 1 ! particle loc
+  integer, parameter :: nnf = 1e5 ! field
+  integer, parameter :: nns = 1e4 ! tau_a & tau_p
+  integer, parameter :: nnc = 1e4 ! num of moving particles
+  integer, parameter :: nnkl = 1e5 ! particle information
+  integer, parameter :: nnsf = 1e4 ! surface, surfaced
+  integer, parameter :: nnfx = 1e4 ! sand flux 
+  ! the initial step
+  integer, parameter :: pstart = 1 ! the initial step of particle calculation
+  integer, parameter :: sstart = 1 ! the initial step of surface calculation
+  integer, parameter :: pistart = 1 ! the initial step of particle info output
   ! file
-  integer, parameter :: nnfi = 2000000 ! iter num contained in a file
+  integer, parameter :: nnfi = 1e6 ! iter num contained in a file
   ! others
-  integer, parameter :: nxdim = (mx-2)/nxprocs + 2 ! x direction grid num for every subdomain
-  integer, parameter :: xpdim = (xpnum-2)/nxprocs + 2 ! x direction key point num for every subdomain
-  double precision, parameter :: pi = acos(-1.0)
-  double precision, parameter :: amp = 2.0/100.0/20.0 ! surface amplitude
-  double precision, parameter :: omg = 4.0*pi ! surface wave number (friquence)
-  double precision, parameter :: wavl = 2.0*pi/omg ! surface wavelength
+  integer, parameter :: nxdim = (mx-2)/nxprocs + 2 ! x grid num for every proc
+  integer, parameter :: xpdim = (xpnum-2)/nxprocs + 2 ! x key point num for every proc
+  double precision, parameter :: pi = acos(-1.0) ! define Pi
+  double precision, parameter :: ramp = 8.0*dpa ! amplitude of prerippled surface
+  double precision, parameter :: omg = 4.0*pi ! wave number of prerippled surface
+  double precision, parameter :: wavl = 2.0*pi/omg ! wavelength of prerippled surface
 
   ! variables
   integer :: realtype
@@ -79,8 +80,6 @@ module public_val
   integer :: comm3d
   integer :: myid
   integer, dimension(2) :: neighbor
-  !integer :: sx, ex, sy, ey, sz, ez
-  !integer :: spx, epx, spy, epy
   double precision :: xdif, ydif
   double precision :: zb_now
   double precision :: norm_vpin, norm_vpout, vvpin, vvpout, mpin, mpout
@@ -429,13 +428,13 @@ program main
   phirho = 1.0
   ! calculate particles
   if (ikl==1) then
-    if (last==tstart) then
+    if (last==pstart) then
       call parstart
     end if
-    if (last>=tstart) then
+    if (last>=pstart) then
       call parcalculate
     end if
-    if (last<pstart) then
+    if (last<sstart) then
       pnch = 0.0
       do i = 1, xpdim
       do j = 1, ypnum
@@ -645,13 +644,13 @@ subroutine imgd
     end do
     do j = 1, ypnum
     do i = 1, xpdim
-    pz(i, j) = amp*sin(dfloat(int(time/20.0)+2)*8.0*pi*px(i)) + zb
+    pz(i, j) = ramp*sin(dfloat(int(time/20.0)+2)*8.0*pi*px(i)) + zb
     !wn = int(px(i)/wavl)
     !posit = px(i)/wavl - dfloat(wn) - 0.5
     !if (posit>=0.0) then
-    !  pz(i, j) = amp*0.5 - 2.0*amp*posit + zb
+    !  pz(i, j) = ramp*0.5 - 2.0*ramp*posit + zb
     !else
-    !  pz(i, j) = amp*0.5 + 2.0*amp*posit + zb
+    !  pz(i, j) = ramp*0.5 + 2.0*ramp*posit + zb
     !end if
     end do
     end do
@@ -666,7 +665,7 @@ subroutine imgd
     !end do
     do j = 1, ypnum
     do i = 1, xpdim
-    pz(i, j) = amp*sin(dfloat(int(time/20.0)+2)*8.0*pi*px(i)) + zb
+    pz(i, j) = ramp*sin(dfloat(int(time/20.0)+2)*8.0*pi*px(i)) + zb
     end do
     end do
     !do j = 1, ypnum
@@ -1562,7 +1561,7 @@ subroutine parcalculate
   point0(3) = zp(n) - fz(n)
   if (zp(n)<zu) then
     hpl = 1
-    hrlx1 = (zu - point0(3))/hrlx0
+    hrlx1 = (zu - point0(3))/(zu-zb)
   else
     hpl = 0
     hrlx1 = 1.0
@@ -2447,7 +2446,7 @@ subroutine output
     tfh(tnnp), tfg(tnnp), tft(tnnp))
   if (ikl==1) then
     if (np==0) then
-      if (last>=klstart) then
+      if (last>=pistart) then
         displs(1) = 0
         call MPI_GATHER(nnp,1,inttype,cnt,1,inttype,0,comm3d,ierr)
         do i = 2, dims
