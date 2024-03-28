@@ -413,13 +413,9 @@ program main
   ! start time loop
   !
   do
-  !if (mod(last, 100)==0) then
-    !write(cctemp, '(i3)') myid
-    !open (unit=100, file='check'//trim(adjustl(cctemp))//'.dat')
-    open (unit=100, file='check.dat')
-    write (100, "(5E15.7)") real(last), zb_now, htao(1)
-    close(100)
-  !end if
+  open (unit=100, file='check.dat')
+  write (100, "(5E15.7)") real(last), zb_now, htao(1)
+  close(100)
   ! generate boundary key point
   call imgd
   !call imme
@@ -455,12 +451,10 @@ program main
   end if
   ! output result
   call output
-  !close(100)
   ! time advance
   time = time + dt
   last = last + 1
   if (time>tla) exit
-  !if (last>10) exit
   end do
   stop
   call MPI_FINALIZE(ierr)
