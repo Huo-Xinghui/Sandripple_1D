@@ -1,18 +1,16 @@
 module public_val
   ! constants
   implicit none
-  ! topology
+  ! computational domain
   double precision, parameter :: xmax = 1.0 ! x size
   double precision, parameter :: ymax = 0.2 ! y size
   double precision, parameter :: zmax = 0.5 ! z size
-  double precision, parameter :: zb = 0.05 ! initial bed height
-  double precision, parameter :: zu = 0.1 ! altitude above which grid becomes parallel
-  ! domain
-  integer, parameter :: mx = 502 ! x grid num +2
-  integer, parameter :: my = 102 ! y grid num +2
-  integer, parameter :: mz = 250 ! z grid num
-  integer, parameter :: xpnum = 1002 ! x key point num +2
-  integer, parameter :: ypnum = 202 ! y key point num +2
+  double precision, parameter :: zu = 0.1 ! the altitude that grid becomes parallel
+  integer, parameter :: nx = 500 ! x grid num
+  integer, parameter :: ny = 100 ! y grid num
+  integer, parameter :: nz = 250 ! z grid num
+  integer, parameter :: xpn = 1000 ! x key point num
+  integer, parameter :: ypn = 200 ! y key point num
   integer, parameter :: nxprocs = 5 ! num of subdomain
   ! time
   double precision, parameter :: dt = 1.0e-4 ! time step
@@ -39,6 +37,11 @@ module public_val
   double precision, parameter :: por = 0.6 ! bedform porosity
   integer, parameter :: nnpmax = 100000 ! max particle num in one subdomain
   integer, parameter :: nspmax = 10000 ! max eject particle num in one time step
+  ! pre-formed surface
+  double precision, parameter :: zb = 0.05 ! initial average bed height
+  double precision, parameter :: ramp = 8.0*dpa ! amplitude of prerippled surface
+  double precision, parameter :: omg = 4.0*pi ! wave number of prerippled surface
+  double precision, parameter :: wavl = 2.0*pi/omg ! wavelength of prerippled surface
   ! method
   integer, parameter :: isp = 0 ! splash function: isp=0:lammel, isp=1:kok.
   ! boundary condition of particles: 0 periodic, 1 IO, 2 wall
@@ -66,12 +69,14 @@ module public_val
   ! file
   integer, parameter :: nnfi = 1e6 ! iter num contained in a file
   ! others
+  integer, parameter :: mx = nx+2 ! x grid num +2
+  integer, parameter :: my = ny+2 ! y grid num +2
+  integer, parameter :: mz = nz+2 ! z grid num +2
+  integer, parameter :: xpnum = xpn+2 ! x key point num +2
+  integer, parameter :: ypnum = ypn+2 ! y key point num +2
   integer, parameter :: nxdim = (mx-2)/nxprocs + 2 ! x grid num for every proc
   integer, parameter :: xpdim = (xpnum-2)/nxprocs + 2 ! x key point num for every proc
   double precision, parameter :: pi = acos(-1.0) ! define Pi
-  double precision, parameter :: ramp = 8.0*dpa ! amplitude of prerippled surface
-  double precision, parameter :: omg = 4.0*pi ! wave number of prerippled surface
-  double precision, parameter :: wavl = 2.0*pi/omg ! wavelength of prerippled surface
 
   ! variables
   integer :: realtype
@@ -133,6 +138,7 @@ module public_val
   double precision, dimension(xpdim, ypnum) :: ucreep, vcreep
 end module public_val
 
+! vector calculation
 module vector_cal
   implicit none
 contains
@@ -165,10 +171,10 @@ contains
     double precision :: normv
     !
     normv = norm_2(vec)
-    if (normv>0.) then
+    if (normv>0.0) then
       unit_vec = vec/normv 
     else
-      unit_vec = 0.
+      unit_vec = 0.0
     end if
   end function
   !
@@ -180,6 +186,7 @@ contains
   end function
 end module vector_cal
 
+! gather the matrix of different procs into one single large matrix 
 module gather_xyz
   implicit none
   interface gatherxyz
@@ -187,138 +194,144 @@ module gather_xyz
     module procedure gxyz_int
   end interface
 contains
-  subroutine gxyz_real(comm3d, nxdim, mx, my, mz, f, tf)
+  subroutine gxyz_real(MPI_Comm, subMx, totMx, totMy, totMz, subField, totField)
     include "mpif.h"
     ! public
-    integer, intent(in) :: nxdim, mx, my, mz
-    integer, intent(in) :: comm3d
-    double precision, intent(in), dimension(nxdim, my, mz) :: f
-    double precision, dimension(mx, my, mz) :: tf
+    integer, intent(in) :: subMx, totMx, totMy, totMz
+    integer, intent(in) :: MPI_Comm
+    double precision, intent(in), dimension(subMx, totMy, totMz) :: subField
+    double precision, dimension(totMx, totMy, totMz) :: totField
     ! local
-    integer :: valtype
-    integer :: numa, tnuma
+    integer :: subNx, totNx
+    integer :: dataType
+    integer :: subGridNum, totGridNum
     integer :: ierr
     integer :: i, j, k
-    integer :: ijk
-    integer :: blk
-    double precision, allocatable, dimension(:, :, :) :: ff
-    double precision, allocatable, dimension(:) :: a
-    double precision, allocatable, dimension(:) :: aa
+    integer :: serialNum
+    integer :: procID
+    double precision, allocatable, dimension(:, :, :) :: subField_noGhost
+    double precision, allocatable, dimension(:) :: subArray
+    double precision, allocatable, dimension(:) :: totArray
     !
-    allocate(ff(nxdim-2, my, mz))
-    numa = (nxdim-2)*my*mz
-    tnuma = (mx-2)*my*mz
-    allocate(a(numa))
-    allocate(aa(tnuma))
+    subNx = subMx - 2
+    totNx = totMx - 2
+    subGridNum = subNx*totMy*totMz
+    totGridNum = totNx*totMy*totMz
+    allocate(subField_noGhost(subNx, totMy, totMz))
+    allocate(subArray(subGridNum))
+    allocate(totArray(totGridNum))
     !
-    valtype = MPI_DOUBLE_PRECISION
-    a = 0.
-    aa = 0.
-    tf = 0.
-    ff = f(2:nxdim-1, 1:my, 1:mz)
-    do k = 1, mz
-    do j = 1, my
-    do i = 1, nxdim-2
-    ijk = i + (j-1)*(nxdim-2) + (k-1)*(nxdim-2)*my
-    a(ijk) = ff(i, j, k)
+    dataType = MPI_DOUBLE_PRECISION
+    subArray = 0.0
+    totArray = 0.0
+    totField = 0.0
+    subField_noGhost = subField(2:subMx-1, 1:totMy, 1:totMz)
+    do k = 1, totMz
+    do j = 1, totMy
+    do i = 1, subNx
+    serialNum = i + (j-1)*subNx + (k-1)*subNx*totMy
+    subArray(serialNum) = subField_noGhost(i, j, k)
     end do
     end do
     end do
-    call MPI_ALLGATHER(a,numa,valtype,aa,numa,valtype,comm3d,ierr)
-    do k = 1, mz
-    do j = 1, my
-    do i = 2, mx-1
-    blk = (i-2)/(nxdim-2)
-    ijk = (i-1) - blk*(nxdim-2) + (j-1)*(nxdim-2) + (k-1)*(nxdim-2)*my + blk*(nxdim-2)*my*mz
-    tf(i, j, k) = aa(ijk)
+    call MPI_ALLGATHER(subArray,subGridNum,dataType,totArray,subGridNum,dataType,MPI_Comm,ierr)
+    do k = 1, totMz
+    do j = 1, totMy
+    do i = 2, totMx-1
+    procID = (i-2)/subNx
+    serialNum = (i-1) - procID*subNx + (j-1)*subNx + (k-1)*subNx*totMy + procID*subNx*totMy*totMz
+    totField(i, j, k) = totArray(serialNum)
     end do
     end do
     end do
-    deallocate(ff)
-    deallocate(a)
-    deallocate(aa)
+    deallocate(subField_noGhost)
+    deallocate(subArray)
+    deallocate(totArray)
   end subroutine gxyz_real
   !
-  subroutine gxyz_int(comm3d, nxdim, mx, my, mz, f, tf)
+  subroutine gxyz_int(MPI_Comm, subMx, totMx, totMy, totMz, subField, totField)
     include "mpif.h"
     ! public
-    integer, intent(in) :: nxdim, mx, my, mz
-    integer, intent(in) :: comm3d
-    integer, intent(in), dimension(nxdim, my, mz) :: f
-    integer, dimension(mx, my, mz) :: tf
+    integer, intent(in) :: subMx, totMx, totMy, totMz
+    integer, intent(in) :: MPI_Comm
+    integer, intent(in), dimension(subMx, totMy, totMz) :: subField
+    integer, dimension(totMx, totMy, totMz) :: totField
     ! local
-    integer :: valtype
-    integer :: numa, tnuma
+    integer :: subNx, totNx
+    integer :: dataType
+    integer :: subGridNum, totGridNum
     integer :: ierr
     integer :: i, j, k
-    integer :: ijk
-    integer :: blk
-    integer, allocatable, dimension(:, :, :) :: ff
-    integer, allocatable, dimension(:) :: a
-    integer, allocatable, dimension(:) :: aa
+    integer :: serialNum
+    integer :: procID
+    integer, allocatable, dimension(:, :, :) :: subField_noGhost
+    integer, allocatable, dimension(:) :: subArray
+    integer, allocatable, dimension(:) :: totArray
     !
-    allocate(ff(nxdim-2, my, mz))
-    numa = (nxdim-2)*my*mz
-    tnuma = (mx-2)*my*mz
-    allocate(a(numa))
-    allocate(aa(tnuma))
+    subNx = subMx - 2
+    totNx = subMx - 2
+    subGridNum = subNx*totMy*totMz
+    totGridNum = totNx*totMy*totMz
+    allocate(subField_noGhost(subNx, totMy, totMz))
+    allocate(subArray(subGridNum))
+    allocate(totArray(totGridNum))
     !
-    valtype = MPI_INTEGER
-    a = 0.
-    aa = 0.
-    tf = 0.
-    ff = f(2:nxdim-1, 1:my, 1:mz)
-    do k = 1, mz
-    do j = 1, my
-    do i = 1, nxdim-2
-    ijk = i + (j-1)*(nxdim-2) + (k-1)*(nxdim-2)*my
-    a(ijk) = ff(i, j, k)
+    dataType = MPI_INTEGER
+    subArray = 0.0
+    totArray = 0.0
+    totField = 0.0
+    subField_noGhost = subField(2:subMx-1, 1:totMy, 1:totMz)
+    do k = 1, totMz
+    do j = 1, totMy
+    do i = 1, subNx
+    serialNum = i + (j-1)*subNx + (k-1)*subNx*totMy
+    subArray(serialNum) = subField_noGhost(i, j, k)
     end do
     end do
     end do
-    call MPI_ALLGATHER(a,numa,valtype,aa,numa,valtype,comm3d,ierr)
-    do k = 1, mz
-    do j = 1, my
-    do i = 2, mx-1
-    blk = (i-2)/(nxdim-2)
-    ijk = (i-1) - blk*(nxdim-2) + (j-1)*(nxdim-2) + (k-1)*(nxdim-2)*my + blk*(nxdim-2)*my*mz
-    tf(i, j, k) = aa(ijk)
+    call MPI_ALLGATHER(subArray,subGridNum,dataType,totArray,subGridNum,dataType,MPI_Comm,ierr)
+    do k = 1, totMz
+    do j = 1, totMy
+    do i = 2, totMx-1
+    procID = (i-2)/subNx
+    serialNum = (i-1) - procID*subNx + (j-1)*subNx + (k-1)*subNx*totMy + procID*subNx*totMy*totMz
+    totField(i, j, k) = totArray(serialNum)
     end do
     end do
     end do
-    deallocate(ff)
-    deallocate(a)
-    deallocate(aa)
+    deallocate(subField_noGhost)
+    deallocate(subArray)
+    deallocate(totArray)
   end subroutine gxyz_int
   !
-  subroutine gatherx(comm3d, nxdim, mx, f, tf)
+  subroutine gatherx(MPI_Comm, subMx, totMx, subField, totField)
     implicit none
     include "mpif.h"
     ! public
-    integer, intent(in) :: nxdim, mx
-    integer, intent(in) :: comm3d
-    double precision, intent(in), dimension(nxdim) :: f
-    double precision, dimension(mx) :: tf
+    integer, intent(in) :: subMx, totMx
+    integer, intent(in) :: MPI_Comm
+    double precision, intent(in), dimension(subMx) :: subField
+    double precision, dimension(totMx) :: totField
     ! local
-    integer :: valtype
-    integer :: numa, tnuma
+    integer :: dataType
+    integer :: subGridNum, totGridNum
     integer :: ierr
-    double precision, allocatable, dimension(:) :: ff
-    double precision, allocatable, dimension(:) :: aa
+    double precision, allocatable, dimension(:) :: subArray
+    double precision, allocatable, dimension(:) :: totArray
     !
-    numa = nxdim - 2
-    tnuma = mx - 2
-    allocate(ff(numa))
-    allocate(aa(tnuma))
+    subGridNum = subMx - 2
+    totGridNum = totMx - 2
+    allocate(subArray(subGridNum))
+    allocate(totArray(totGridNum))
     !
-    valtype = MPI_DOUBLE_PRECISION
-    aa = 0.
-    tf = 0.
-    ff = f(2:nxdim-1)
-    call MPI_ALLGATHER(ff,numa,valtype,aa,numa,valtype,comm3d,ierr)
-    tf(2:mx-1) = aa
-    deallocate(ff)
-    deallocate(aa)
+    dataType = MPI_DOUBLE_PRECISION
+    totArray = 0.0
+    totField = 0.0
+    subArray = subField(2:subMx-1)
+    call MPI_ALLGATHER(subArray,subGridNum,dataType,totArray,subGridNum,dataType,MPI_Comm,ierr)
+    totField(2:totMx-1) = totArray
+    deallocate(subArray)
+    deallocate(totArray)
   end subroutine gatherx
 end module gather_xyz
 
