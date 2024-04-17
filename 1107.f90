@@ -21,7 +21,6 @@ module public_val
   double precision, parameter :: rho = 1.263 ! fluid density
   double precision, parameter :: nu = 1.49e-5 ! kinetic viscosity
   double precision, parameter :: kapa = 0.4 ! von Kaman's constant
-  integer, parameter :: nna = 1 ! num of particle time steps between two fluid time steps
   ! particle
   integer, parameter :: ikl = 1 ! calculating particles: ikl = 0: no, 1: yes
   integer, parameter :: nnps = 100 ! initial particle num
@@ -644,6 +643,80 @@ subroutine outPutFile
   end if
 end subroutine outPutFile
 
+subroutine fluidField
+  use public_val
+  implicit none
+  include "mpif.h"
+  integer :: i, j, k, n
+  integer :: kk
+  integer :: h
+  integer :: ierr
+  double precision :: mixl
+  double precision :: dudz
+  double precision :: oo
+  double precision :: lmd
+  double precision :: shru
+  double precision :: ddz
+  double precision :: chru
+  double precision :: relax
+  double precision, dimension(mz) :: volpar, numpar, tvolpar
+  double precision, dimension(mz) :: afptx
+  double precision, dimension(mz) :: pfptx
+  double precision, dimension(mz) :: tfptx
+  double precision, dimension(mz) :: ataop
+  double precision, dimension(mz) :: ptaop
+  double precision, dimension(mz) :: tampd, tampu, aampd, aampu
+  ! function
+  double precision :: ffd, ntmixl
+  !
+  !volpar = 0.0
+  !do k = 1, mz
+  !do j = 2, my-1
+  !do i = 2, mxNode-1
+  !volpar(k) = volpar(k) + (1.0-phirho(i, j, k))*xDiff*yDiff*zDiff(k)
+  !end do
+  !end do
+  !end do
+  !call MPI_ALLREDUCE(volpar,tvolpar,mz,realType,MPI_SUM,comm1D,ierr)
+  !call MPI_ALLREDUCE(ampu,tampu,mz,realType,MPI_SUM,comm1D,ierr)
+  !afptx = tampu/xMax/yMax
+  !totfptx = totfptx + afptx/dfloat(nna)
+  !totvolpar = totvolpar + tvolpar/dfloat(nna)
+    htao = 0.0
+    ahff = 1.0
+    do k = 1, mz
+    ahff(k) = 1.0 - totvolpar(k)/(xMax*yMax*zDiff(k))
+    end do
+    !
+    fptx = totfptx/ahff
+    !
+    relax = 0.01
+    do k = 1, mz
+    tfptx(k) = sum(fptx(k:mz))
+    htaop(k) = htaop(k)*(1.0-relax) + relax*tfptx(k)
+    if (ahff(k)<=(1.0-por)) then
+      htaop(k) = rho*wind**2
+    end if
+    htao(k) = rho*wind**2 - htaop(k)
+    if (htao(k)<0.0) htao(k) = 0.0
+    !if (htao(k)>rho*wind**2) htao(k) = rho*wind**2
+    end do
+    !
+    mixl = kapa*z(1)*(1.0-exp(-1.0/26.0*z(1)*wind/nu))
+    dudz = (sqrt(nu**2+4.0*mixl**2*htao(1)/rho)-nu)/2.0/mixl**2
+    hru(1) = dudz*z(1)
+    do k = 2, mz
+    ddz = z(k) - z(k-1)
+    mixl = kapa*z(k)*(1.0-exp(-1.0/26.0*z(k)*wind/nu))
+    dudz = (sqrt(nu**2+4.0*mixl**2*htao(k)/rho)-nu)/2.0/mixl**2
+    hru(k) = dudz*ddz + hru(k-1)
+    end do
+    2001 continue
+    !
+    totfptx = 0.0
+    totvolpar = 0.0
+end subroutine fluidField
+
 subroutine imgd
   use public_val
   implicit none
@@ -754,82 +827,6 @@ subroutine pxch(mkxNode, mky, kz, surfExType, neighbor, comm1D)
   ! send to 1 and receive from 2
   call MPI_SENDRECV(kz(2, 1),1,surfExType,neighbor(1),2,kz(mkxNode, 1),1,surfExType,neighbor(2),2,comm1D,status,ierr)
 end subroutine pxch
-
-subroutine fluidField
-  use public_val
-  implicit none
-  include "mpif.h"
-  integer :: i, j, k, n
-  integer :: kk
-  integer :: h
-  integer :: ierr
-  double precision :: mixl
-  double precision :: dudz
-  double precision :: oo
-  double precision :: lmd
-  double precision :: shru
-  double precision :: ddz
-  double precision :: chru
-  double precision :: relax
-  double precision, dimension(mz) :: volpar, numpar, tvolpar
-  double precision, dimension(mz) :: afptx
-  double precision, dimension(mz) :: pfptx
-  double precision, dimension(mz) :: tfptx
-  double precision, dimension(mz) :: ataop
-  double precision, dimension(mz) :: ptaop
-  double precision, dimension(mz) :: tampd, tampu, aampd, aampu
-  ! function
-  double precision :: ffd, ntmixl
-  !
-  volpar = 0.0
-  do k = 1, mz
-  do j = 2, my-1
-  do i = 2, mxNode-1
-  volpar(k) = volpar(k) + (1.0-phirho(i, j, k))*xDiff*yDiff*zDiff(k)
-  end do
-  end do
-  end do
-  call MPI_ALLREDUCE(volpar,tvolpar,mz,realType,MPI_SUM,comm1D,ierr)
-  call MPI_ALLREDUCE(ampu,tampu,mz,realType,MPI_SUM,comm1D,ierr)
-  afptx = tampu/xMax/yMax
-  totfptx = totfptx + afptx/dfloat(nna)
-  totvolpar = totvolpar + tvolpar/dfloat(nna)
-  if (mod(last, nna)==0) then
-    htao = 0.0
-    ahff = 1.0
-    do k = 1, mz
-    ahff(k) = 1.0 - totvolpar(k)/(xMax*yMax*zDiff(k))
-    end do
-    !
-    fptx = totfptx/ahff
-    !
-    relax = 0.01
-    do k = 1, mz
-    tfptx(k) = sum(fptx(k:mz))
-    htaop(k) = htaop(k)*(1.0-relax) + relax*tfptx(k)
-    if (ahff(k)<=(1.0-por)) then
-      htaop(k) = rho*wind**2
-    end if
-    htao(k) = rho*wind**2 - htaop(k)
-    if (htao(k)<0.0) htao(k) = 0.0
-    !if (htao(k)>rho*wind**2) htao(k) = rho*wind**2
-    end do
-    !
-    mixl = kapa*z(1)*(1.0-exp(-1.0/26.0*z(1)*wind/nu))
-    dudz = (sqrt(nu**2+4.0*mixl**2*htao(1)/rho)-nu)/2.0/mixl**2
-    hru(1) = dudz*z(1)
-    do k = 2, mz
-    ddz = z(k) - z(k-1)
-    mixl = kapa*z(k)*(1.0-exp(-1.0/26.0*z(k)*wind/nu))
-    dudz = (sqrt(nu**2+4.0*mixl**2*htao(k)/rho)-nu)/2.0/mixl**2
-    hru(k) = dudz*ddz + hru(k-1)
-    end do
-    2001 continue
-    !
-    totfptx = 0.0
-    totvolpar = 0.0
-  end if
-end subroutine fluidField
 
 function ntmixl(lm, k, nu, ux, dz)
   implicit none
