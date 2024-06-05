@@ -19,19 +19,20 @@ module public_val
   ! fluid
   double precision, parameter :: wind = 0.5 ! fractional velocity
   double precision, parameter :: rho = 1.263 ! fluid density
-  double precision, parameter :: nu = 1.49e-5 ! kinetic viscosity
+  double precision, parameter :: nu = 1.51e-5 ! kinetic viscosity
   double precision, parameter :: kapa = 0.4 ! von Kaman's constant
   ! particle
-  integer, parameter :: ikl = 1 ! calculating particles: ikl = 0: no, 1: yes
-  integer, parameter :: nnps = 100 ! initial particle num
+  integer, parameter :: ipar = 1 ! calculating particles: ipar = 0: no, 1: yes
+  integer, parameter :: npdf = 3 ! bin num of particle distribution. must be odd number when ipd=0
+  double precision, parameter :: rpdf = 3.0 ! define the range of particle distribution.
+  integer, parameter :: pNumInit = 100 ! initial particle num
   double precision, parameter :: els = 0.9 ! normal restitution coefficient
   double precision, parameter :: fric = 0.0 ! tangential restitution coefficient
   double precision, parameter :: els1 = 0.9 ! normal restitution coefficient (mid-air collision)
   double precision, parameter :: fric1 = 0.0 ! tangential restitution coefficient (mid-air collision)
   double precision, parameter :: dpa = 2.5e-4 ! average particle diameter
-  double precision, parameter :: dcgma = 2.0e-4 ! particle diameter standard deviation x 2
-  integer, parameter :: npdf = 3 ! bin num of particle distribution. must be odd number when iud=0
-  double precision, parameter :: szpdf = dpa*5.0 ! thickness of the thin surface layer on particle bed
+  double precision, parameter :: dSigma = 2.0e-4 ! particle diameter standard deviation x 2
+  double precision, parameter :: bedCellTknessInit = dpa*5.0 ! thickness of the thin surface layer on particle bed
   double precision, parameter :: rhos = 2650.0 ! particle density
   double precision, parameter :: nkl = 1.0 ! one particle stands for x particles
   double precision, parameter :: por = 0.6 ! bedform porosity
@@ -48,11 +49,11 @@ module public_val
   integer, parameter :: ikbx = 0 ! x direction
   integer, parameter :: ikby = 0 ! y direction
   integer, parameter :: ikbz = 1 ! uppper surface (never be 0)
-  ! particle diameter: iud = 0: polydisperse, 1: monodisperse, 2: bidisperse
-  ! if iud=0, normal distribution, mu=dpa, sigma=dcgma, dpa-3dcgma~dpa+3dcgma
-  ! if iud=1, d=dpa.
-  ! if iud=2, d1=dpa-dcgma, d2=dpa+dcgma, npdf must equal to 2.
-  integer, parameter :: iud = 1
+  ! particle diameter: ipd = 0: polydisperse, 1: monodisperse, 2: bidisperse
+  ! if ipd=0, normal distribution, mu=dpa, sigma=dSigma, dpa-rpdf*dSigma~dpa+rpdf*dSigma
+  ! if ipd=1, d=dpa.
+  ! if ipd=2, d1=dpa-dSigma, d2=dpa+dSigma, npdf must equal to 2.
+  integer, parameter :: ipd = 1
   integer, parameter :: icol = 1 ! mid-air collision: icol=1: on, icol=0: off
   integer, parameter :: irsf = 0 ! surface irsf=0: erodable, irsf=1: rigid
   ! output per x steps
@@ -79,12 +80,16 @@ module public_val
   double precision, parameter :: pi = acos(-1.0) ! define Pi
 
   ! variables
+  ! define in dataExType
+  integer :: fieldExType
+  integer :: surfExType
   ! define in main
   integer :: realType
   integer :: intType
   integer :: comm1D
   integer :: myID
   integer, dimension(2) :: neighbor
+  integer :: last
   ! define in generateGrid
   double precision :: xDiff, yDiff
   double precision, dimension(mz) :: zDiff
@@ -94,14 +99,23 @@ module public_val
   double precision, dimension(mxNode) :: x
   double precision, dimension(my) :: y
   double precision, dimension(mz) :: z
-  ! define in dataExType
-  integer :: fieldExType
-  integer :: surfExType
   ! define in generateInitBed
   double precision :: kxDiff, kyDiff
   double precision, dimension(mkxNode) :: kx
   double precision, dimension(mky) :: ky
   double precision, dimension(mkxNode, mky) :: kz
+  double precision, dimension(mkxNode, mky) :: bedPD
+  double precision, dimension(mkxNode, mky) :: bedCellTkness
+  ! define in particleInit
+  double precision, dimension(npdf) :: prob
+  integer :: pNum
+  double precision, dimension(nnpmax) :: xp, yp, zp
+  double precision, dimension(nnpmax) :: up, vp, wp
+  double precision, dimension(nnpmax) :: dp, fk, fz
+  double precision, dimension(nnpmax) :: fh, fg, ft
+  double precision, dimension(mkxNode, mky, npdf) :: bedPDist
+  ! define in particleCal
+  double precision, dimension(mxNode, my, mz) :: phirho
   !
   double precision :: norm_vpin, norm_vpout, vvpin, vvpout, mpin, mpout
   double precision :: npin, npout
@@ -111,34 +125,23 @@ module public_val
   double precision :: aucreep
   double precision, dimension(3) :: vpin, vpout
   double precision, dimension(3) :: tot_vpin, tot_vpout
-  double precision, dimension(mxNode, my, mz) :: phirho
   double precision, dimension(mz) :: ampu, ampd
   double precision, dimension(mz) :: fptx
   double precision, dimension(mz) :: totfptx, totvolpar
-  integer :: nnp
   double precision :: uflx, wflx
   double precision, dimension(mz) :: uflxz
   double precision, dimension(mz) :: wflxz
-  double precision, dimension(mkxNode, mky) :: dpaa
   double precision, dimension(mkxNode, mky) :: pnch
   double precision, dimension(mkxNode, mky, npdf) :: pdfch
   double precision, dimension(mky) :: eepnch, eepnchr
   double precision, dimension(mky*npdf) :: eepdfch, eepdfchr
   double precision :: time
-  integer :: last
   integer :: gtypei
   double precision, dimension(mz) :: htaop, thtaop
   double precision, dimension(mz) :: htao, thtao
   double precision, dimension(mz) :: ahff, tahff
   double precision, dimension(mz) :: hru, thru
   double precision, dimension(mz) :: pcoll, ttpcoll
-  double precision, dimension(npdf) :: spdf
-  double precision, dimension(nnpmax) :: xp, yp, zp
-  double precision, dimension(nnpmax) :: up, vp, wp
-  double precision, dimension(nnpmax) :: dp, fk, fz
-  double precision, dimension(nnpmax) :: fh, fg, ft
-  double precision, dimension(mkxNode, mky, npdf) :: pdf
-  double precision, dimension(mkxNode, mky) :: zpdf
   double precision, dimension(mkxNode, mky) :: ucreep, vcreep
 end module public_val
 
@@ -339,6 +342,59 @@ contains
   end subroutine gatherx
 end module gather_xyz
 
+subroutine dataExType
+  use public_val
+  implicit none
+  include "mpif.h"
+  integer i, tempExType, ierr
+  !
+  ! fieldExType: i=const planes
+  ! tempExType: i=const,k=const line 
+  call MPI_TYPE_VECTOR(my,1,mxNode,realType,tempExType,ierr)
+  call MPI_TYPE_COMMIT(tempExType,ierr)
+  call MPI_TYPE_EXTENT(realType,i,ierr)
+  call MPI_TYPE_HVECTOR(mz,1,mxNode*my*i,tempExType,fieldExType,ierr)
+  call MPI_TYPE_COMMIT(fieldExType,ierr)
+  ! surfExType: i=const line
+  call MPI_TYPE_VECTOR(mky,1,mkxNode,realType,surfExType,ierr)
+  call MPI_TYPE_COMMIT(surfExType,ierr)
+end subroutine dataExType
+
+subroutine dataEx(mxNode, my, mz, a, comm1D, neighbor, fieldExType, tag)
+  implicit none
+  include "mpif.h"
+  ! public
+  integer, intent(in) :: mxNode, my, mz
+  integer, intent(in) :: comm1D
+  integer, intent(in) :: fieldExType
+  integer, intent(in) :: tag
+  integer, intent(in), dimension(2) :: neighbor
+  double precision, dimension(mxNode, my, mz) :: a
+  ! local
+  integer :: status(MPI_STATUS_SIZE)
+  integer :: ierr
+  !
+  ! planes i=constant
+  !
+  ! neighbor:
+  !       |           |
+  !      ---------------                j
+  !       |           |               ^ 
+  !       |           |               |
+  !      1|    myID   |2              |
+  !       |           |              ------>
+  !       |           |               |     i
+  !      ---------------
+  !       |           |
+  !
+  ! send to 2 and receive from 1
+  call MPI_SENDRECV(a(mxNode-1, 1, 1),1,fieldExType,neighbor(2),tag,   &
+    a(1, 1, 1),1,fieldExType,neighbor(1),tag,comm1D,status,ierr)
+  ! send to 1 and receive from 2
+  call MPI_SENDRECV(a(2, 1, 1),1,fieldExType,neighbor(1),tag+1,   &
+    a(mxNode, 1, 1),1,fieldExType,neighbor(2),tag+1,comm1D,status,ierr)
+end subroutine dataEx
+
 program main
   use public_val
   implicit none
@@ -401,14 +457,11 @@ program main
   tahff = 0.0
   thru = 0.0
   ttpcoll = 0.0
-  nnp = 0
   uflx = 0.0
   wflx = 0.0
   uflxz = 0.0
   wflxz = 0.0
-  dpaa = dpa
   time = 0.0
-  last = 1
   phirho = 1.0
   tot_vpin = 0.0
   tot_vpout = 0.0
@@ -427,39 +480,40 @@ program main
   !
   ! start iteration loop
   !
+  last = 1
   do
-  ! calculate fluid field
-  call fluidField
-  ! generate boundary key point
-  call imgd
-  phirho = 1.0
-  ! calculate particles
-  if (ikl==1) then
-    if (last==pstart) then
-      call parstart
-    end if
+  ! calculate particle movement
+  if (ipar==1) then
     if (last>=pstart) then
-      call parcalculate
+        if (last==pstart) then
+            call particleInit
+        end if
+        call parCalculate
     end if
     if (last<sstart) then
       pnch = 0.0
       do i = 1, mkxNode
       do j = 1, mky
-      zpdf(i, j) = szpdf
+      bedCellTkness(i, j) = bedCellTknessInit
       if (irsf==0) then
         do k = 1, npdf
-        pdf(i, j, k) = spdf(k)
+        bedPDist(i, j, k) = prob(k)
         end do
-        dpaa(i, j) = dpa
+        bedPD(i, j) = dpa
       else
-        pdf(i, j, 2) = 0.5*(0.5*sin(initOmg*kx(i))+0.5)
-        pdf(i, j, 1) = 1.0 - pdf(i, j, 2)
-        dpaa(i, j) = pdf(i, j, 1)*(dpa-dcgma) + pdf(i, j, 2)*(dpa+dcgma)
+        bedPDist(i, j, 2) = 0.5*(0.5*sin(initOmg*kx(i))+0.5)
+        bedPDist(i, j, 1) = 1.0 - bedPDist(i, j, 2)
+        bedPD(i, j) = bedPDist(i, j, 1)*(dpa-dSigma) + bedPDist(i, j, 2)*(dpa+dSigma)
       end if
       end do
       end do
     end if
   end if
+  ! calculate fluid field
+  call fluidField
+  ! generate boundary key point
+  call imgd
+  phirho = 1.0
   ! output result
   call output
   ! time advance
@@ -561,27 +615,11 @@ subroutine generateInitBed
   do j = 1, mky
   do i = 1, mkxNode
   kz(i, j) = initAmp*sin(initOmg*kx(i)) + initAveKz
+  bedPD(i, j) = dpa
+  bedCellTkness(i, j) = bedCellTknessInit
   end do
   end do
 end subroutine generateInitBed
-
-subroutine dataExType
-  use public_val
-  implicit none
-  include "mpif.h"
-  integer i, tempExType, ierr
-  !
-  ! fieldExType: i=const planes
-  ! tempExType: i=const,k=const line 
-  call MPI_TYPE_VECTOR(my,1,mxNode,realType,tempExType,ierr)
-  call MPI_TYPE_COMMIT(tempExType,ierr)
-  call MPI_TYPE_EXTENT(realType,i,ierr)
-  call MPI_TYPE_HVECTOR(mz,1,mxNode*my*i,tempExType,fieldExType,ierr)
-  call MPI_TYPE_COMMIT(fieldExType,ierr)
-  ! surfExType: i=const line
-  call MPI_TYPE_VECTOR(mky,1,mkxNode,realType,surfExType,ierr)
-  call MPI_TYPE_COMMIT(surfExType,ierr)
-end subroutine dataExType
 
 subroutine outPutFile
   use public_val
@@ -643,289 +681,75 @@ subroutine outPutFile
   end if
 end subroutine outPutFile
 
-subroutine fluidField
+subroutine particleInit
   use public_val
   implicit none
   include "mpif.h"
-  integer :: i, j, k, n
-  integer :: kk
-  integer :: h
-  integer :: ierr
-  double precision :: mixl
-  double precision :: dudz
-  double precision :: oo
-  double precision :: lmd
-  double precision :: shru
-  double precision :: ddz
-  double precision :: chru
-  double precision :: relax
-  double precision, dimension(mz) :: volpar, numpar, tvolpar
-  double precision, dimension(mz) :: afptx
-  double precision, dimension(mz) :: pfptx
-  double precision, dimension(mz) :: tfptx
-  double precision, dimension(mz) :: ataop
-  double precision, dimension(mz) :: ptaop
-  double precision, dimension(mz) :: tampd, tampu, aampd, aampu
-  ! function
-  double precision :: ffd, ntmixl
-  !
-  !volpar = 0.0
-  !do k = 1, mz
-  !do j = 2, my-1
-  !do i = 2, mxNode-1
-  !volpar(k) = volpar(k) + (1.0-phirho(i, j, k))*xDiff*yDiff*zDiff(k)
-  !end do
-  !end do
-  !end do
-  !call MPI_ALLREDUCE(volpar,tvolpar,mz,realType,MPI_SUM,comm1D,ierr)
-  !call MPI_ALLREDUCE(ampu,tampu,mz,realType,MPI_SUM,comm1D,ierr)
-  !afptx = tampu/xMax/yMax
-  !totfptx = totfptx + afptx/dfloat(nna)
-  !totvolpar = totvolpar + tvolpar/dfloat(nna)
-    htao = 0.0
-    ahff = 1.0
-    do k = 1, mz
-    ahff(k) = 1.0 - totvolpar(k)/(xMax*yMax*zDiff(k))
-    end do
-    !
-    fptx = totfptx/ahff
-    !
-    relax = 0.01
-    do k = 1, mz
-    tfptx(k) = sum(fptx(k:mz))
-    htaop(k) = htaop(k)*(1.0-relax) + relax*tfptx(k)
-    if (ahff(k)<=(1.0-por)) then
-      htaop(k) = rho*wind**2
-    end if
-    htao(k) = rho*wind**2 - htaop(k)
-    if (htao(k)<0.0) htao(k) = 0.0
-    !if (htao(k)>rho*wind**2) htao(k) = rho*wind**2
-    end do
-    !
-    mixl = kapa*z(1)*(1.0-exp(-1.0/26.0*z(1)*wind/nu))
-    dudz = (sqrt(nu**2+4.0*mixl**2*htao(1)/rho)-nu)/2.0/mixl**2
-    hru(1) = dudz*z(1)
-    do k = 2, mz
-    ddz = z(k) - z(k-1)
-    mixl = kapa*z(k)*(1.0-exp(-1.0/26.0*z(k)*wind/nu))
-    dudz = (sqrt(nu**2+4.0*mixl**2*htao(k)/rho)-nu)/2.0/mixl**2
-    hru(k) = dudz*ddz + hru(k-1)
-    end do
-    2001 continue
-    !
-    totfptx = 0.0
-    totvolpar = 0.0
-end subroutine fluidField
-
-subroutine imgd
-  use public_val
-  implicit none
-  include "mpif.h"
-  ! local
-  integer :: i, j
-  integer :: n
-  integer :: ierr
-  integer :: status(MPI_STATUS_SIZE)
-  integer :: wn
-  double precision :: aaa
-  double precision :: totpz, avepz, tavepz
-  double precision :: posit
-  !
-  if (last==1 .or. ikl==0) then
-    kx = 0.
-    ky = 0.
-    kz = 0.
-    pnch = 0.
-    kxDiff = xMax/dfloat(mkx-2)
-    kyDiff = yMax/dfloat(mky-2)
-    if (myID==0) then
-      kx(1) = -kxDiff
-      do i = 2, mkxNode
-      kx(i) = kx(i-1) + kxDiff
-      end do
-      call MPI_SEND(kx(mkxNode-1),1,realType,neighbor(2),3,comm1D,ierr)
-    else
-      call MPI_RECV(kx(1),1,realType,neighbor(1),3,comm1D,status,ierr)
-      do i = 2, mkxNode
-      kx(i) = kx(i-1) + kxDiff
-      end do
-      call MPI_SEND(kx(mkxNode-1),1,realType,neighbor(2),3,comm1D,ierr)
-    end if
-    ky(1) = -kyDiff
-    do j = 2, mky
-    ky(j) = ky(j-1) + kyDiff
-    end do
-    do j = 1, mky
-    do i = 1, mkxNode
-    kz(i, j) = initAmp*sin(dfloat(int(time/20.0)+2)*8.0*pi*kx(i)) + initAveKz
-    !wn = int(kx(i)/wavl)
-    !posit = kx(i)/wavl - dfloat(wn) - 0.5
-    !if (posit>=0.0) then
-    !  kz(i, j) = initAmp*0.5 - 2.0*initAmp*posit + initAveKz
-    !else
-    !  kz(i, j) = initAmp*0.5 + 2.0*initAmp*posit + initAveKz
-    !end if
-    end do
-    end do
-  else
-    aaa = kxDiff*kyDiff
-    !do j = 1, mky
-    !do i = 1, mkxNode
-    !kz(i, j) = kz(i, j) + pnch(i, j)/aaa/por
-    !end do
-    !end do
-    do j = 1, mky
-    do i = 1, mkxNode
-    kz(i, j) = initAmp*sin(dfloat(int(time/20.0)+2)*8.0*pi*kx(i)) + initAveKz
-    end do
-    end do
-    !do j = 1, mky
-    !do i = 1, mkxNode
-    !if (kz(i, j)<0. .or. kz(i, j)>zMax .or. abs(pnch(i, j)/aaa/por)>=0.01) then
-    ! print*, 'error: kz out of lower/upper boundary'
-    !  print*, 'z=', kz(i, j), '    z change=', pnch(i, j)/aaa/por
-    !  print*, 'i=', i, '  j=', j, '  myID=', myID
-    !  kz(i, j) = kz(i, j) - pnch(i, j)/aaa/por
-    !end if
-    !end do
-    !end do
-    call pxch(mkxNode, mky, kz, surfExType, neighbor, comm1D)
-    do i = 1, mkxNode
-    kz(i, 1) = kz(i, mky-1)
-    kz(i, mky) = kz(i, 2)
-    end do
-    !
-    n = 0
-    totpz = 0.0
-    do j = 2, mky-1
-    do i = 2, mkxNode-1
-    n = n + 1
-    totpz = totpz + kz(i, j)
-    end do
-    end do
-    avepz = totpz/dfloat(n)
-    call MPI_ALLREDUCE(avepz,tavepz,1,realType,MPI_SUM,comm1D,ierr)
-  end if
-end subroutine imgd
-
-subroutine pxch(mkxNode, mky, kz, surfExType, neighbor, comm1D)
-  implicit none
-  include "mpif.h"
-  ! public
-  integer :: mkxNode, mky
-  integer :: comm1D
-  integer :: surfExType
-  integer, dimension(2) :: neighbor
-  double precision, dimension(mkxNode, mky) :: kz
-  ! local
-  integer :: i, j
-  integer :: ierr
-  integer :: status(MPI_STATUS_SIZE)
-  !
-  ! send to 2 and receive from 1
-  call MPI_SENDRECV(kz(mkxNode-1, 1),1,surfExType,neighbor(2),1,kz(1, 1),1,surfExType,neighbor(1),1,comm1D,status,ierr)
-  ! send to 1 and receive from 2
-  call MPI_SENDRECV(kz(2, 1),1,surfExType,neighbor(1),2,kz(mkxNode, 1),1,surfExType,neighbor(2),2,comm1D,status,ierr)
-end subroutine pxch
-
-function ntmixl(lm, k, nu, ux, dz)
-  implicit none
-  ! public
-  double precision :: ntmixl
-  double precision, intent(in) :: lm, k, nu, ux, dz
-  ! local
-  integer :: n
-  double precision :: xr, x1
-  double precision :: fx, gx, fxr
-  x1 = 1.0
-  n = 0
-  do
-  n = n + 1
-  if (n>10000) then
-    print*, 'ntmixl', lm, k, nu, ux, dz
-    stop
-  end if
-  fx = k*(1.0-exp(-sqrt(ux*x1/7.0/nu))) - (x1-lm)/dz
-  gx = exp(-sqrt(ux*x1/7.0/nu))*k*ux/(2.0*nu*7.0*sqrt(ux*x1/7.0/nu)) - 1.0/dz
-  xr = x1 - fx/gx
-  fxr = k*(1.0-exp(-sqrt(ux*xr/7.0/nu))) - (xr-lm)/dz
-  if (abs(fxr)<1.0e-6) exit
-  x1 = xr
-  end do
-  ntmixl = xr
-end function ntmixl
-
-subroutine parstart
-  use public_val
-  implicit none
-  include "mpif.h"
-  integer :: n
-  integer :: bnldev
   integer :: i, j, k
-  integer :: nbi
-  double precision :: rr1, rr2, rr3
-  double precision :: parsiz
-  double precision :: xx
-  double precision :: tspdf
-  double precision :: ppdf
-  double precision :: cgma
+  integer :: n
+  integer :: biDist
+  integer :: biDistTag
+  double precision :: sigma
   double precision :: mu
+  double precision :: binWidth
+  double precision :: binCenter
+  double precision :: rand1, rand2, rand3
+  double precision :: normalPD
+  double precision :: probBi
   !
-  if (iud==0) then
-    cgma = dcgma*1.0e4
+  if (ipd==0) then
+    sigma = dSigma*1.0e4
     mu = dpa*1.0e4
+    binWidth = sigma*2.0*rpdf/dfloat(npdf)
     do i = 1, npdf
-    xx = (dfloat(i-1)+0.5)*cgma*6.0/dfloat(npdf) + (mu-cgma*3.0)
-    spdf(i) = 1.0/(sqrt(2.0*pi)*cgma)*exp(-(xx-mu)**2/(2.0*cgma**2))
-    tspdf = tspdf + spdf(i)
+    binCenter = (dfloat(i-1)+0.5)*binWidth + (mu-sigma*rpdf)
+    prob(i) = 1.0/(sqrt(2.0*pi)*sigma)*exp(-(binCenter-mu)**2/(2.0*sigma**2))
     end do
-    spdf = spdf/tspdf
-  else if (iud==2) then
-    spdf(1) = 0.5
-    spdf(2) = 0.5
+    prob = prob*binWidth
+  else if (ipd==2) then
+    prob(1) = 0.5
+    prob(2) = 0.5
   end if
-  do n = 1, nnps
-  call random_number(rr1)
-  call random_number(rr2)
-  call random_number(rr3)
-  xp(nnp+n) = (xu(mxNode)-xu(2))*rr1 + xu(2)
-  yp(nnp+n) = (yv(my)-yv(2))*rr2 + yv(2)
-  zp(nnp+n) = 0.05*rr3 + initAveKz
-  up(nnp+n) = 0.0
-  vp(nnp+n) = 0.0
-  wp(nnp+n) = 0.0
-  fk(nnp+n) = 0.0
-  fh(nnp+n) = 0.0
-  fg(nnp+n) = 0.0
-  ft(nnp+n) = 0.0
-  fz(nnp+n) = 0.0
-  if (iud==0) then
-    dp(nnp+n) = parsiz(spdf, dpa, dcgma, npdf)
-  else if (iud==1) then
-    dp(nnp+n) = dpa
-  else if (iud==2) then
-    ppdf = spdf(1)
-    nbi = bnldev(ppdf, 1)
-    if (nbi==1) then
-      dp(nnp+n) = dpa - dcgma
+  do n = 1, pNumInit
+  call random_number(rand1)
+  call random_number(rand2)
+  call random_number(rand3)
+  xp(n) = (xu(mxNode)-xu(2))*rand1 + xu(2)
+  yp(n) = (yv(my)-yv(2))*rand2 + yv(2)
+  zp(n) = 0.05*rand3 + initAveKz
+  up(n) = 0.0
+  vp(n) = 0.0
+  wp(n) = 0.0
+  if (ipd==0) then
+    dp(n) = normalPD(prob, dpa, dSigma, npdf, rpdf)
+  else if (ipd==1) then
+    dp(n) = dpa
+  else if (ipd==2) then
+    probBi = prob(1)
+    biDistTag = biDist(probBi)
+    if (biDistTag==0) then
+      dp(n) = dpa - dSigma
     else
-      dp(nnp+n) = dpa + dcgma
+      dp(n) = dpa + dSigma
     end if
   end if
+  fk(n) = 0.0
+  fh(n) = 0.0
+  fg(n) = 0.0
+  ft(n) = 0.0
+  fz(n) = 0.0
   end do
-  nnp = nnp + nnps
+  pNum = pNumInit
   do j = 1, mky
   do i = 1, mkxNode
-  zpdf(i, j) = szpdf
-  dpaa(i, j) = dpa
   do k = 1, npdf
-  pdf(i, j, k) = spdf(k)
+  bedPDist(i, j, k) = prob(k)
   end do
   end do
   end do
-end subroutine parstart
+end subroutine particleInit
 
-subroutine parcalculate
+subroutine parCalculate
   use public_val
   use vector_cal
   implicit none
@@ -939,7 +763,7 @@ subroutine parcalculate
   integer :: nrol
   integer :: kd
   integer :: nks, tnk, nnks
-  integer :: bnldev
+  integer :: biDist
   integer :: nnn, nnni
   integer :: nnnp
   integer :: addnnp
@@ -958,7 +782,7 @@ subroutine parcalculate
   double precision :: lmt1, lmt2, lmt3
   double precision :: norm_vin
   double precision :: mmu
-  double precision :: cgma
+  double precision :: sigma
   double precision :: alpha, beta
   double precision :: alpha1, beta1
   double precision :: alpha2, beta2
@@ -972,7 +796,7 @@ subroutine parcalculate
   double precision :: ammu1, ammu2
   double precision :: gg1, gg2, gg3
   double precision :: dzz
-  double precision :: acgma1, acgma2
+  double precision :: aSigma1, aSigma2
   double precision :: angout1, angout2
   double precision :: norm_vout
   double precision :: expdev
@@ -986,7 +810,7 @@ subroutine parcalculate
   double precision :: myerfc
   double precision :: merfc
   double precision :: ee2bar
-  double precision :: parsiz
+  double precision :: normalPD
   double precision :: prebound
   double precision :: arebound
   double precision :: nee
@@ -1121,7 +945,7 @@ subroutine parcalculate
   mvpout = 0.0
   npin = 0.0
   npout = 0.0
-  dospl: do n = 1, nnp
+  dospl: do n = 1, pNum
   ip = int((xp(n)-kx(1))/kxDiff) + 1
   jp = int((yp(n)-ky(1))/kyDiff) + 1
   if (ip<2) ip = 2
@@ -1276,7 +1100,7 @@ subroutine parcalculate
     end select
     ! properties of injector and particles in the bed
     d1 = dp(n)
-    d2 = dpaa(ipp, jpp)
+    d2 = bedPD(ipp, jpp)
     mm1 = (pi*d1**3)/6.0*rhos
     mm2 = (pi*d2**3)/6.0*rhos
     if (abs(vin(1))>0.0) then
@@ -1316,15 +1140,15 @@ subroutine parcalculate
       end if
     else ! kok
       pp = 0.95*(1.0-exp(-2.0*norm_vin))
-      nne = bnldev(pp, 1)
+      nne = biDist(pp)
       if (nne>0) then
         mmu = 0.6*norm_vin
-        cgma = 0.25*norm_vin
-        norm_vout = normal(mmu, cgma)
+        sigma = 0.25*norm_vin
+        norm_vout = normal(mmu, sigma)
         ee2 = 0.5*mm2*norm_vout**2
         ammu1 = 30.0/180.0*pi
-        acgma1 = 15.0/180.0*pi
-        angout1 = normal(ammu1, acgma1)
+        aSigma1 = 15.0/180.0*pi
+        angout1 = normal(ammu1, aSigma1)
         if (norm_vout<=0. .or. angout1<=0.) nne = 0
       end if
     end if
@@ -1350,8 +1174,8 @@ subroutine parcalculate
         print*, rolldir1(ipp, jpp), 'rolldir1 error'
         stop
       end select
-      if (iud/=2) then
-        iii = int((d1-dpa+dcgma*3.0)/dcgma/6.0*dfloat(npdf)) + 1
+      if (ipd/=2) then
+        iii = int((d1-dpa+dSigma*3.0)/dSigma/6.0*dfloat(npdf)) + 1
         if (iii>npdf) iii = npdf
         if (iii<=0) iii = 1
       else
@@ -1360,7 +1184,7 @@ subroutine parcalculate
         else if (d1>dpa) then
           iii = 2
         else
-          print*, 'error on d1=', d1, '/=', dpa, 'or', dpa+dcgma
+          print*, 'error on d1=', d1, '/=', dpa, 'or', dpa+dSigma
           stop
         end if
       end if
@@ -1376,8 +1200,8 @@ subroutine parcalculate
       end if
     else
       ammu2 = 0.0
-      acgma2 = 10.0/180.0*pi
-      !angout2 = normal(ammu2, acgma2)
+      aSigma2 = 10.0/180.0*pi
+      !angout2 = normal(ammu2, aSigma2)
       vout(1) = norm_vout*cos(angout1) !*cos(angout2)
       vout(2) = 0.0 !norm_vout*cos(angout1)*sin(angout2)
       vout(3) = norm_vout*sin(angout1)
@@ -1411,7 +1235,7 @@ subroutine parcalculate
     end if
     ! particle splash
     if (isp==0) then ! lammel
-      utaot = sqrt(0.0123*(rhos/rho*9.8*dpaa(ipp, jpp)+3.0e-4/(rho*dpaa(ipp, jpp))))
+      utaot = sqrt(0.0123*(rhos/rho*9.8*bedPD(ipp, jpp)+3.0e-4/(rho*bedPD(ipp, jpp))))
       taot = rho*utaot**2
       eed2x = mm2*gg3*d2
       eed2 = eed2x*(1.0-htao(1)/taot)
@@ -1422,15 +1246,15 @@ subroutine parcalculate
       if (lambda<=0.0) then
         ne = 0
       else
-        cgma = sqrt(lambda)*log(2.0)
+        sigma = sqrt(lambda)*log(2.0)
         mmu = log((1.0-pp**2)*ee1) - lambda*log(2.0)
-        merfc = myerfc((log(eed2)-mmu)/(sqrt(2.0)*cgma))
+        merfc = myerfc((log(eed2)-mmu)/(sqrt(2.0)*sigma))
         ee2bar = eed2*((1.0-pp**2)*ee1/eed2)**(1.0-(2.0-log(2.0))*log(2.0))
         ne = int(0.06*((1.0-pp**2)*ee1/(2.0*ee2bar))*merfc)
       end if
     else ! kok
-      mm2 = (pi*dpaa(ipp, jpp)**3)/6.0*rhos
-      nee = 0.03*norm_vin/sqrt(9.8*dpaa(ipp, jpp))
+      mm2 = (pi*bedPD(ipp, jpp)**3)/6.0*rhos
+      nee = 0.03*norm_vin/sqrt(9.8*bedPD(ipp, jpp))
       ne = int(nee)
     end if
     if (ne>=1) then
@@ -1458,25 +1282,25 @@ subroutine parcalculate
       splp: do kd = 1, ne
       ammu1 = 60.0/180.0*pi
       ammu2 = 0.0
-      acgma1 = 15.0/180.0*pi
-      acgma2 = 10.0/180.0*pi
-      if (iud==0) then
-        ppdf = pdf(ipp, jpp, :)
-        dpd = parsiz(ppdf, dpa, dcgma, npdf)
-      else if (iud==1) then
+      aSigma1 = 15.0/180.0*pi
+      aSigma2 = 10.0/180.0*pi
+      if (ipd==0) then
+        ppdf = bedPDist(ipp, jpp, :)
+        dpd = normalPD(ppdf, dpa, dSigma, npdf, rpdf)
+      else if (ipd==1) then
         dpd = dpa
-      else if (iud==2) then
-        ppdf = pdf(ipp, jpp, 1)
-        nbi = bnldev(ppdf, 1)
+      else if (ipd==2) then
+        ppdf = bedPDist(ipp, jpp, 1)
+        nbi = biDist(ppdf)
         if (nbi==1) then
-          dpd = dpa - dcgma
+          dpd = dpa - dSigma
         else
-          dpd = dpa + dcgma
+          dpd = dpa + dSigma
         end if
       end if
       mm2 = (pi*dpd**3)/6.0*rhos
       if (isp==0) then ! lammel
-        ee2 = exp(normal(mmu, cgma))
+        ee2 = exp(normal(mmu, sigma))
         norm_vout = sqrt(2.0*ee2/mm2)
       else ! kok
         mmu = 0.08*norm_vin
@@ -1486,8 +1310,8 @@ subroutine parcalculate
       end if
       !lambda = 1.0/ammu1
       !angout1 = expdev(lambda)
-      !angout1 = abs(normal(ammu1, acgma1)) !Dupont
-      !angout2 = normal(ammu2, acgma2)
+      !angout1 = abs(normal(ammu1, aSigma1)) !Dupont
+      !angout2 = normal(ammu2, aSigma2)
       vout(1) = 0.0 !norm_vout*cos(angout1) !*cos(angout2)
       vout(2) = 0.0 !norm_vout*cos(angout1)*sin(angout2)
       vout(3) = norm_vout !*sin(angout1)
@@ -1521,8 +1345,8 @@ subroutine parcalculate
       mupout(ip, jp) = mupout(ip, jp) + mm2*vout(1)
       mvpout(ip, jp) = mvpout(ip, jp) + mm2*vout(2)
       npout = npout + 1.0
-      if (iud/=2) then
-        iii = int((dpd-dpa+dcgma*3.0)/dcgma/6.0*dfloat(npdf)) + 1
+      if (ipd/=2) then
+        iii = int((dpd-dpa+dSigma*3.0)/dSigma/6.0*dfloat(npdf)) + 1
         if (iii>npdf) iii = npdf
         if (iii<=0) iii = 1
       else
@@ -1531,7 +1355,7 @@ subroutine parcalculate
         else if (dpd>dpa) then
           iii = 2
         else
-          print*, 'error on dpd=', dpd, '/=', dpa, 'or', dpa+dcgma
+          print*, 'error on dpd=', dpd, '/=', dpa, 'or', dpa+dSigma
           stop
         end if
       end if
@@ -1564,9 +1388,9 @@ subroutine parcalculate
   end if ifimpact
   end do dospl
   if (addnnp>=1) then
-    nnp = nnnp+addnnp
-    if (nnp>nnpmax) then
-      print*, nnp, nnpmax
+    pNum = nnnp+addnnp
+    if (pNum>nnpmax) then
+      print*, pNum, nnpmax
       print*, "particle number reach the threshold"
       stop
     else
@@ -1584,10 +1408,10 @@ subroutine parcalculate
       fz(nnnp+1:nnnp+addnnp) = tempfz(1:addnnp)
     end if
   else
-    nnp = nnnp
+    pNum = nnnp
   end if
   !
-  do n = 1, nnp
+  do n = 1, pNum
   dpd = dp(n)
   volp = (pi*dpd**3)/6.0
   mp = rhos*volp
@@ -1667,7 +1491,7 @@ subroutine parcalculate
   end do
   end do
   ! boundary condition of phirho
-  call gxch(mxNode, my, mz, phirho, comm1D, neighbor, fieldExType, 1)
+  call dataEx(mxNode, my, mz, phirho, comm1D, neighbor, fieldExType, 1)
   do i = 1, mxNode
   do k = 1, mz
   phirho(i, 1, k) = phirho(i, my-1, k)
@@ -1679,7 +1503,7 @@ subroutine parcalculate
   ntotc = 0.0
   if (icol==1) then
     nkk = 0
-    do n = 1, nnp
+    do n = 1, pNum
     i = int((xp(n)-xu(1))/xDiff) + 1
     j = int((yp(n)-yv(1))/yDiff) + 1
     if (i<1) i=1
@@ -1803,7 +1627,7 @@ subroutine parcalculate
   nnnp = 0
   nn = 0
   nni = 0
-  pick: do n = 1, nnp
+  pick: do n = 1, pNum
   if (xp(n)>=xu(mxNode)) then
     nn = nn + 1
     if (myID==nNodes-1) then
@@ -1856,7 +1680,7 @@ subroutine parcalculate
     ft(nnnp) = ft(n)
   end if
   end do pick
-  nnp = nnnp
+  pNum = nnnp
   ! particle exchange between processes
   call MPI_SENDRECV(nn,1,intType,neighbor(2),18,  &
     nnn,1,intType,neighbor(1),18,comm1D,status,ierr)
@@ -1881,24 +1705,24 @@ subroutine parcalculate
     exchr,nnn*12,realType,neighbor(1),10, &
     comm1D,status,ierr)
   if (nnn>0) then
-    xp(nnp+1:nnp+nnn) = exchr(1:nnn)
-    yp(nnp+1:nnp+nnn) = exchr(1*nnn+1:2*nnn)
-    zp(nnp+1:nnp+nnn) = exchr(2*nnn+1:3*nnn)
-    up(nnp+1:nnp+nnn) = exchr(3*nnn+1:4*nnn)
-    vp(nnp+1:nnp+nnn) = exchr(4*nnn+1:5*nnn)
-    wp(nnp+1:nnp+nnn) = exchr(5*nnn+1:6*nnn)
-    dp(nnp+1:nnp+nnn) = exchr(6*nnn+1:7*nnn)
-    fk(nnp+1:nnp+nnn) = exchr(7*nnn+1:8*nnn)
-    fz(nnp+1:nnp+nnn) = exchr(8*nnn+1:9*nnn)
-    fh(nnp+1:nnp+nnn) = exchr(9*nnn+1:10*nnn)
-    fg(nnp+1:nnp+nnn) = exchr(10*nnn+1:11*nnn)
-    ft(nnp+1:nnp+nnn) = exchr(11*nnn+1:12*nnn)
+    xp(pNum+1:pNum+nnn) = exchr(1:nnn)
+    yp(pNum+1:pNum+nnn) = exchr(1*nnn+1:2*nnn)
+    zp(pNum+1:pNum+nnn) = exchr(2*nnn+1:3*nnn)
+    up(pNum+1:pNum+nnn) = exchr(3*nnn+1:4*nnn)
+    vp(pNum+1:pNum+nnn) = exchr(4*nnn+1:5*nnn)
+    wp(pNum+1:pNum+nnn) = exchr(5*nnn+1:6*nnn)
+    dp(pNum+1:pNum+nnn) = exchr(6*nnn+1:7*nnn)
+    fk(pNum+1:pNum+nnn) = exchr(7*nnn+1:8*nnn)
+    fz(pNum+1:pNum+nnn) = exchr(8*nnn+1:9*nnn)
+    fh(pNum+1:pNum+nnn) = exchr(9*nnn+1:10*nnn)
+    fg(pNum+1:pNum+nnn) = exchr(10*nnn+1:11*nnn)
+    ft(pNum+1:pNum+nnn) = exchr(11*nnn+1:12*nnn)
     if (myID==0) then
       if (ikbx==0) then
-        nnp = nnp + nnn
+        pNum = pNum + nnn
       end if
     else
-      nnp = nnp + nnn
+      pNum = pNum + nnn
     end if
   end if
   deallocate(exch)
@@ -1922,30 +1746,30 @@ subroutine parcalculate
     exchir,nnni*12,realType,neighbor(2),19, &
     comm1D,status,ierr)
   if (nnni>0) then
-    xp(nnp+1:nnp+nnni) = exchir(1:nnni)
-    yp(nnp+1:nnp+nnni) = exchir(1*nnni+1:2*nnni)
-    zp(nnp+1:nnp+nnni) = exchir(2*nnni+1:3*nnni)
-    up(nnp+1:nnp+nnni) = exchir(3*nnni+1:4*nnni)
-    vp(nnp+1:nnp+nnni) = exchir(4*nnni+1:5*nnni)
-    wp(nnp+1:nnp+nnni) = exchir(5*nnni+1:6*nnni)
-    dp(nnp+1:nnp+nnni) = exchir(6*nnni+1:7*nnni)
-    fk(nnp+1:nnp+nnni) = exchir(7*nnni+1:8*nnni)
-    fz(nnp+1:nnp+nnni) = exchir(8*nnni+1:9*nnni)
-    fh(nnp+1:nnp+nnni) = exchir(9*nnni+1:10*nnni)
-    fg(nnp+1:nnp+nnni) = exchir(10*nnni+1:11*nnni)
-    ft(nnp+1:nnp+nnni) = exchir(11*nnni+1:12*nnni)
+    xp(pNum+1:pNum+nnni) = exchir(1:nnni)
+    yp(pNum+1:pNum+nnni) = exchir(1*nnni+1:2*nnni)
+    zp(pNum+1:pNum+nnni) = exchir(2*nnni+1:3*nnni)
+    up(pNum+1:pNum+nnni) = exchir(3*nnni+1:4*nnni)
+    vp(pNum+1:pNum+nnni) = exchir(4*nnni+1:5*nnni)
+    wp(pNum+1:pNum+nnni) = exchir(5*nnni+1:6*nnni)
+    dp(pNum+1:pNum+nnni) = exchir(6*nnni+1:7*nnni)
+    fk(pNum+1:pNum+nnni) = exchir(7*nnni+1:8*nnni)
+    fz(pNum+1:pNum+nnni) = exchir(8*nnni+1:9*nnni)
+    fh(pNum+1:pNum+nnni) = exchir(9*nnni+1:10*nnni)
+    fg(pNum+1:pNum+nnni) = exchir(10*nnni+1:11*nnni)
+    ft(pNum+1:pNum+nnni) = exchir(11*nnni+1:12*nnni)
     if (myID==nNodes-1) then
       if (ikbx==0) then
-        nnp = nnp + nnni
+        pNum = pNum + nnni
       end if
     else
-      nnp = nnp + nnni
+      pNum = pNum + nnni
     end if
   end if
   deallocate(exchi)
   deallocate(exchir)
   ! y z boundary condition of particles
-  do n = 1, nnp
+  do n = 1, pNum
   if (yp(n)>=yMax) then
     yp(n) = yp(n) - yMax
   else if (yp(n)<0.0) then
@@ -1957,49 +1781,49 @@ subroutine parcalculate
   end if
   end do
   ! bed particle size distributation
-  if (iud/=1 .and. irsf==0) then
+  if (ipd/=1 .and. irsf==0) then
     ! vlayer change
     do j = 2, mky-1
     do i = 2, mkxNode-1
-    vlayer(i, j) = kxDiff*kyDiff*zpdf(i, j)*por
+    vlayer(i, j) = kxDiff*kyDiff*bedCellTkness(i, j)*por
     do k = 1, npdf
-    vbin(i, j, k) = pdf(i, j, k)*vlayer(i, j) + pdfch(i, j, k)
+    vbin(i, j, k) = bedPDist(i, j, k)*vlayer(i, j) + pdfch(i, j, k)
     vlayer(i, j) = vlayer(i, j) + pdfch(i, j, k)
     end do
     end do
     end do
-    ! calculate pdf, zpdf
+    ! calculate bedPDist, bedCellTkness
     do j = 2, mky-1
     do i = 2, mkxNode-1
-    zpdf(i, j) = vlayer(i, j)/(kxDiff*kyDiff)/por
-    if (zpdf(i, j)<=0.0) then
-      print*, 'zpdf<0'
-      zpdf(i, j) = szpdf
+    bedCellTkness(i, j) = vlayer(i, j)/(kxDiff*kyDiff)/por
+    if (bedCellTkness(i, j)<=0.0) then
+      print*, 'bedCellTkness<0'
+      bedCellTkness(i, j) = bedCellTknessInit
       do k = 1, npdf
-      pdf(i, j, k) = spdf(k)
+      bedPDist(i, j, k) = prob(k)
       end do
-    else if (zpdf(i, j)>=szpdf) then
+    else if (bedCellTkness(i, j)>=bedCellTknessInit) then
       do k = 1, npdf
-      pdf(i, j, k) = vbin(i, j, k)/vlayer(i, j)
+      bedPDist(i, j, k) = vbin(i, j, k)/vlayer(i, j)
       end do
-      if (zpdf(i, j)>2.0*szpdf) zpdf(i, j) = 2.0*szpdf
+      if (bedCellTkness(i, j)>2.0*bedCellTknessInit) bedCellTkness(i, j) = 2.0*bedCellTknessInit
     else
-      svlayer = kxDiff*kyDiff*szpdf*por
-      xvlayer = kxDiff*kyDiff*(szpdf-zpdf(i, j))*por
+      svlayer = kxDiff*kyDiff*bedCellTknessInit*por
+      xvlayer = kxDiff*kyDiff*(bedCellTknessInit-bedCellTkness(i, j))*por
       do k = 1, npdf
-      pdf(i, j, k) = (vbin(i, j, k) + xvlayer*spdf(k))/svlayer
+      bedPDist(i, j, k) = (vbin(i, j, k) + xvlayer*prob(k))/svlayer
       end do
-      zpdf(i, j) = szpdf
+      bedCellTkness(i, j) = bedCellTknessInit
     end if
     end do
     end do
-    ! pdf, zpdf exchange
+    ! bedPDist, bedCellTkness exchange
     ! i=mkxNode-1 send to i=1: send to 2 and receive from 1
     do j = 1, mky
-    pzpdfch(j) = zpdf(mkxNode-1, j)
+    pzpdfch(j) = bedCellTkness(mkxNode-1, j)
     do k = 1, npdf
     jk = k + (j-1)*npdf
-    ppdfch(jk) = pdf(mkxNode-1, j, k)
+    ppdfch(jk) = bedPDist(mkxNode-1, j, k)
     end do
     end do
     call MPI_SENDRECV(ppdfch,mky*npdf,realType,neighbor(2),201,  &
@@ -2007,18 +1831,18 @@ subroutine parcalculate
     call MPI_SENDRECV(pzpdfch,mky,realType,neighbor(2),203,  &
       pzpdfchr,mky,realType,neighbor(1),203,comm1D,status,ierr)
     do j = 1, mky
-    zpdf(1, j) = pzpdfchr(j)
+    bedCellTkness(1, j) = pzpdfchr(j)
     do k = 1, npdf
     jk = k + (j-1)*npdf
-    pdf(1, j, k) = ppdfchr(jk)
+    bedPDist(1, j, k) = ppdfchr(jk)
     end do
     end do
     ! i=2 send to i=mkxNode: send to 1 and receive from 2
     do j = 1, mky
-    izpdfch(j) = zpdf(2, j)
+    izpdfch(j) = bedCellTkness(2, j)
     do k = 1, npdf
     jk = k + (j-1)*npdf
-    ipdfch(jk) = pdf(2, j, k)
+    ipdfch(jk) = bedPDist(2, j, k)
     end do
     end do
     call MPI_SENDRECV(ipdfch,mky*npdf,realType,neighbor(1),202,  &
@@ -2026,19 +1850,19 @@ subroutine parcalculate
     call MPI_SENDRECV(izpdfch,mky,realType,neighbor(1),204,  &
       izpdfchr,mky,realType,neighbor(2),204,comm1D,status,ierr)
     do j = 1, mky
-    zpdf(mkxNode, j) = izpdfchr(j)
+    bedCellTkness(mkxNode, j) = izpdfchr(j)
     do k = 1, npdf
     jk = k + (j-1)*npdf
-    pdf(mkxNode, j, k) = ipdfchr(jk)
+    bedPDist(mkxNode, j, k) = ipdfchr(jk)
     end do
     end do
     ! y=mky-1 send to y=1, y=2 send to y=mky
     do i = 2, mkxNode-1
-    zpdf(i, 1) = zpdf(i, mky-1)
-    zpdf(i, mky) = zpdf(i, 2)
+    bedCellTkness(i, 1) = bedCellTkness(i, mky-1)
+    bedCellTkness(i, mky) = bedCellTkness(i, 2)
     do k = 1, npdf
-    pdf(i, 1, k) = pdf(i, mky-1, k)
-    pdf(i, mky, k) = pdf(i, 2, k)
+    bedPDist(i, 1, k) = bedPDist(i, mky-1, k)
+    bedPDist(i, mky, k) = bedPDist(i, 2, k)
     end do
     end do
     !
@@ -2046,7 +1870,7 @@ subroutine parcalculate
     do i = 1, mkxNode
     do j = 1, mky
     do k = 1, npdf
-    tpdf(i, j) = tpdf(i, j) + pdf(i, j, k)
+    tpdf(i, j) = tpdf(i, j) + bedPDist(i, j, k)
     end do
     if (tpdf(i, j)<=0.0) then
       print*, tpdf(i, j), 'tpdf<=0'
@@ -2055,40 +1879,40 @@ subroutine parcalculate
     end do
     end do
     !
-    dpaa = 0.0
+    bedPD = 0.0
     do j = 1, mky
     do i = 1, mkxNode
-    if (iud==0) then
+    if (ipd==0) then
       do k = 1, npdf
-      pdf(i, j, k) = pdf(i, j, k)/tpdf(i, j)
-      if (pdf(i, j, k)<0.0) then
-        pdf(i, j, k) = 0.0
+      bedPDist(i, j, k) = bedPDist(i, j, k)/tpdf(i, j)
+      if (bedPDist(i, j, k)<0.0) then
+        bedPDist(i, j, k) = 0.0
       end if
-      dpaa(i, j) = dpaa(i, j) + pdf(i, j, k)*((dfloat(k-1)+0.5)*dcgma*6.0/dfloat(npdf) + (dpa-dcgma*3.0))
+      bedPD(i, j) = bedPD(i, j) + bedPDist(i, j, k)*((dfloat(k-1)+0.5)*dSigma*6.0/dfloat(npdf) + (dpa-dSigma*3.0))
       end do
-    else if (iud==2) then
-      pdf(i, j, 1) = pdf(i, j, 1)/tpdf(i, j)
-      pdf(i, j, 2) = pdf(i, j, 2)/tpdf(i, j)
-      if (pdf(i, j, 1)<0.0) then
-        pdf(i, j, 1) = 0.0
-        pdf(i, j, 2) = 1.0
-      else if (pdf(i, j, 2)<0.0) then
-        pdf(i, j, 2) = 0.0
-        pdf(i, j, 1) = 1.0
+    else if (ipd==2) then
+      bedPDist(i, j, 1) = bedPDist(i, j, 1)/tpdf(i, j)
+      bedPDist(i, j, 2) = bedPDist(i, j, 2)/tpdf(i, j)
+      if (bedPDist(i, j, 1)<0.0) then
+        bedPDist(i, j, 1) = 0.0
+        bedPDist(i, j, 2) = 1.0
+      else if (bedPDist(i, j, 2)<0.0) then
+        bedPDist(i, j, 2) = 0.0
+        bedPDist(i, j, 1) = 1.0
       end if
-      dpaa(i, j) = pdf(i, j, 1)*(dpa-dcgma) + pdf(i, j, 2)*(dpa+dcgma)
-      if (pdf(i, j, 1)+pdf(i, j, 2)>1.01 .or. dpaa(i, j)>dpa+dcgma .or. dpaa(i, j)<dpa-dcgma) then
-        print*, 'dpaa error', dpaa(i, j), pdf(i, j, 1), pdf(i, j, 2),  zpdf(i, j), szpdf, vlayer(i, j), &
-          vbin(i, j, 1), vbin(i, j, 2)
+      bedPD(i, j) = bedPDist(i, j, 1)*(dpa-dSigma) + bedPDist(i, j, 2)*(dpa+dSigma)
+      if (bedPDist(i, j, 1)+bedPDist(i, j, 2)>1.01 .or. bedPD(i, j)>dpa+dSigma .or. bedPD(i, j)<dpa-dSigma) then
+        print*, 'bedPD error', bedPD(i, j), bedPDist(i, j, 1), bedPDist(i, j, 2), bedCellTkness(i, j), &
+            bedCellTknessInit, vlayer(i, j), vbin(i, j, 1), vbin(i, j, 2)
         stop
       end if
     end if
-    if (dpaa(i, j)>dpa+dcgma*3.0) dpaa(i, j) = dpa + dcgma*3.0
-    if (dpaa(i, j)<dpa-dcgma*3.0) dpaa(i, j) = dpa - dcgma*3.0
+    if (bedPD(i, j)>dpa+dSigma*3.0) bedPD(i, j) = dpa + dSigma*3.0
+    if (bedPD(i, j)<dpa-dSigma*3.0) bedPD(i, j) = dpa - dSigma*3.0
     end do
     end do
   else
-    dpaa = dpa
+    bedPD = dpa
   end if
   !
   deallocate(scp)
@@ -2100,7 +1924,7 @@ subroutine parcalculate
   deallocate(chupi, chvpi, chwpi)
   deallocate(chdpi, chfki, chfzi)
   deallocate(chfhi, chfgi, chfti)
-end subroutine parcalculate
+end subroutine parCalculate
 
 subroutine parloc(iii, jjj, kkk1, kkk2, xxp, yyp, zzp, hhp, hr1, hl, dhcld)
   use public_val
@@ -2249,6 +2073,218 @@ subroutine parvol(uup, vvp, wwp, xxp, yyp, hhp, ddp, mmp, k, kk, hrlx1, dhcld, f
   ampu(kk) = ampu(kk) + ampd(kk)
 end subroutine parvol
 
+subroutine fluidField
+  use public_val
+  implicit none
+  include "mpif.h"
+  integer :: i, j, k, n
+  integer :: kk
+  integer :: h
+  integer :: ierr
+  double precision :: mixl
+  double precision :: dudz
+  double precision :: oo
+  double precision :: lmd
+  double precision :: shru
+  double precision :: ddz
+  double precision :: chru
+  double precision :: relax
+  double precision, dimension(mz) :: volpar, numpar, tvolpar
+  double precision, dimension(mz) :: afptx
+  double precision, dimension(mz) :: pfptx
+  double precision, dimension(mz) :: tfptx
+  double precision, dimension(mz) :: ataop
+  double precision, dimension(mz) :: ptaop
+  double precision, dimension(mz) :: tampd, tampu, aampd, aampu
+  ! function
+  double precision :: ffd, ntmixl
+  !
+  !volpar = 0.0
+  !do k = 1, mz
+  !do j = 2, my-1
+  !do i = 2, mxNode-1
+  !volpar(k) = volpar(k) + (1.0-phirho(i, j, k))*xDiff*yDiff*zDiff(k)
+  !end do
+  !end do
+  !end do
+  !call MPI_ALLREDUCE(volpar,tvolpar,mz,realType,MPI_SUM,comm1D,ierr)
+  !call MPI_ALLREDUCE(ampu,tampu,mz,realType,MPI_SUM,comm1D,ierr)
+  !afptx = tampu/xMax/yMax
+  !totfptx = totfptx + afptx/dfloat(nna)
+  !totvolpar = totvolpar + tvolpar/dfloat(nna)
+    htao = 0.0
+    ahff = 1.0
+    do k = 1, mz
+    ahff(k) = 1.0 - totvolpar(k)/(xMax*yMax*zDiff(k))
+    end do
+    !
+    fptx = totfptx/ahff
+    !
+    relax = 0.01
+    do k = 1, mz
+    tfptx(k) = sum(fptx(k:mz))
+    htaop(k) = htaop(k)*(1.0-relax) + relax*tfptx(k)
+    if (ahff(k)<=(1.0-por)) then
+      htaop(k) = rho*wind**2
+    end if
+    htao(k) = rho*wind**2 - htaop(k)
+    if (htao(k)<0.0) htao(k) = 0.0
+    !if (htao(k)>rho*wind**2) htao(k) = rho*wind**2
+    end do
+    !
+    mixl = kapa*z(1)*(1.0-exp(-1.0/26.0*z(1)*wind/nu))
+    dudz = (sqrt(nu**2+4.0*mixl**2*htao(1)/rho)-nu)/2.0/mixl**2
+    hru(1) = dudz*z(1)
+    do k = 2, mz
+    ddz = z(k) - z(k-1)
+    mixl = kapa*z(k)*(1.0-exp(-1.0/26.0*z(k)*wind/nu))
+    dudz = (sqrt(nu**2+4.0*mixl**2*htao(k)/rho)-nu)/2.0/mixl**2
+    hru(k) = dudz*ddz + hru(k-1)
+    end do
+    2001 continue
+    !
+    totfptx = 0.0
+    totvolpar = 0.0
+end subroutine fluidField
+
+subroutine imgd
+  use public_val
+  implicit none
+  include "mpif.h"
+  ! local
+  integer :: i, j
+  integer :: n
+  integer :: ierr
+  integer :: status(MPI_STATUS_SIZE)
+  integer :: wn
+  double precision :: aaa
+  double precision :: totpz, avepz, tavepz
+  double precision :: posit
+  !
+  if (last==1 .or. ipar==0) then
+    kx = 0.
+    ky = 0.
+    kz = 0.
+    pnch = 0.
+    kxDiff = xMax/dfloat(mkx-2)
+    kyDiff = yMax/dfloat(mky-2)
+    if (myID==0) then
+      kx(1) = -kxDiff
+      do i = 2, mkxNode
+      kx(i) = kx(i-1) + kxDiff
+      end do
+      call MPI_SEND(kx(mkxNode-1),1,realType,neighbor(2),3,comm1D,ierr)
+    else
+      call MPI_RECV(kx(1),1,realType,neighbor(1),3,comm1D,status,ierr)
+      do i = 2, mkxNode
+      kx(i) = kx(i-1) + kxDiff
+      end do
+      call MPI_SEND(kx(mkxNode-1),1,realType,neighbor(2),3,comm1D,ierr)
+    end if
+    ky(1) = -kyDiff
+    do j = 2, mky
+    ky(j) = ky(j-1) + kyDiff
+    end do
+    do j = 1, mky
+    do i = 1, mkxNode
+    kz(i, j) = initAmp*sin(dfloat(int(time/20.0)+2)*8.0*pi*kx(i)) + initAveKz
+    !wn = int(kx(i)/wavl)
+    !posit = kx(i)/wavl - dfloat(wn) - 0.5
+    !if (posit>=0.0) then
+    !  kz(i, j) = initAmp*0.5 - 2.0*initAmp*posit + initAveKz
+    !else
+    !  kz(i, j) = initAmp*0.5 + 2.0*initAmp*posit + initAveKz
+    !end if
+    end do
+    end do
+  else
+    aaa = kxDiff*kyDiff
+    !do j = 1, mky
+    !do i = 1, mkxNode
+    !kz(i, j) = kz(i, j) + pnch(i, j)/aaa/por
+    !end do
+    !end do
+    do j = 1, mky
+    do i = 1, mkxNode
+    kz(i, j) = initAmp*sin(dfloat(int(time/20.0)+2)*8.0*pi*kx(i)) + initAveKz
+    end do
+    end do
+    !do j = 1, mky
+    !do i = 1, mkxNode
+    !if (kz(i, j)<0. .or. kz(i, j)>zMax .or. abs(pnch(i, j)/aaa/por)>=0.01) then
+    ! print*, 'error: kz out of lower/upper boundary'
+    !  print*, 'z=', kz(i, j), '    z change=', pnch(i, j)/aaa/por
+    !  print*, 'i=', i, '  j=', j, '  myID=', myID
+    !  kz(i, j) = kz(i, j) - pnch(i, j)/aaa/por
+    !end if
+    !end do
+    !end do
+    call pxch(mkxNode, mky, kz, surfExType, neighbor, comm1D)
+    do i = 1, mkxNode
+    kz(i, 1) = kz(i, mky-1)
+    kz(i, mky) = kz(i, 2)
+    end do
+    !
+    n = 0
+    totpz = 0.0
+    do j = 2, mky-1
+    do i = 2, mkxNode-1
+    n = n + 1
+    totpz = totpz + kz(i, j)
+    end do
+    end do
+    avepz = totpz/dfloat(n)
+    call MPI_ALLREDUCE(avepz,tavepz,1,realType,MPI_SUM,comm1D,ierr)
+  end if
+end subroutine imgd
+
+subroutine pxch(mkxNode, mky, kz, surfExType, neighbor, comm1D)
+  implicit none
+  include "mpif.h"
+  ! public
+  integer :: mkxNode, mky
+  integer :: comm1D
+  integer :: surfExType
+  integer, dimension(2) :: neighbor
+  double precision, dimension(mkxNode, mky) :: kz
+  ! local
+  integer :: i, j
+  integer :: ierr
+  integer :: status(MPI_STATUS_SIZE)
+  !
+  ! send to 2 and receive from 1
+  call MPI_SENDRECV(kz(mkxNode-1, 1),1,surfExType,neighbor(2),1,kz(1, 1),1,surfExType,neighbor(1),1,comm1D,status,ierr)
+  ! send to 1 and receive from 2
+  call MPI_SENDRECV(kz(2, 1),1,surfExType,neighbor(1),2,kz(mkxNode, 1),1,surfExType,neighbor(2),2,comm1D,status,ierr)
+end subroutine pxch
+
+function ntmixl(lm, k, nu, ux, dz)
+  implicit none
+  ! public
+  double precision :: ntmixl
+  double precision, intent(in) :: lm, k, nu, ux, dz
+  ! local
+  integer :: n
+  double precision :: xr, x1
+  double precision :: fx, gx, fxr
+  x1 = 1.0
+  n = 0
+  do
+  n = n + 1
+  if (n>10000) then
+    print*, 'ntmixl', lm, k, nu, ux, dz
+    stop
+  end if
+  fx = k*(1.0-exp(-sqrt(ux*x1/7.0/nu))) - (x1-lm)/dz
+  gx = exp(-sqrt(ux*x1/7.0/nu))*k*ux/(2.0*nu*7.0*sqrt(ux*x1/7.0/nu)) - 1.0/dz
+  xr = x1 - fx/gx
+  fxr = k*(1.0-exp(-sqrt(ux*xr/7.0/nu))) - (xr-lm)/dz
+  if (abs(fxr)<1.0e-6) exit
+  x1 = xr
+  end do
+  ntmixl = xr
+end function ntmixl
+
 subroutine surfexch
   use public_val
   implicit none
@@ -2325,41 +2361,6 @@ subroutine surfexch
   end do
   end do
 end subroutine surfexch
-
-subroutine gxch(mxNode, my, mz, a, comm1D, neighbor, fieldExType, tag)
-  implicit none
-  include "mpif.h"
-  ! public
-  integer, intent(in) :: mxNode, my, mz
-  integer, intent(in) :: comm1D
-  integer, intent(in) :: fieldExType
-  integer, intent(in) :: tag
-  integer, intent(in), dimension(2) :: neighbor
-  double precision, dimension(mxNode, my, mz) :: a
-  ! local
-  integer :: status(MPI_STATUS_SIZE)
-  integer :: ierr
-  !
-  ! planes i=constant
-  !
-  ! neighbor:
-  !       |           |
-  !      ---------------                j
-  !       |           |               ^ 
-  !       |           |               |
-  !      1|    myID   |2              |
-  !       |           |              ------>
-  !       |           |               |     i
-  !      ---------------
-  !       |           |
-  !
-  ! send to 2 and receive from 1
-  call MPI_SENDRECV(a(mxNode-1, 1, 1),1,fieldExType,neighbor(2),tag,   &
-    a(1, 1, 1),1,fieldExType,neighbor(1),tag,comm1D,status,ierr)
-  ! send to 1 and receive from 2
-  call MPI_SENDRECV(a(2, 1, 1),1,fieldExType,neighbor(1),tag+1,   &
-    a(mxNode, 1, 1),1,fieldExType,neighbor(2),tag+1,comm1D,status,ierr)
-end subroutine gxch
 
 subroutine output
   use public_val
@@ -2460,8 +2461,8 @@ subroutine output
     ttpcoll = 0.0
   end if
   !
-  if (ikl==1) then
-    call MPI_ALLREDUCE(nnp,tnnp,1,intType,MPI_SUM,comm1D,ierr)
+  if (ipar==1) then
+    call MPI_ALLREDUCE(pNum,tnnp,1,intType,MPI_SUM,comm1D,ierr)
     if (nc==0) then
       if (myID==0) then
         open (unit=31, position='append', file='particle_num.plt')
@@ -2473,26 +2474,26 @@ subroutine output
   !
   allocate(txp(tnnp), typ(tnnp), tzp(tnnp), tdp(tnnp), tup(tnnp), tvp(tnnp), twp(tnnp), tfk(tnnp), tfz(tnnp), &
     tfh(tnnp), tfg(tnnp), tft(tnnp))
-  if (ikl==1) then
+  if (ipar==1) then
     if (np==0) then
       if (last>=pistart) then
         displs(1) = 0
-        call MPI_GATHER(nnp,1,intType,cnt,1,intType,0,comm1D,ierr)
+        call MPI_GATHER(pNum,1,intType,cnt,1,intType,0,comm1D,ierr)
         do i = 2, nNodes
         displs(i) = displs(i-1) + cnt(i-1)
         end do
-        call MPI_GATHERV(xp,nnp,realType,txp,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(yp,nnp,realType,typ,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(zp,nnp,realType,tzp,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(dp,nnp,realType,tdp,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(up,nnp,realType,tup,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(vp,nnp,realType,tvp,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(wp,nnp,realType,twp,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(fk,nnp,realType,tfk,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(fz,nnp,realType,tfz,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(fh,nnp,realType,tfh,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(fg,nnp,realType,tfg,cnt,displs,realType,0,comm1D,ierr)
-        call MPI_GATHERV(ft,nnp,realType,tft,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(xp,pNum,realType,txp,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(yp,pNum,realType,typ,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(zp,pNum,realType,tzp,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(dp,pNum,realType,tdp,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(up,pNum,realType,tup,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(vp,pNum,realType,tvp,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(wp,pNum,realType,twp,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(fk,pNum,realType,tfk,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(fz,pNum,realType,tfz,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(fh,pNum,realType,tfh,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(fg,pNum,realType,tfg,cnt,displs,realType,0,comm1D,ierr)
+        call MPI_GATHERV(ft,pNum,realType,tft,cnt,displs,realType,0,comm1D,ierr)
         if (myID==0) then
           open (unit=32, position='append', file='./particle_loc/particle_loc'//trim(adjustl(ctemp))//'.plt')
           write (32, *) 'zone', ' T = "', time, '"'
@@ -2509,12 +2510,12 @@ subroutine output
   if (nsf==0) then
     ! Gather all kx to myID=0
     call gatherx(comm1D, mkxNode, mkx, kx, tpx)
-    ! Gather all kz and dpaa to myID=0
+    ! Gather all kz and bedPD to myID=0
     do j = 1, mky
     do i = 2, mkxNode-1
     ij = (i-1) + (j-1)*(mkxNode-2)
     apz(ij) = kz(i, j)
-    apz4(ij) = dpaa(i, j)
+    apz4(ij) = bedPD(i, j)
     end do
     end do
     numa = (mkxNode-2)*mky
@@ -2656,6 +2657,58 @@ subroutine output
   deallocate(txp, typ, tzp, tdp, tup, tvp, twp, tfk, tfz, tfh, tfg, tft)
 end subroutine output
 
+function normalPD(probDist, dpa, dSigma, npdf, rpdf)
+  implicit none
+  ! public
+  double precision :: normalPD
+  integer, intent(in) :: npdf
+  double precision, intent(in) :: rpdf
+  double precision, intent(in) :: dpa, dSigma
+  double precision, intent(in), dimension(npdf) :: probDist
+  ! local
+  double precision :: sigma, mu
+  double precision :: probMax, probNow
+  double precision :: binWidth
+  double precision :: x, y, rand1, rand2
+  integer :: iterNum, binXLoc
+  sigma = dSigma*1.0e4
+  mu = dpa*1.0e4
+  y = 1.0
+  probNow = 0.0
+  probMax = maxval(probDist)
+  binWidth = sigma*2.0*rpdf/dfloat(npdf)
+  iterNum = 0
+  do while (y>probNow)
+  iterNum = iterNum+1
+  call random_number(rand1)
+  call random_number(rand2)
+  binXLoc = int(rand1/1.0*dfloat(npdf)) + 1
+  y = rand2*probMax
+  if (binXLoc>npdf .or. binXLoc<1) cycle
+  probNow = probDist(binXLoc)
+  if (iterNum>10000) then
+    print*, 'normalPD, iterNum>10000', probDist
+    x = dpa
+    exit
+  end if
+  end do
+  x = binXLoc*binWidth - 0.5*binWidth + (mu-sigma*rpdf)
+  normalPD = x*1.0e-4
+end function normalPD
+
+function biDist(pp)
+  implicit none
+  ! public
+  integer :: biDist
+  double precision, intent(in) :: pp
+  ! local
+  double precision :: rand
+  !
+  biDist = 0
+  call random_number(rand)
+  if (rand>=pp) biDist = 1
+end function biDist
+
 function ffd(upp, ufp, ddp, nu, rho, rhos)
   implicit none
   ! public
@@ -2690,25 +2743,6 @@ function ffd(upp, ufp, ddp, nu, rho, rhos)
     !ffd = mp*(ufp-upp)/ttp*frep
   end if
 end function ffd
-
-function bnldev(pp, mm)
-  implicit none
-  ! public
-  integer :: bnldev
-  integer, intent(in) :: mm
-  double precision, intent(in) :: pp
-  ! local
-  integer :: i
-  double precision :: rr
-  !
-  bnldev = 0
-  do i = 1, mm
-  call random_number(rr)
-  if (rr<=pp) then
-    bnldev = bnldev + 1
-  end if
-  end do
-end function bnldev
 
 function normal(mmu, sigma)
   implicit none
@@ -2940,42 +2974,6 @@ function gammln(xx)
   end do
   gammln = tmp + log(stp*ser/x)
 end function gammln
-
-function parsiz(ppp, dpa, dcgma, npdf)
-  implicit none
-  ! public
-  double precision :: parsiz
-  integer, intent(in) :: npdf
-  double precision, intent(in), dimension(npdf) :: ppp
-  double precision, intent(in) :: dpa, dcgma
-  ! local
-  integer :: n, ii
-  double precision :: rr, pdf
-  double precision :: x, y, r1, r2
-  double precision :: cgma, mu
-  cgma = dcgma*1.0e4
-  mu = dpa*1.0e4
-  y = 1.0
-  pdf = 0.0
-  rr = maxval(ppp)
-  n = 0
-  do while (y>pdf)
-  n = n+1
-  call random_number(r1)
-  call random_number(r2)
-  x = cgma*6.0*r1 + (mu-cgma*3.0)
-  y = r2*rr
-  ii = int((x-mu+cgma*3.0)/cgma/6.0*dfloat(npdf)) + 1
-  if (ii>npdf .or. ii<1) cycle
-  pdf = ppp(ii)
-  if (n>10000) then
-    print*, 'parsiz, n>10000', ppp
-    x = dpa
-    exit
-  end if
-  end do
-  parsiz = x*1.0e-4
-end function parsiz
 
 function arebound(alpha, beta, angin, dp2)
   implicit none
