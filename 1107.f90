@@ -1,197 +1,267 @@
-module public_val
-  ! constants
-  implicit none
-  ! computational domain
-  double precision, parameter :: xMax = 1.0 ! x size
-  double precision, parameter :: yMax = 0.2 ! y size
-  double precision, parameter :: zMax = 0.5 ! z size
-  double precision, parameter :: zu = 0.1 ! the altitude that grid becomes parallel
-  integer, parameter :: nx = 500 ! x grid num
-  integer, parameter :: ny = 100 ! y grid num
-  integer, parameter :: nz = 250 ! z grid num
-  double precision, parameter :: zGridCtrl = 1.06 ! the control parameter of z grid
-  integer, parameter :: nkx = 1000 ! x key point num
-  integer, parameter :: nky = 200 ! y key point num
-  integer, parameter :: nNodes = 5 ! num of subdomain
-  ! time
-  double precision, parameter :: dt = 1.0e-4 ! time step
-  double precision, parameter :: tla = 600.0 ! time last
-  ! fluid
-  double precision, parameter :: wind = 0.5 ! fractional velocity
-  double precision, parameter :: rho = 1.263 ! fluid density
-  double precision, parameter :: nu = 1.51e-5 ! kinetic viscosity
-  double precision, parameter :: kapa = 0.4 ! von Kaman's constant
-  ! particle
-  integer, parameter :: ipar = 1 ! calculating particles: ipar = 0: no, 1: yes
-  integer, parameter :: npdf = 3 ! bin num of particle distribution. must be odd number when ipd=0
-  double precision, parameter :: rpdf = 3.0 ! define the range of particle distribution.
-  integer, parameter :: pNumInit = 100 ! initial particle num
-  double precision, parameter :: els = 0.9 ! normal restitution coefficient
-  double precision, parameter :: fric = 0.0 ! tangential restitution coefficient
-  double precision, parameter :: els1 = 0.9 ! normal restitution coefficient (mid-air collision)
-  double precision, parameter :: fric1 = 0.0 ! tangential restitution coefficient (mid-air collision)
-  double precision, parameter :: dpa = 2.5e-4 ! average particle diameter
-  double precision, parameter :: dSigma = 2.0e-4 ! particle diameter standard deviation x 2
-  double precision, parameter :: bedCellTknessInit = dpa*5.0 ! thickness of the thin surface layer on particle bed
-  double precision, parameter :: rhos = 2650.0 ! particle density
-  double precision, parameter :: nkl = 1.0 ! one particle stands for x particles
-  double precision, parameter :: por = 0.6 ! bedform porosity
-  integer, parameter :: nnpmax = 100000 ! max particle num in one subdomain
-  integer, parameter :: nspmax = 10000 ! max eject particle num in one time step
-  ! pre-formed surface
-  double precision, parameter :: initAveKz = 0.05 ! initial average bed height
-  double precision, parameter :: initAmp = 8.0*dpa ! amplitude of prerippled surface
-  double precision, parameter :: initOmg = 4.0*pi ! wave number of prerippled surface
-  double precision, parameter :: wavl = 2.0*pi/initOmg ! wavelength of prerippled surface
-  ! method
-  integer, parameter :: isp = 0 ! splash function: isp=0:lammel, isp=1:kok.
-  ! boundary condition of particles: 0 periodic, 1 IO, 2 wall
-  integer, parameter :: ikbx = 0 ! x direction
-  integer, parameter :: ikby = 0 ! y direction
-  integer, parameter :: ikbz = 1 ! uppper surface (never be 0)
-  ! particle diameter: ipd = 0: polydisperse, 1: monodisperse, 2: bidisperse
-  ! if ipd=0, normal distribution, mu=dpa, sigma=dSigma, dpa-rpdf*dSigma~dpa+rpdf*dSigma
-  ! if ipd=1, d=dpa.
-  ! if ipd=2, d1=dpa-dSigma, d2=dpa+dSigma, npdf must equal to 2.
-  integer, parameter :: ipd = 1
-  integer, parameter :: icol = 1 ! mid-air collision: icol=1: on, icol=0: off
-  integer, parameter :: irsf = 0 ! surface irsf=0: erodable, irsf=1: rigid
-  ! output per x steps
-  integer, parameter :: nnf = 1e5 ! field
-  integer, parameter :: nns = 1e4 ! tau_a & tau_p
-  integer, parameter :: nnc = 1e4 ! num of moving particles
-  integer, parameter :: nnkl = 1e5 ! particle information
-  integer, parameter :: nnsf = 1e4 ! surface, surfaced
-  integer, parameter :: nnfx = 1e4 ! sand flux 
-  ! the initial step
-  integer, parameter :: pstart = 1 ! the initial step of particle calculation
-  integer, parameter :: sstart = 1 ! the initial step of surface calculation
-  integer, parameter :: pistart = 1 ! the initial step of particle info output
-  ! file
-  integer, parameter :: nnfi = 1e6 ! iter num contained in a file
-  ! others
-  integer, parameter :: mx = nx+2 ! x grid num +2
-  integer, parameter :: my = ny+2 ! y grid num +2
-  integer, parameter :: mz = nz+2 ! z grid num +2
-  integer, parameter :: mkx = nkx+2 ! x key point num +2
-  integer, parameter :: mky = nky+2 ! y key point num +2
-  integer, parameter :: mxNode = nx/nNodes + 2 ! x grid num for every node
-  integer, parameter :: mkxNode = nkx/nNodes + 2 ! x key point num for every node
-  double precision, parameter :: pi = acos(-1.0) ! define Pi
+! 不用dfloat，改用隐式类型转换，即直接将整型变量赋值给另一个双精度类型变量
+! function(arry)采用假设形状数组，可通过size命令得到数组中元素个数
+! 修改变量及函数命名
+! 将共用函数放置于module中，专用函数放置于program或subroutine的contains中
+! 定义函数时使用result属性来指定一个变量作为函数的返回值：function square(x) result(y)
+! 调用这个函数：result=square(x)
+! 计算分布时不用乘1e4
+! 使用派生类型传递全局变量
+module public_parameter_module
+    ! constants
+    implicit none
+    integer, parameter :: dbPc = selected_real_kind(15, 307)
+    ! computational domain
+    real(kind=dbPc), parameter :: xMax = 1.0 ! x size
+    real(kind=dbPc), parameter :: yMax = 0.2 ! y size
+    real(kind=dbPc), parameter :: zMax = 0.5 ! z size
+    real(kind=dbPc), parameter :: zUni = 0.1 ! the altitude that grid z becomes uniform
+    integer, parameter :: nx = 500 ! x grid num
+    integer, parameter :: ny = 100 ! y grid num
+    integer, parameter :: nz = 250 ! z grid num
+    real(kind=dbPc), parameter :: zGridCtrl = 1.06 ! the control parameter of z grid
+    integer, parameter :: nkx = 1000 ! x key point num
+    integer, parameter :: nky = 200 ! y key point num
+    integer, parameter :: nNodes = 5 ! num of subdomain
+    ! time
+    real(kind=dbPc), parameter :: dt = 1.0e-4 ! time step
+    real(kind=dbPc), parameter :: tla = 600.0 ! time last
+    ! fluid
+    real(kind=dbPc), parameter :: wind = 0.5 ! fractional velocity
+    real(kind=dbPc), parameter :: rho = 1.263 ! fluid density
+    real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
+    real(kind=dbPc), parameter :: kapa = 0.4 ! von Kaman's constant
+    ! particle
+    integer, parameter :: ipar = 1 ! calculating particles: ipar = 0: no, 1: yes
+    integer, parameter :: npdf = 3 ! bin num of particle distribution. must be odd number when ipd=0
+    integer, parameter :: pNumInit = 100 ! initial particle num
+    real(kind=dbPc), parameter :: repoAng = 30.0 ! repose angle
+    real(kind=dbPc), parameter :: els = 0.9 ! normal restitution coefficient
+    real(kind=dbPc), parameter :: fric = 0.0 ! tangential restitution coefficient
+    real(kind=dbPc), parameter :: els1 = 0.9 ! normal restitution coefficient (mid-air collision)
+    real(kind=dbPc), parameter :: fric1 = 0.0 ! tangential restitution coefficient (mid-air collision)
+    real(kind=dbPc), parameter :: dpa = 2.5e-4 ! average particle diameter
+    real(kind=dbPc), parameter :: dSigma = 2.0e-4 ! particle diameter standard deviation x 2
+    real(kind=dbPc), parameter :: rpdf = 3.0*dSigma ! the half range of particle distribution.
+    real(kind=dbPc), parameter :: bedCellTknessInit = dpa*5.0 ! thickness of the thin surface layer on particle bed
+    real(kind=dbPc), parameter :: rhos = 2650.0 ! particle density
+    real(kind=dbPc), parameter :: nkl = 1.0 ! one particle stands for x particles
+    real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
+    integer, parameter :: pNumMax = 100000 ! max particle num in one subdomain
+    integer, parameter :: nspmax = 10000 ! max eject particle num in one time step
+    ! pre-formed surface
+    real(kind=dbPc), parameter :: initAveKz = 0.05 ! initial average bed height
+    real(kind=dbPc), parameter :: initAmp = 8.0*dpa ! amplitude of prerippled surface
+    real(kind=dbPc), parameter :: initOmg = 4.0*pi ! wave number of prerippled surface
+    real(kind=dbPc), parameter :: wavl = 2.0*pi/initOmg ! wavelength of prerippled surface
+    ! method
+    integer, parameter :: isp = 0 ! splash function: isp=0:lammel, isp=1:kok.
+    ! boundary condition of particles: 0 periodic, 1 IO, 2 wall
+    integer, parameter :: ikbx = 0 ! x direction
+    integer, parameter :: ikby = 0 ! y direction
+    integer, parameter :: ikbz = 1 ! uppper surface (never be 0)
+    ! particle diameter: ipd = 0: polydisperse, 1: monodisperse, 2: bidisperse
+    ! if ipd=0, normal distribution, mu=dpa, sigma=dSigma, dpa-rpdf*dSigma~dpa+rpdf*dSigma
+    ! if ipd=1, d=dpa.
+    ! if ipd=2, d1=dpa-dSigma, d2=dpa+dSigma, npdf must equal to 2.
+    integer, parameter :: ipd = 1
+    integer, parameter :: icol = 1 ! mid-air collision: icol=1: on, icol=0: off
+    integer, parameter :: irsf = 0 ! surface irsf=0: erodable, irsf=1: rigid
+    ! output per x steps
+    integer, parameter :: nnf = 1e5 ! field
+    integer, parameter :: nns = 1e4 ! tau_a & tau_p
+    integer, parameter :: nnc = 1e4 ! num of moving particles
+    integer, parameter :: nnkl = 1e5 ! particle information
+    integer, parameter :: nnsf = 1e4 ! surface, surfaced
+    integer, parameter :: nnfx = 1e4 ! sand flux 
+    ! the initial step
+    integer, parameter :: pstart = 1 ! the initial step of particle calculation
+    integer, parameter :: sstart = 1 ! the initial step of surface calculation
+    integer, parameter :: pistart = 1 ! the initial step of particle info output
+    ! file
+    integer, parameter :: nnfi = 1e6 ! iter num contained in a file
+    ! others
+    integer, parameter :: mx = nx+2 ! x grid num +2
+    integer, parameter :: my = ny+2 ! y grid num +2
+    integer, parameter :: mz = nz+2 ! z grid num +2
+    integer, parameter :: mkx = nkx+2 ! x key point num +2
+    integer, parameter :: mky = nky+2 ! y key point num +2
+    integer, parameter :: mxNode = nx/nNodes + 2 ! x grid num for every node
+    integer, parameter :: mkxNode = nkx/nNodes + 2 ! x key point num for every node
+    real(kind=dbPc), parameter :: pi = acos(-1.0) ! define Pi
+end module public_parameter_module
 
-  ! variables
-  ! define in dataExType
-  integer :: fieldExType
-  integer :: surfExType
-  ! define in main
-  integer :: realType
-  integer :: intType
-  integer :: comm1D
-  integer :: myID
-  integer, dimension(2) :: neighbor
-  integer :: last
-  ! define in generateGrid
-  double precision :: xDiff, yDiff
-  double precision, dimension(mz) :: zDiff
-  double precision, dimension(mxNode+1) :: xu
-  double precision, dimension(my+1) :: yv
-  double precision, dimension(mz+1) :: zw
-  double precision, dimension(mxNode) :: x
-  double precision, dimension(my) :: y
-  double precision, dimension(mz) :: z
-  ! define in generateInitBed
-  double precision :: kxDiff, kyDiff
-  double precision, dimension(mkxNode) :: kx
-  double precision, dimension(mky) :: ky
-  double precision, dimension(mkxNode, mky) :: kz
-  double precision, dimension(mkxNode, mky) :: bedPD
-  double precision, dimension(mkxNode, mky) :: bedCellTkness
-  ! define in particleInit
-  double precision, dimension(npdf) :: prob
-  integer :: pNum
-  double precision, dimension(nnpmax) :: xp, yp, zp
-  double precision, dimension(nnpmax) :: up, vp, wp
-  double precision, dimension(nnpmax) :: dp, fk, fz
-  double precision, dimension(nnpmax) :: fh, fg, ft
-  double precision, dimension(mkxNode, mky, npdf) :: bedPDist
-  ! define in particleCal
-  double precision, dimension(mxNode, my, mz) :: phirho
-  !
-  double precision :: norm_vpin, norm_vpout, vvpin, vvpout, mpin, mpout
-  double precision :: npin, npout
-  double precision :: tot_nvpin, tot_nvpout, tot_vvpin, tot_vvpout, tot_mpin, tot_mpout
-  double precision :: tot_npin, tot_npout
-  double precision :: utaot, taot
-  double precision :: aucreep
-  double precision, dimension(3) :: vpin, vpout
-  double precision, dimension(3) :: tot_vpin, tot_vpout
-  double precision, dimension(mz) :: ampu, ampd
-  double precision, dimension(mz) :: fptx
-  double precision, dimension(mz) :: totfptx, totvolpar
-  double precision :: uflx, wflx
-  double precision, dimension(mz) :: uflxz
-  double precision, dimension(mz) :: wflxz
-  double precision, dimension(mkxNode, mky) :: pnch
-  double precision, dimension(mkxNode, mky, npdf) :: pdfch
-  double precision, dimension(mky) :: eepnch, eepnchr
-  double precision, dimension(mky*npdf) :: eepdfch, eepdfchr
-  double precision :: time
-  integer :: gtypei
-  double precision, dimension(mz) :: htaop, thtaop
-  double precision, dimension(mz) :: htao, thtao
-  double precision, dimension(mz) :: ahff, tahff
-  double precision, dimension(mz) :: hru, thru
-  double precision, dimension(mz) :: pcoll, ttpcoll
-  double precision, dimension(mkxNode, mky) :: ucreep, vcreep
+module public_val
+    ! define in dataExType
+    integer :: fieldExType
+    integer :: surfExType
+    ! define in main
+    integer :: realType
+    integer :: intType
+    integer :: comm1D
+    integer :: myID
+    integer, dimension(2) :: neighbor
+    integer :: last
+    ! define in generateGrid
+    real(kind=dbPc) :: xDiff, yDiff
+    real(kind=dbPc), dimension(mz) :: zDiff
+    real(kind=dbPc), dimension(mxNode+1) :: xu
+    real(kind=dbPc), dimension(my+1) :: yv
+    real(kind=dbPc), dimension(mz+1) :: zw
+    real(kind=dbPc), dimension(mxNode) :: x
+    real(kind=dbPc), dimension(my) :: y
+    real(kind=dbPc), dimension(mz) :: z
+    ! define in generateInitBed
+    real(kind=dbPc) :: kxDiff, kyDiff
+    real(kind=dbPc), dimension(mkxNode) :: kx
+    real(kind=dbPc), dimension(mky) :: ky
+    real(kind=dbPc), dimension(mkxNode, mky) :: kz
+    real(kind=dbPc), dimension(mkxNode, mky) :: bedPD
+    real(kind=dbPc), dimension(mkxNode, mky) :: bedCellTkness
+    ! define in particleInit
+    real(kind=dbPc), dimension(npdf) :: prob
+    integer :: pNum
+    integer, dimension(pNumMax, 5) :: pLoc
+    integer, dimension(pNumMax, 2) :: pTag
+    real(kind=dbPc), dimension(pNumMax) :: xp, yp, zp
+    real(kind=dbPc), dimension(pNumMax) :: up, vp, wp
+    real(kind=dbPc), dimension(pNumMax) :: dp, fk, fz
+    real(kind=dbPc), dimension(pNumMax) :: fh, fg, ft
+    real(kind=dbPc), dimension(mkxNode, mky, npdf) :: bedPDist
+    ! define in particleCal
+    real(kind=dbPc), dimension(mkxNode, mky) :: Dkz
+    real(kind=dbPc), dimension(mxNode, my, mz) :: phirho
+    real(kind=dbPc), dimension(mkxNode, mky, npdf) :: DbedPDist
+    !
+    real(kind=dbPc) :: norm_vpin, norm_vpout, vvpin, vvpout, mpin, mpout
+    real(kind=dbPc) :: npin, npout
+    real(kind=dbPc) :: tot_nvpin, tot_nvpout, tot_vvpin, tot_vvpout, tot_mpin, tot_mpout
+    real(kind=dbPc) :: tot_npin, tot_npout
+    real(kind=dbPc) :: utaot, taot
+    real(kind=dbPc) :: aucreep
+    real(kind=dbPc), dimension(3) :: vpin, vpout
+    real(kind=dbPc), dimension(3) :: tot_vpin, tot_vpout
+    real(kind=dbPc), dimension(mz) :: ampu, ampd
+    real(kind=dbPc), dimension(mz) :: fptx
+    real(kind=dbPc), dimension(mz) :: totfptx, totvolpar
+    real(kind=dbPc) :: uflx, wflx
+    real(kind=dbPc), dimension(mz) :: uflxz
+    real(kind=dbPc), dimension(mz) :: wflxz
+    real(kind=dbPc), dimension(mky) :: eepnch, eepnchr
+    real(kind=dbPc), dimension(mky*npdf) :: eepdfch, eepdfchr
+    real(kind=dbPc) :: time
+    integer :: gtypei
+    real(kind=dbPc), dimension(mz) :: htaop, thtaop
+    real(kind=dbPc), dimension(mz) :: htao, thtao
+    real(kind=dbPc), dimension(mz) :: ahff, tahff
+    real(kind=dbPc), dimension(mz) :: hru, thru
+    real(kind=dbPc), dimension(mz) :: pcoll, ttpcoll
+    real(kind=dbPc), dimension(mkxNode, mky) :: ucreep, vcreep
 end module public_val
 
 ! vector calculation
 module vector_cal
-  implicit none
+    implicit none
+    private :: dbPc
+    integer, parameter :: dbPc = selected_real_kind(15, 307)
 contains
-  function dot_prod(vec1, vec2)
-    double precision :: dot_prod
-    double precision, intent(in), dimension(3) :: vec1, vec2
+    function dotProduct(vec1, vec2) result(res)
+        real(kind=dbPc), intent(in), dimension(3) :: vec1, vec2
+        real(kind=dbPc) :: res
+        !
+        res = vec1(1)*vec2(1) + vec1(2)*vec2(2) + vec1(3)*vec2(3)
+    end function
     !
-    dot_prod = vec1(1)*vec2(1) + vec1(2)*vec2(2) + vec1(3)*vec2(3)
-  end function
-  !
-  function cross_prod(vec1, vec2)
-    double precision, dimension(3) :: cross_prod
-    double precision, intent(in), dimension(3) :: vec1, vec2
+    function crossProduct(vec1, vec2) result(res)
+        real(kind=dbPc), intent(in), dimension(3) :: vec1, vec2
+        real(kind=dbPc), dimension(3) :: res
+        !
+        res(1) = vec1(2)*vec2(3) - vec1(3)*vec2(2)
+        res(2) = vec1(3)*vec2(1) - vec1(1)*vec2(3)
+        res(3) = vec1(1)*vec2(2) - vec1(2)*vec2(1)
+    end function
     !
-    cross_prod(1) = vec1(2)*vec2(3) - vec1(3)*vec2(2)
-    cross_prod(2) = vec1(3)*vec2(1) - vec1(1)*vec2(3)
-    cross_prod(3) = vec1(1)*vec2(2) - vec1(2)*vec2(1)
-  end function
-  !
-  function norm_2(vec)
-    double precision :: norm_2
-    double precision, intent(in), dimension(3) :: vec
+    function norm_2(vec)
+        real(kind=dbPc) :: norm_2
+        real(kind=dbPc), intent(in), dimension(3) :: vec
+        !
+        norm_2 = sqrt(vec(1)**2+vec(2)**2+vec(3)**2)
+    end function
     !
-    norm_2 = sqrt(vec(1)**2+vec(2)**2+vec(3)**2)
-  end function
-  !
-  function unit_vec(vec)
-    double precision, dimension(3) :: unit_vec
-    double precision, intent(in), dimension(3) :: vec
-    double precision :: normv
+    function unit_vec(vec)
+        real(kind=dbPc), dimension(3) :: unit_vec
+        real(kind=dbPc), intent(in), dimension(3) :: vec
+        real(kind=dbPc) :: normv
+        !
+        normv = norm_2(vec)
+        if (normv>0.0) then
+            unit_vec = vec/normv 
+        else
+            unit_vec = 0.0
+        end if
+    end function
     !
-    normv = norm_2(vec)
-    if (normv>0.0) then
-      unit_vec = vec/normv 
-    else
-      unit_vec = 0.0
-    end if
-  end function
-  !
-  function dist_p(vec1, vec2)
-    double precision :: dist_p
-    double precision, intent(in), dimension(3) :: vec1, vec2
-    !
-    dist_p = sqrt((vec1(1)-vec2(1))**2+(vec1(2)-vec2(2))**2+(vec1(3)-vec2(3))**2)
-  end function
+    function dist_p(vec1, vec2)
+        real(kind=dbPc) :: dist_p
+        real(kind=dbPc), intent(in), dimension(3) :: vec1, vec2
+        !
+        dist_p = sqrt((vec1(1)-vec2(1))**2+(vec1(2)-vec2(2))**2+(vec1(3)-vec2(3))**2)
+    end function
 end module vector_cal
+
+module prob_distribution
+    implicit none
+contains
+    ! need to check
+    function valObeyCertainProbDist(probDist, averageParticleD, distRange)
+        implicit none
+        ! public
+        real(kind=dbPc) :: valObeyCertainProbDist
+        real(kind=dbPc), intent(in) :: distRange
+        real(kind=dbPc), intent(in) :: averageParticleD, stddDeviation
+        real(kind=dbPc), intent(in) :: probDist(:)
+        ! local
+        real(kind=dbPc) :: probMax, probNow
+        real(kind=dbPc) :: binNum
+        real(kind=dbPc) :: binWidth
+        real(kind=dbPc) :: x, y, rand1, rand2
+        integer :: iterNum, binXLoc
+        y = 1.0
+        probNow = 0.0
+        probMax = maxval(probDist)
+        binNum = size(probDist)
+        binWidth = 2.0*distRange/binNum
+        iterNum = 0
+        do while (y>probNow)
+        iterNum = iterNum+1
+        call random_number(rand1)
+        call random_number(rand2)
+        binXLoc = int(rand1/1.0*binNum) + 1
+        y = rand2*probMax
+        if (binXLoc>binNum .or. binXLoc<1) cycle
+        probNow = probDist(binXLoc)
+        if (iterNum>10000) then
+            print*, 'valObeyCertainProbDist, iterNum>10000', probDist
+            x = averageParticleD
+            exit
+        end if
+        end do
+        x = binXLoc*binWidth - 0.5*binWidth + (mu-sigma*distRange)
+        valObeyCertainProbDist = x*1.0e-4
+    end function valObeyCertainProbDist
+
+    function biDist(pp)
+        implicit none
+        ! public
+        integer :: biDist
+        real(kind=dbPc), intent(in) :: pp
+        ! local
+        real(kind=dbPc) :: rand
+        !
+        biDist = 0
+        call random_number(rand)
+        if (rand>=pp) biDist = 1
+    end function biDist
+end module prob_distribution
 
 ! gather the matrix of different nodes into one single large matrix 
 module gather_xyz
@@ -206,8 +276,8 @@ contains
     ! public
     integer, intent(in) :: subMx, totMx, totMy, totMz
     integer, intent(in) :: MPI_Comm
-    double precision, intent(in), dimension(subMx, totMy, totMz) :: subField
-    double precision, dimension(totMx, totMy, totMz) :: totField
+    real(kind=dbPc), intent(in), dimension(subMx, totMy, totMz) :: subField
+    real(kind=dbPc), dimension(totMx, totMy, totMz) :: totField
     ! local
     integer :: subNx, totNx
     integer :: dataType
@@ -216,9 +286,9 @@ contains
     integer :: i, j, k
     integer :: serialNum
     integer :: nodeID
-    double precision, allocatable, dimension(:, :, :) :: subField_noGhost
-    double precision, allocatable, dimension(:) :: subArray
-    double precision, allocatable, dimension(:) :: totArray
+    real(kind=dbPc), allocatable, dimension(:, :, :) :: subField_noGhost
+    real(kind=dbPc), allocatable, dimension(:) :: subArray
+    real(kind=dbPc), allocatable, dimension(:) :: totArray
     !
     subNx = subMx - 2
     totNx = totMx - 2
@@ -317,14 +387,14 @@ contains
     ! public
     integer, intent(in) :: subMx, totMx
     integer, intent(in) :: MPI_Comm
-    double precision, intent(in), dimension(subMx) :: subField
-    double precision, dimension(totMx) :: totField
+    real(kind=dbPc), intent(in), dimension(subMx) :: subField
+    real(kind=dbPc), dimension(totMx) :: totField
     ! local
     integer :: dataType
     integer :: subGridNum, totGridNum
     integer :: ierr
-    double precision, allocatable, dimension(:) :: subArray
-    double precision, allocatable, dimension(:) :: totArray
+    real(kind=dbPc), allocatable, dimension(:) :: subArray
+    real(kind=dbPc), allocatable, dimension(:) :: totArray
     !
     subGridNum = subMx - 2
     totGridNum = totMx - 2
@@ -369,7 +439,7 @@ subroutine dataEx(mxNode, my, mz, a, comm1D, neighbor, fieldExType, tag)
   integer, intent(in) :: fieldExType
   integer, intent(in) :: tag
   integer, intent(in), dimension(2) :: neighbor
-  double precision, dimension(mxNode, my, mz) :: a
+  real(kind=dbPc), dimension(mxNode, my, mz) :: a
   ! local
   integer :: status(MPI_STATUS_SIZE)
   integer :: ierr
@@ -488,10 +558,10 @@ program main
         if (last==pstart) then
             call particleInit
         end if
-        call parCalculate
+        call particleCal
     end if
     if (last<sstart) then
-      pnch = 0.0
+      Dkz = 0.0
       do i = 1, mkxNode
       do j = 1, mky
       bedCellTkness(i, j) = bedCellTknessInit
@@ -532,10 +602,14 @@ subroutine generateGrid
   integer :: i, j, k
   integer :: ierr
   integer :: status(MPI_STATUS_SIZE)
+  real(kind=dbPc) :: xGridNum, yGridNum
+  real(kind=dbPc) :: xSurfGridNum, ySurfGridNum
   !
   ! define delta_x, delta_y, delta_z
-  xDiff = xMax/dfloat(nx)
-  yDiff = yMax/dfloat(ny)
+  xGridNum = nx
+  yGridNum = ny
+  xDiff = xMax/xGridNum
+  yDiff = yMax/yGridNum
   do k = 1, mz
   zDiff(k) = zGridCtrl**(k-1)*zMax/((zGridCtrl**mz-1.0)/(zGridCtrl-1.0))
   end do
@@ -589,8 +663,10 @@ subroutine generateInitBed
   integer :: status(MPI_STATUS_SIZE)
   !
   ! define delta_kx, delta_ky, delta_kz
-  kxDiff = xMax/dfloat(nkx)
-  kyDiff = yMax/dfloat(nky)
+  xSurfGridNum = nkx
+  ySurfGridNum = nky
+  kxDiff = xMax/xSurfGridNum
+  kyDiff = yMax/ySurfGridNum
   ! define the grid of surface key points
   kx = 0.0
   ky = 0.0
@@ -683,45 +759,58 @@ end subroutine outPutFile
 
 subroutine particleInit
   use public_val
+  use prob_distribution
   implicit none
   include "mpif.h"
   integer :: i, j, k
   integer :: n
   integer :: biDist
   integer :: biDistTag
-  double precision :: sigma
-  double precision :: mu
-  double precision :: binWidth
-  double precision :: binCenter
-  double precision :: rand1, rand2, rand3
-  double precision :: normalPD
-  double precision :: probBi
+  real(kind=dbPc) :: binNum
+  real(kind=dbPc) :: binWidth
+  real(kind=dbPc) :: binLeftEdge
+  real(kind=dbPc) :: binCenter
+  real(kind=dbPc) :: rand1, rand2, rand3
+  real(kind=dbPc) :: probBi
+  !
+  xp = 0.0
+  yp = 0.0
+  zp = 0.0
+  up = 0.0
+  vp = 0.0
+  wp = 0.0
+  fk = 0.0
+  fh = 0.0
+  fg = 0.0
+  ft = 0.0
+  fz = 0.0
+  pLoc = 0
+  pTag = 0
+  pNum = pNumInit
   !
   if (ipd==0) then
-    sigma = dSigma*1.0e4
-    mu = dpa*1.0e4
-    binWidth = sigma*2.0*rpdf/dfloat(npdf)
+    binNum = npdf
+    binWidth = 2.0*rpdf/binNum
     do i = 1, npdf
-    binCenter = (dfloat(i-1)+0.5)*binWidth + (mu-sigma*rpdf)
-    prob(i) = 1.0/(sqrt(2.0*pi)*sigma)*exp(-(binCenter-mu)**2/(2.0*sigma**2))
+    binLeftEdge = i - 1
+    binCenter = (binLeftEdge+0.5)*binWidth + (dpa-rpdf)
+    prob(i) = 1.0/(sqrt(2.0*pi)*dSigma)*exp(-(binCenter-dpa)**2/(2.0*dSigma**2))
     end do
     prob = prob*binWidth
   else if (ipd==2) then
     prob(1) = 0.5
     prob(2) = 0.5
   end if
-  do n = 1, pNumInit
+  do n = 1, pNum
   call random_number(rand1)
   call random_number(rand2)
   call random_number(rand3)
   xp(n) = (xu(mxNode)-xu(2))*rand1 + xu(2)
   yp(n) = (yv(my)-yv(2))*rand2 + yv(2)
   zp(n) = 0.05*rand3 + initAveKz
-  up(n) = 0.0
-  vp(n) = 0.0
-  wp(n) = 0.0
+  call particleLocIJ(xp(n), yp(n), pLoc(n, 1), pLoc(n, 2), pLoc(n, 4), pLoc(n, 5), pTag(n, 1), pTag(n, 2))
   if (ipd==0) then
-    dp(n) = normalPD(prob, dpa, dSigma, npdf, rpdf)
+    dp(n) = valObeyCertainProbDist(prob, dpa, dSigma, npdf, rpdf)
   else if (ipd==1) then
     dp(n) = dpa
   else if (ipd==2) then
@@ -733,13 +822,7 @@ subroutine particleInit
       dp(n) = dpa + dSigma
     end if
   end if
-  fk(n) = 0.0
-  fh(n) = 0.0
-  fg(n) = 0.0
-  ft(n) = 0.0
-  fz(n) = 0.0
   end do
-  pNum = pNumInit
   do j = 1, mky
   do i = 1, mkxNode
   do k = 1, npdf
@@ -749,116 +832,171 @@ subroutine particleInit
   end do
 end subroutine particleInit
 
-subroutine parCalculate
+subroutine particleLocIJ(xxp, yyp, iLoc, jLoc, ikLoc, jkLoc, iTag, jTag)
   use public_val
-  use vector_cal
   implicit none
   include "mpif.h"
+  ! public
+  real(kind=dbPc), intent(in) :: xxp, yyp ! particle coordinate location
+  integer, intent(out) :: iLoc, jLoc ! i, j of particle in the wind field
+  integer, intent(out) :: ikLoc, jkLoc ! i, j of particle on the surface
+  ! Tag==0: particle in computational domain.
+  ! Tag==1: particle in LEFT gost cell. Tag==2: particle in RIGHT gost cell
+  integer, intent(out) :: iTag, jTag
+  ! local
+  integer :: k
+  real(kind=dbPc) :: zzw, zzw0, zzw1, zzw2, rzp
+  !
+  iLoc = int((xxp-xu(1))/xDiff) + 1
+  jLoc = int((yyp-yv(1))/yDiff) + 1
+  ikLoc = int((xxp-kx(1))/kxDiff) + 1
+  jkLoc = int((yyp-ky(1))/kyDiff) + 1
+  if (iLoc<2) then
+      iLoc = 1
+      ikLoc = 1
+      iTag = 1
+  else if (iLoc>mxNode-1) then
+      iLoc = mxNode
+      ikLoc = mkxNode
+      iTag = 2
+  else
+      iTag = 0
+  end if
+  if (jLoc<2) then
+      jLoc = 1
+      jkLoc = 1
+      jTag = 1
+  else if (jLoc>my-1) then
+      jLoc = my
+      jkLoc = mky
+      jTag = 2
+  else
+      jTag = 0
+  end if
+end subroutine particleLocIJ
+
+subroutine particleCal
+  use public_val
+  use vector_cal
+  use prob_distribution
+  implicit none
+  include "mpif.h"
+  ! MPI
+  integer :: status(MPI_STATUS_SIZE)
+  integer :: ierr
+  ! roll direction
+  real(kind=dbPc) :: kzC, kzE, kzW, kzN, kzS
+  real(kind=dbPc) :: rampMax
+  integer, dimension(mkxNode, mky) :: rollDirBump, rollDirSink
+  real(kind=dbPc), dimension(4) :: ramp
+  ! splash
+  integer :: whichSurfTri
+  real(kind=dbPc) :: dotP1, dotP2, dotP3, dotP4, dotP5, dotP6
+  real(kind=dbPc) :: lam22, lam23, lam2, lam3
+  real(kind=dbPc), dimension(3) :: point1, point2, point3
+  real(kind=dbPc), dimension(3) :: vec12, vec13, vec1p, vec2p, vec3p
+  real(kind=dbPc), dimension(3) :: surfNormal, unitSurfNormal
+  real(kind=dbPc), dimension(3) :: pLocVec, pVelVec
+  real(kind=dbPc), dimension(3) :: point0
+  real(kind=dbPc), dimension(3) :: vector1, vector2, vector3
+  !
+  integer :: ik, jk
+  integer :: i, j, k
+  real(kind=dbPc), dimension(mky) :: kz3Send, kz3Recv
+  !
   integer :: nn, nni
   integer :: n
-  integer :: i, j, k
-  integer :: ierr
-  integer :: ip, jp
   integer :: ne
   integer :: nrol
   integer :: kd
   integer :: nks, tnk, nnks
   integer :: biDist
   integer :: nnn, nnni
-  integer :: nnnp
-  integer :: addnnp
+  integer :: pNumTemp
+  integer :: pNumAdd
   integer :: nksmax, chmax
   integer :: ii, jj, kk
   integer :: ipp, jpp
-  integer :: jk
+  integer :: jjkk
   integer :: iii, jjj
   integer :: nne
   integer :: nbi
   integer :: kkk
   integer :: hpl
-  integer :: status(MPI_STATUS_SIZE)
   integer :: nkk(mxNode, my)
-  double precision :: mp, volp
-  double precision :: lmt1, lmt2, lmt3
-  double precision :: norm_vin
-  double precision :: mmu
-  double precision :: sigma
-  double precision :: alpha, beta
-  double precision :: alpha1, beta1
-  double precision :: alpha2, beta2
-  double precision :: eta1, eta2
-  double precision :: rr1, rr2, rr3
-  double precision :: normal
-  double precision :: rrr, rrrx, rrrd
-  double precision :: nv1, nv2, tv1, tv2
-  double precision :: pp
-  double precision :: lambda
-  double precision :: ammu1, ammu2
-  double precision :: gg1, gg2, gg3
-  double precision :: dzz
-  double precision :: aSigma1, aSigma2
-  double precision :: angout1, angout2
-  double precision :: norm_vout
-  double precision :: expdev
-  double precision :: ppz0, ppz1, ppz2, ppz3, ppz4
-  double precision :: tam
-  double precision :: dd1, dd2
-  double precision :: angin1
-  double precision :: ee1, ee2, eed2, eed2x
-  double precision :: mm1, mm2
-  double precision :: d1, d2
-  double precision :: myerfc
-  double precision :: merfc
-  double precision :: ee2bar
-  double precision :: normalPD
-  double precision :: prebound
-  double precision :: arebound
-  double precision :: nee
-  double precision :: vch
-  double precision :: dpd
-  double precision :: svlayer, xvlayer
-  double precision :: norm_nnvec, norm_ttvec, norm_tnvec
-  double precision :: d01, d02, d03
-  double precision :: mmp, nump
-  double precision :: hrlx1, dhcld
-  double precision :: xp0
-  integer, dimension(mkxNode, mky) :: rolldir1, rolldir2
-  double precision, dimension(npdf) :: ppdf
-  double precision, dimension(mky) :: eepz, eepzr
-  double precision, dimension(mky*npdf) :: ppdfch, ppdfchr
-  double precision, dimension(mky*npdf) :: ipdfch, ipdfchr
-  double precision, dimension(mky) :: pzpdfch, pzpdfchr
-  double precision, dimension(mky) :: izpdfch, izpdfchr
-  double precision, dimension(mkxNode, mky) :: vlayer
-  double precision, dimension(mkxNode, mky, npdf) :: vbin
-  double precision, dimension(mkxNode, mky) :: tpdf
-  double precision, dimension(mxNode, my, mz) :: vpar
-  double precision, dimension(mz) :: ncoll, ntotc
-  double precision, dimension(nspmax) :: tempx, tempy, tempz, tempu, tempv, tempw, tempd, tempfk, tempfz, &
+  real(kind=dbPc) :: kArea
+  real(kind=dbPc) :: mp, volp
+  real(kind=dbPc) :: norm_vin
+  real(kind=dbPc) :: mmu
+  real(kind=dbPc) :: sigma
+  real(kind=dbPc) :: alpha, beta
+  real(kind=dbPc) :: alpha1, beta1
+  real(kind=dbPc) :: alpha2, beta2
+  real(kind=dbPc) :: eta1, eta2
+  real(kind=dbPc) :: rr1, rr2, rr3
+  real(kind=dbPc) :: normal
+  real(kind=dbPc) :: rrr, rrrx, rrrd
+  real(kind=dbPc) :: nv1, nv2, tv1, tv2
+  real(kind=dbPc) :: pp
+  real(kind=dbPc) :: lambda
+  real(kind=dbPc) :: ammu1, ammu2
+  real(kind=dbPc) :: gg1, gg2, gg3
+  real(kind=dbPc) :: dzz
+  real(kind=dbPc) :: aSigma1, aSigma2
+  real(kind=dbPc) :: angout1, angout2
+  real(kind=dbPc) :: norm_vout
+  real(kind=dbPc) :: expdev
+  real(kind=dbPc) :: dd1, dd2
+  real(kind=dbPc) :: angin1
+  real(kind=dbPc) :: ee1, ee2, eed2, eed2x
+  real(kind=dbPc) :: mm1, mm2
+  real(kind=dbPc) :: d1, d2
+  real(kind=dbPc) :: myerfc
+  real(kind=dbPc) :: merfc
+  real(kind=dbPc) :: ee2bar
+  real(kind=dbPc) :: prebound
+  real(kind=dbPc) :: arebound
+  real(kind=dbPc) :: nee
+  real(kind=dbPc) :: vch
+  real(kind=dbPc) :: dpd
+  real(kind=dbPc) :: svlayer, xvlayer
+  real(kind=dbPc) :: norm_nnvec, norm_ttvec, norm_tnvec
+  real(kind=dbPc) :: d01, d02, d03
+  real(kind=dbPc) :: mmp, nump
+  real(kind=dbPc) :: hrlx1, dhcld
+  real(kind=dbPc) :: xp0
+  real(kind=dbPc), dimension(3) :: nnvec, ttvec, tnvec
+  real(kind=dbPc), dimension(3) :: unnvec, uttvec, utnvec
+  real(kind=dbPc), dimension(3) :: upvec1, upvec2, xpvec1, xpvec2
+  real(kind=dbPc), dimension(3) :: vin
+  real(kind=dbPc), dimension(3) :: vout
+  real(kind=dbPc), dimension(3) :: gg
+  real(kind=dbPc), dimension(npdf) :: ppdf
+  real(kind=dbPc), dimension(mky*npdf) :: ppdfch, ppdfchr
+  real(kind=dbPc), dimension(mky*npdf) :: ipdfch, ipdfchr
+  real(kind=dbPc), dimension(mky) :: pzpdfch, pzpdfchr
+  real(kind=dbPc), dimension(mky) :: izpdfch, izpdfchr
+  real(kind=dbPc), dimension(mkxNode, mky) :: vlayer
+  real(kind=dbPc), dimension(mkxNode, mky, npdf) :: vbin
+  real(kind=dbPc), dimension(mkxNode, mky) :: tpdf
+  real(kind=dbPc), dimension(mxNode, my, mz) :: vpar
+  real(kind=dbPc), dimension(mz) :: ncoll, ntotc
+  real(kind=dbPc), dimension(nspmax) :: tempx, tempy, tempz, tempu, tempv, tempw, tempd, tempfk, tempfz, &
     tempfh, tempfg, tempft
-  double precision, dimension(mkxNode, mky) :: mupin, mvpin, mupout, mvpout, qcreepx, qcreepy
-  double precision, dimension(4) :: ta
-  double precision, dimension(3) :: point0, point1, point2, point3
-  double precision, dimension(3) :: vec1, vec2, vec3
-  double precision, dimension(3) :: nnvec, ttvec, tnvec
-  double precision, dimension(3) :: unnvec, uttvec, utnvec
-  double precision, dimension(3) :: upvec1, upvec2, xpvec1, xpvec2
-  double precision, dimension(3) :: vin
-  double precision, dimension(3) :: vout
-  double precision, dimension(3) :: gg
+  real(kind=dbPc), dimension(mkxNode, mky) :: mupin, mvpin, mupout, mvpout, qcreepx, qcreepy
   integer, allocatable, dimension(:, :, :) :: scp
-  double precision, allocatable, dimension(:) :: chxp, chyp, chzp
-  double precision, allocatable, dimension(:) :: chup, chvp, chwp
-  double precision, allocatable, dimension(:) :: chdp, chfk, chfz
-  double precision, allocatable, dimension(:) :: chfh, chfg, chft
-  double precision, allocatable, dimension(:) :: chxpi, chypi, chzpi
-  double precision, allocatable, dimension(:) :: chupi, chvpi, chwpi
-  double precision, allocatable, dimension(:) :: chdpi, chfki, chfzi
-  double precision, allocatable, dimension(:) :: chfhi, chfgi, chfti
-  double precision, allocatable, dimension(:) :: exch, exchi
-  double precision, allocatable, dimension(:) :: exchr, exchir
-  nksmax = nnpmax !/(mxNode) !/(my)
-  chmax = nnpmax/10
+  real(kind=dbPc), allocatable, dimension(:) :: chxp, chyp, chzp
+  real(kind=dbPc), allocatable, dimension(:) :: chup, chvp, chwp
+  real(kind=dbPc), allocatable, dimension(:) :: chdp, chfk, chfz
+  real(kind=dbPc), allocatable, dimension(:) :: chfh, chfg, chft
+  real(kind=dbPc), allocatable, dimension(:) :: chxpi, chypi, chzpi
+  real(kind=dbPc), allocatable, dimension(:) :: chupi, chvpi, chwpi
+  real(kind=dbPc), allocatable, dimension(:) :: chdpi, chfki, chfzi
+  real(kind=dbPc), allocatable, dimension(:) :: chfhi, chfgi, chfti
+  real(kind=dbPc), allocatable, dimension(:) :: exch, exchi
+  real(kind=dbPc), allocatable, dimension(:) :: exchr, exchir
+  nksmax = pNumMax !/(mxNode) !/(my)
+  chmax = pNumMax/10
   allocate(scp(mxNode, my, nksmax))
   allocate(chxp(chmax), chyp(chmax), chzp(chmax))
   allocate(chup(chmax), chvp(chmax), chwp(chmax))
@@ -869,63 +1007,82 @@ subroutine parCalculate
   allocate(chdpi(chmax), chfki(chmax), chfzi(chmax))
   allocate(chfhi(chmax), chfgi(chmax), chfti(chmax))
   !
-  ! influence of repose angle and particle roll direction
-  eepz(:) = kz(3, :)
-  call MPI_SENDRECV(eepz,mky,realType,neighbor(1),105, &
-    eepzr,mky,realType,neighbor(2),105,comm1D,status,ierr)
+  ! determine particle roll direction
   !
-  rolldir1 = 5
-  rolldir2 = 5
-  do jp = 2, mky
-  do ip = 2, mkxNode
-  ppz0 = kz(ip, jp)
-  if (ip<mkxNode) then
-    ppz1 = kz(ip+1, jp)
+  ! rollDirBump:
+  !     3 /\
+  !       |
+  !2 <----0----> 1
+  !       |
+  !      \/ 4
+  !
+  ! rollDirSink:
+  !     3  |
+  !       \/
+  !2 ---->0<---- 1
+  !      /\
+  !      | 4
+  !
+  kz3Send(:) = kz(3, :)
+  call MPI_SENDRECV(kz3Send,mky,realType,neighbor(1),105, &
+    kz3Recv,mky,realType,neighbor(2),105,comm1D,status,ierr)
+  !
+  rollDirBump = 5
+  rollDirSink = 5
+  do jk = 2, mky
+  do ik = 2, mkxNode
+  kzC = kz(ik, jk)
+  if (ik/=mkxNode) then
+    kzE = kz(ik+1, jk)
   else
-    ppz1 = eepzr(jp)
+    kzE = kz3Recv(jk)
   end if
-  ppz2 = kz(ip-1, jp)
-  if (jp<mky) then
-    ppz3 = kz(ip, jp+1)
+  kzW = kz(ik-1, jk)
+  if (jk\=mky) then
+    kzN = kz(ik, jk+1)
   else
-    ppz3 = kz(ip, 3)
+    kzN = kz(ik, 3)
   end if
-  ppz4 = kz(ip, jp-1)
-  !
-  ta(1) = (ppz0-ppz1)/kxDiff
-  ta(2) = (ppz0-ppz2)/kxDiff
-  ta(3) = (ppz0-ppz3)/kyDiff
-  ta(4) = (ppz0-ppz4)/kyDiff
-  tam = ta(1)
-  rolldir1(ip, jp) = 1
+  kzS = kz(ik, jk-1)
+  ! direction: 1=East, 2=West, 3=North, 4=South
+  ! Bump
+  ramp(1) = (kzC-kzE)/kxDiff
+  ramp(2) = (kzC-kzW)/kxDiff
+  ramp(3) = (kzC-kzN)/kyDiff
+  ramp(4) = (kzC-kzS)/kyDiff
+  rampMax = ramp(1)
+  rollDirBump(ik, jk) = 1
   do k = 2, 4
-  if (ta(k)>tam) then
-    tam = ta(k)
-    rolldir1(ip, jp) = k
+  if (ramp(k)>rampMax) then
+    rampMax = ramp(k)
+    rollDirBump(ik, jk) = k
   end if
   end do
-  if (tam<=tan(30.0/180.0*pi)) rolldir1(ip, jp) = 0
-  !
-  ta(1) = -(ppz0-ppz1)/kxDiff
-  ta(2) = -(ppz0-ppz2)/kxDiff
-  ta(3) = -(ppz0-ppz3)/kyDiff
-  ta(4) = -(ppz0-ppz4)/kyDiff
-  tam = ta(1)
-  rolldir2(ip, jp) = 1
+  if (rampMax<=tan(repoAng/180.0*pi)) rollDirBump(ik, jk) = 0 ! no roll
+  ! Sink
+  ramp(1) = (kzE-kzC)/kxDiff
+  ramp(2) = (kzW-kzC)/kxDiff
+  ramp(3) = (kzN-kzC)/kyDiff
+  ramp(4) = (kzS-kzC)/kyDiff
+  rampMax = ramp(1)
+  rollDirSink(ik, jk) = 1
   do k = 2, 4
-  if (ta(k)>tam) then
-    tam = ta(k)
-    rolldir2(ip, jp) = k
+  if (ramp(k)>rampMax) then
+    rampMax = ramp(k)
+    rollDirSink(ik, jk) = k
   end if
   end do
-  if (tam<=tan(30.0/180.0*pi)) rolldir2(ip, jp) = 0
+  if (rampMax<=tan(repoAng/180.0*pi)) rollDirSink(ik, jk) = 0 ! no roll
   end do
   end do
+  !
   ! rebound and splash
-  nnnp = 0
-  addnnp = 0
-  pnch = 0.0
-  pdfch = 0.0
+  !
+  pNumTemp = 0
+  pNumAdd = 0
+  Dkz = 0.0
+  kArea = kxDiff*kyDiff
+  DbedPDist = 0.0
   eepnch = 0.0
   eepdfch = 0.0
   vpar = 0.0
@@ -946,156 +1103,185 @@ subroutine parCalculate
   npin = 0.0
   npout = 0.0
   dospl: do n = 1, pNum
-  ip = int((xp(n)-kx(1))/kxDiff) + 1
-  jp = int((yp(n)-ky(1))/kyDiff) + 1
-  if (ip<2) ip = 2
-  if (jp<2) jp = 2
-  if (ip>mkxNode-1) ip = mkxNode-1
-  if (jp>mky-1) jp = mky-1
-  if (mod(ip+jp, 2)==0) then
-    if (abs(yp(n)-ky(jp))>=kyDiff/kxDiff*abs(xp(n)-kx(ip))) then
-      kk = 1
-      point1(1) = kx(ip)
-      point1(2) = ky(jp)
-      point1(3) = kz(ip, jp)
-      point2(1) = kx(ip+1)
-      point2(2) = ky(jp+1)
-      point2(3) = kz(ip+1, jp+1)
-      point3(1) = kx(ip)
-      point3(2) = ky(jp+1)
-      point3(3) = kz(ip, jp+1)
-      vec1 = point2 - point1
-      vec2 = point3 - point1
-      nnvec = cross_prod(vec1, vec2)
+  ik = pLoc(n, 4)
+  jk = pLoc(n, 5)
+  ! ik+jk = Even num
+  ! whichSurfTri=1
+  !   3 ------- 2
+  !     |    /|
+  !     |  /  |
+  !     |/    |
+  !   1 ------- 3
+  !  whichSurfTri=2
+  !
+  ! ik+jk = Odd num
+  !  whichSurfTri=4
+  !   2 ------- 3
+  !     |\    |
+  !     |  \  |
+  !     |    \|
+  !   3 ------- 1
+  ! whichSurfTri=3
+  if (mod(ik+jk, 2)==0) then
+    if (abs(yp(n)-ky(jk))/kyDiff>=abs(xp(n)-kx(ik))/kxDiff) then
+      whichSurfTri = 1
+      point1(1) = kx(ik)
+      point1(2) = ky(jk)
+      point1(3) = kz(ik, jk)
+      point2(1) = kx(ik+1)
+      point2(2) = ky(jk+1)
+      point2(3) = kz(ik+1, jk+1)
+      point3(1) = kx(ik)
+      point3(2) = ky(jk+1)
+      point3(3) = kz(ik, jk+1)
+      vec12 = point2 - point1
+      vec13 = point3 - point1
+      surfNormal = crossProduct(vec12, vec13)
     else 
-      kk = 2
-      point1(1) = kx(ip)
-      point1(2) = ky(jp)
-      point1(3) = kz(ip, jp)
-      point2(1) = kx(ip+1)
-      point2(2) = ky(jp+1)
-      point2(3) = kz(ip+1, jp+1)
-      point3(1) = kx(ip+1)
-      point3(2) = ky(jp)
-      point3(3) = kz(ip+1, jp)
-      vec1 = point2 - point1
-      vec2 = point3 - point1
-      nnvec = cross_prod(vec2, vec1)
+      whichSurfTri = 2
+      point1(1) = kx(ik)
+      point1(2) = ky(jk)
+      point1(3) = kz(ik, jk)
+      point2(1) = kx(ik+1)
+      point2(2) = ky(jk+1)
+      point2(3) = kz(ik+1, jk+1)
+      point3(1) = kx(ik+1)
+      point3(2) = ky(jk)
+      point3(3) = kz(ik+1, jk)
+      vec12 = point2 - point1
+      vec13 = point3 - point1
+      surfNormal = crossProduct(vec13, vec12)
     end if
   else
-    if (abs(yp(n)-ky(jp))<=-kyDiff/kxDiff*abs(xp(n)-kx(ip))+kyDiff) then
-      kk = 3
-      point1(1) = kx(ip+1)
-      point1(2) = ky(jp)
-      point1(3) = kz(ip+1, jp)
-      point2(1) = kx(ip)
-      point2(2) = ky(jp+1)
-      point2(3) = kz(ip, jp+1)
-      point3(1) = kx(ip)
-      point3(2) = ky(jp)
-      point3(3) = kz(ip, jp)
-      vec1 = point2 - point1
-      vec2 = point3 - point1
-      nnvec = cross_prod(vec1, vec2)
+    if (1.0-abs(yp(n)-ky(jk))/kyDiff<=abs(xp(n)-kx(ik))/kxDiff) then
+      whichSurfTri = 3
+      point1(1) = kx(ik+1)
+      point1(2) = ky(jk)
+      point1(3) = kz(ik+1, jk)
+      point2(1) = kx(ik)
+      point2(2) = ky(jk+1)
+      point2(3) = kz(ik, jk+1)
+      point3(1) = kx(ik)
+      point3(2) = ky(jk)
+      point3(3) = kz(ik, jk)
+      vec12 = point2 - point1
+      vec13 = point3 - point1
+      surfNormal = crossProduct(vec12, vec13)
     else 
-      kk = 4
-      point1(1) = kx(ip+1)
-      point1(2) = ky(jp)
-      point1(3) = kz(ip+1, jp)
-      point2(1) = kx(ip)
-      point2(2) = ky(jp+1)
-      point2(3) = kz(ip, jp+1)
-      point3(1) = kx(ip+1)
-      point3(2) = ky(jp+1)
-      point3(3) = kz(ip+1, jp+1)
-      vec1 = point2 - point1
-      vec2 = point3 - point1
-      nnvec = cross_prod(vec2, vec1)
+      whichSurfTri = 4
+      point1(1) = kx(ik+1)
+      point1(2) = ky(jk)
+      point1(3) = kz(ik+1, jk)
+      point2(1) = kx(ik)
+      point2(2) = ky(jk+1)
+      point2(3) = kz(ik, jk+1)
+      point3(1) = kx(ik+1)
+      point3(2) = ky(jk+1)
+      point3(3) = kz(ik+1, jk+1)
+      vec12 = point2 - point1
+      vec13 = point3 - point1
+      surfNormal = crossProduct(vec13, vec12)
     end if
   end if
-  xpvec1(1) = xp(n)
-  xpvec1(2) = yp(n)
-  xpvec1(3) = zp(n)
-  upvec1(1) = up(n)
-  upvec1(2) = vp(n)
-  upvec1(3) = wp(n)
-  ttvec = cross_prod(nnvec, upvec1)
-  tnvec = cross_prod(ttvec, nnvec)
+  point0 = closestPoint2Triangle(point0, point1, point2, point3)
+  unitSurfNormal = unit_vec(surfNormal)
   !
-  vec3 = xpvec1 - point1
-  lmt3 = (vec1(1)*vec3(2)-vec1(2)*vec3(1))/(vec1(1)*vec2(2)-vec1(2)*vec2(1))
-  lmt2 = (vec3(1)-vec2(1)*lmt3)/vec1(1)
-  lmt1 = 1.0 - lmt2 - lmt3
-  point0(1) = xpvec1(1)
-  point0(2) = xpvec1(2)
-  point0(3) = lmt1*point1(3) + lmt2*point2(3) + lmt3*point3(3)
+  pLocVec(1) = xp(n)
+  pLocVec(2) = yp(n)
+  pLocVec(3) = zp(n)
+  vec1p = pLocVec - point1
+  dotP1 = dotProduct(vec12, vec1p)
+  dotP2 = dotProduct(vec13, vec1p)
+  if (dotP1<=0.0 .and. dotP2<=0.0) then
+      point0 = point1
+  else
+      vec2p = pLocVec - point2
+      dotP3 = dotProduct(vec12, vec2p)
+      dotP4 = dotProduct(vec13, vec2p)
+      if (dotP3>=0.0 .and. dotP4<=dotP3) then
+          point0 = point2
+      else
+          lam23 = dotP1*dotP4 - dotP3*dotP2
+          if (lam23<=0.0 .and. dotP1>=0.0 .and. dotP3<=0.0) then
+      end if
+  end if
+  lambda3 = (vec1(1)*vec3(2)-vec1(2)*vec3(1))/(vec1(1)*vec2(2)-vec1(2)*vec2(1))
+  lambda2 = (vec3(1)-vec2(1)*lambda3)/vec1(1)
+  lambda1 = 1.0 - lambda2 - lambda3
+  point0(1) = pLocVec(1)
+  point0(2) = pLocVec(2)
+  point0(3) = lambda1*point1(3) + lambda2*point2(3) + lambda3*point3(3)
   !
-  fz(n) = xpvec1(3) - point0(3)
+  fz(n) = pLocVec(3) - point0(3)
   !
-  unnvec = unit_vec(nnvec)
-  vin(3) = dot_prod(upvec1, unnvec)
+  vin(3) = dotProduct(pVelVec, unitSurfNormal)
   ifimpact: if (fz(n)<=0.0 .and. vin(3)<0.0) then
     ! information of inject particle
+    pVelVec(1) = up(n)
+    pVelVec(2) = vp(n)
+    pVelVec(3) = wp(n)
+    ttvec = crossProduct(surfNormal, pVelVec)
+    tnvec = crossProduct(ttvec, surfNormal)
     utnvec = unit_vec(tnvec)
     uttvec = unit_vec(ttvec)
-    vin(1) = dot_prod(upvec1, utnvec)
-    vin(2) = dot_prod(upvec1, uttvec)
+    vin(1) = dotProduct(pVelVec, utnvec)
+    vin(2) = dotProduct(pVelVec, uttvec)
     gg(1) = 0.0
     gg(2) = 0.0
     gg(3) = 9.8
-    gg3 = 9.8 !abs(dot_prod(gg, unnvec))
-    norm_vin = norm_2(upvec1)
+    gg3 = 9.8 !abs(dotProduct(gg, unitSurfNormal))
+    norm_vin = norm_2(pVelVec)
     ! nearest point to impact point
     d01 = dist_p(point0, point1)
     d02 = dist_p(point0, point2)
     d03 = dist_p(point0, point3)
-    select case(kk)
+    select case(whichSurfTri)
     case(1)
       if (d01<=d02 .and. d01<=d03) then
-        ipp = ip
-        jpp = jp
+        ipp = ik
+        jpp = jk
       else if (d02<=d01 .and. d02<=d03) then
-        ipp = ip + 1
-        jpp = jp + 1
+        ipp = ik + 1
+        jpp = jk + 1
       else if (d03<=d01 .and. d03<=d02) then
-        ipp = ip
-        jpp = jp + 1
+        ipp = ik
+        jpp = jk + 1
       end if
     case(2)
       if (d01<=d02 .and. d01<=d03) then
-        ipp = ip
-        jpp = jp
+        ipp = ik
+        jpp = jk
       else if (d02<=d01 .and. d02<=d03) then
-        ipp = ip + 1
-        jpp = jp + 1
+        ipp = ik + 1
+        jpp = jk + 1
       else if (d03<=d01 .and. d03<=d02) then
-        ipp = ip + 1
-        jpp = jp
+        ipp = ik + 1
+        jpp = jk
       end if
     case(3)
       if (d01<=d02 .and. d01<=d03) then
-        ipp = ip + 1
-        jpp = jp
+        ipp = ik + 1
+        jpp = jk
       else if (d02<=d01 .and. d02<=d03) then
-        ipp = ip
-        jpp = jp + 1
+        ipp = ik
+        jpp = jk + 1
       else if (d03<=d01 .and. d03<=d02) then
-        ipp = ip
-        jpp = jp
+        ipp = ik
+        jpp = jk
       end if
     case(4)
       if (d01<=d02 .and. d01<=d03) then
-        ipp = ip + 1
-        jpp = jp
+        ipp = ik + 1
+        jpp = jk
       else if (d02<=d01 .and. d02<=d03) then
-        ipp = ip
-        jpp = jp + 1
+        ipp = ik
+        jpp = jk + 1
       else if (d03<=d01 .and. d03<=d02) then
-        ipp = ip + 1
-        jpp = jp + 1
+        ipp = ik + 1
+        jpp = jk + 1
       end if
     case default
-      print*, 'kk error1'
+      print*, 'whichSurfTri error1'
       stop
     end select
     ! properties of injector and particles in the bed
@@ -1113,11 +1299,11 @@ subroutine parCalculate
     vvpin = vvpin + norm_vin**2
     mpin = mpin + mm1
     npin = npin + 1.0
-    mupin(ip, jp) = mupin(ip, jp) + mm1*vin(1)
-    mvpin(ip, jp) = mvpin(ip, jp) + mm1*vin(3)
-    !upvec1(1) = upvec1(1) - ucreep(ipp, jpp)
-    !upvec1(2) = upvec1(2) - vcreep(ipp, jpp)
-    norm_vin = norm_2(upvec1)
+    mupin(ik, jk) = mupin(ik, jk) + mm1*vin(1)
+    mvpin(ik, jk) = mvpin(ik, jk) + mm1*vin(3)
+    !pVelVec(1) = pVelVec(1) - ucreep(ipp, jpp)
+    !pVelVec(2) = pVelVec(2) - vcreep(ipp, jpp)
+    norm_vin = norm_2(pVelVec)
     ee1 = 0.5*mm1*norm_vin**2
     ! particle rebound
     if (isp==0) then ! lammel
@@ -1154,7 +1340,7 @@ subroutine parCalculate
     end if
     if (nne==0) then
       ! influence of repose angle
-      select case(rolldir1(ipp, jpp))
+      select case(rollDirBump(ipp, jpp))
       case(0)
         ii = ipp
         jj = jpp
@@ -1171,7 +1357,7 @@ subroutine parCalculate
         ii = ipp
         jj = jpp-1
       case default
-        print*, rolldir1(ipp, jpp), 'rolldir1 error'
+        print*, rollDirBump(ipp, jpp), 'rollDirBump error'
         stop
       end select
       if (ipd/=2) then
@@ -1188,15 +1374,15 @@ subroutine parCalculate
           stop
         end if
       end if
-      vch = nkl*(pi*d1**3)/6.0
+      vch = nkl*(pi*d1**3)/6.0/por
       if (jj>=mky+1) jj = 3
       if (ii<=mkxNode) then
-        pnch(ii, jj) = pnch(ii, jj) + vch
-        pdfch(ii, jj, iii) = pdfch(ii, jj, iii) + vch
+        Dkz(ii, jj) = Dkz(ii, jj) + vch/kArea
+        DbedPDist(ii, jj, iii) = DbedPDist(ii, jj, iii) + vch
       else
         eepnch(jj) = eepnch(jj) + vch
-        jk = iii + (jj-1)*npdf
-        eepdfch(jk) = eepdfch(jk) + vch
+        jjkk = iii + (jj-1)*npdf
+        eepdfch(jjkk) = eepdfch(jjkk) + vch
       end if
     else
       ammu2 = 0.0
@@ -1205,32 +1391,32 @@ subroutine parCalculate
       vout(1) = norm_vout*cos(angout1) !*cos(angout2)
       vout(2) = 0.0 !norm_vout*cos(angout1)*sin(angout2)
       vout(3) = norm_vout*sin(angout1)
-      vec1 = vout(1)*utnvec
-      vec2 = vout(2)*uttvec
-      vec3 = vout(3)*unnvec
-      upvec2 = vec1 + vec2 + vec3
+      vector1 = vout(1)*utnvec
+      vector2 = vout(2)*uttvec
+      vector3 = vout(3)*unitSurfNormal
+      upvec2 = vector1 + vector2 + vector3
       !upvec2(1) = upvec2(1) + ucreep(ipp, jpp)
       !upvec2(2) = upvec2(2) + vcreep(ipp, jpp)
-      nnnp = nnnp + 1
-      xp(nnnp) = point0(1) !+ upvec2(1)*dt
-      yp(nnnp) = point0(2) !+ upvec2(2)*dt
-      zp(nnnp) = point0(3) !+ upvec2(3)*dt
-      up(nnnp) = upvec2(1)
-      vp(nnnp) = upvec2(2)
-      wp(nnnp) = upvec2(3)
-      dp(nnnp) = d1
-      fk(nnnp) = 0.0 !fk(n) !upvec2(1)*dt
-      fh(nnnp) = 0.0
-      fg(nnnp) = zp(nnnp)
-      ft(nnnp) = 0.0
-      fz(nnnp) = 0.0 !upvec2(3)*dt
+      pNumTemp = pNumTemp + 1
+      xp(pNumTemp) = point0(1) !+ upvec2(1)*dt
+      yp(pNumTemp) = point0(2) !+ upvec2(2)*dt
+      zp(pNumTemp) = point0(3) !+ upvec2(3)*dt
+      up(pNumTemp) = upvec2(1)
+      vp(pNumTemp) = upvec2(2)
+      wp(pNumTemp) = upvec2(3)
+      dp(pNumTemp) = d1
+      fk(pNumTemp) = 0.0 !fk(n) !upvec2(1)*dt
+      fh(pNumTemp) = 0.0
+      fg(pNumTemp) = zp(pNumTemp)
+      ft(pNumTemp) = 0.0
+      fz(pNumTemp) = 0.0 !upvec2(3)*dt
       wflx = wflx + nkl*mm1/xMax/yMax/dt
       vpout = vpout + vout
       norm_vpout = norm_vpout + norm_vout
       vvpout = vvpout + norm_vout**2
       mpout = mpout + mm1
-      mupout(ip, jp) = mupout(ip, jp) + mm2*vout(1)
-      mvpout(ip, jp) = mvpout(ip, jp) + mm2*vout(2)
+      mupout(ik, jk) = mupout(ik, jk) + mm2*vout(1)
+      mvpout(ik, jk) = mvpout(ik, jk) + mm2*vout(2)
       npout = npout + 1.0
     end if
     ! particle splash
@@ -1259,7 +1445,7 @@ subroutine parCalculate
     end if
     if (ne>=1) then
       ! influence of repose angle
-      select case(rolldir2(ipp, jpp))
+      select case(rollDirSink(ipp, jpp))
       case(0)
         ii = ipp
         jj = jpp
@@ -1276,7 +1462,7 @@ subroutine parCalculate
         ii = ipp
         jj = jpp-1
       case default
-        print*, rolldir2(ipp, jpp), 'rolldir2 error'
+        print*, rollDirSink(ipp, jpp), 'rollDirSink error'
         stop
       end select
       splp: do kd = 1, ne
@@ -1286,7 +1472,7 @@ subroutine parCalculate
       aSigma2 = 10.0/180.0*pi
       if (ipd==0) then
         ppdf = bedPDist(ipp, jpp, :)
-        dpd = normalPD(ppdf, dpa, dSigma, npdf, rpdf)
+        dpd = valObeyCertainProbDist(ppdf, dpa, dSigma, npdf, rpdf)
       else if (ipd==1) then
         dpd = dpa
       else if (ipd==2) then
@@ -1315,35 +1501,35 @@ subroutine parCalculate
       vout(1) = 0.0 !norm_vout*cos(angout1) !*cos(angout2)
       vout(2) = 0.0 !norm_vout*cos(angout1)*sin(angout2)
       vout(3) = norm_vout !*sin(angout1)
-      vec1 = vout(1)*utnvec
-      vec2 = vout(2)*uttvec
-      vec3 = vout(3)*unnvec
-      upvec2 = vec1 + vec2 + vec3
+      vector1 = vout(1)*utnvec
+      vector2 = vout(2)*uttvec
+      vector3 = vout(3)*unitSurfNormal
+      upvec2 = vector1 + vector2 + vector3
       !upvec2(1) = upvec2(1) + ucreep(ipp, jpp)
       !upvec2(2) = upvec2(2) + vcreep(ipp, jpp)
       call random_number(rr1)
       call random_number(rr2)
       call random_number(rr3)
-      addnnp = addnnp + 1
-      tempx(addnnp) = point0(1) + upvec2(1)*dt*rr1
-      tempy(addnnp) = point0(2) + upvec2(2)*dt*rr2
-      tempz(addnnp) = point0(3) + upvec2(3)*dt*rr3
-      tempu(addnnp) = 0.0 !upvec2(1)
-      tempv(addnnp) = 0.0 !upvec2(2)
-      tempw(addnnp) = norm_vout !upvec2(3)
-      tempd(addnnp) = dpd
-      tempfk(addnnp) = 0.0 !upvec2(1)*dt
-      tempfh(addnnp) = 0.0
-      tempfg(addnnp) = tempz(addnnp)
-      tempft(addnnp) = 0.0
-      tempfz(addnnp) = 0.0 !upvec2(3)*dt
+      pNumAdd = pNumAdd + 1
+      tempx(pNumAdd) = point0(1) + upvec2(1)*dt*rr1
+      tempy(pNumAdd) = point0(2) + upvec2(2)*dt*rr2
+      tempz(pNumAdd) = point0(3) + upvec2(3)*dt*rr3
+      tempu(pNumAdd) = 0.0 !upvec2(1)
+      tempv(pNumAdd) = 0.0 !upvec2(2)
+      tempw(pNumAdd) = norm_vout !upvec2(3)
+      tempd(pNumAdd) = dpd
+      tempfk(pNumAdd) = 0.0 !upvec2(1)*dt
+      tempfh(pNumAdd) = 0.0
+      tempfg(pNumAdd) = tempz(pNumAdd)
+      tempft(pNumAdd) = 0.0
+      tempfz(pNumAdd) = 0.0 !upvec2(3)*dt
       wflx = wflx + nkl*mm2/xMax/yMax/dt
       vpout = vpout + vout
       norm_vpout = norm_vpout + norm_vout
       vvpout = vvpout + norm_vout**2
       mpout = mpout + mm2
-      mupout(ip, jp) = mupout(ip, jp) + mm2*vout(1)
-      mvpout(ip, jp) = mvpout(ip, jp) + mm2*vout(2)
+      mupout(ik, jk) = mupout(ik, jk) + mm2*vout(1)
+      mvpout(ik, jk) = mvpout(ik, jk) + mm2*vout(2)
       npout = npout + 1.0
       if (ipd/=2) then
         iii = int((dpd-dpa+dSigma*3.0)/dSigma/6.0*dfloat(npdf)) + 1
@@ -1359,56 +1545,56 @@ subroutine parCalculate
           stop
         end if
       end if
-      vch = nkl*(pi*dpd**3)/6.0
+      vch = nkl*(pi*dpd**3)/6.0/por
       if (jj==mky+1) jj = 3
       if (ii<=mkxNode) then
-        pnch(ii, jj) = pnch(ii, jj) - vch
-        pdfch(ii, jj, iii) = pdfch(ii, jj, iii) - vch
+        Dkz(ii, jj) = Dkz(ii, jj) - vch/kArea
+        DbedPDist(ii, jj, iii) = DbedPDist(ii, jj, iii) - vch
       else
         eepnch(jj) = eepnch(jj) - vch
-        jk = iii + (jj-1)*npdf
-        eepdfch(jk) = eepdfch(jk) - vch
+        jjkk = iii + (jj-1)*npdf
+        eepdfch(jjkk) = eepdfch(jjkk) - vch
       end if
       end do splp
     end if
   else
-    nnnp = nnnp + 1
-    xp(nnnp) = xp(n)
-    yp(nnnp) = yp(n)
-    zp(nnnp) = zp(n)
-    up(nnnp) = up(n)
-    vp(nnnp) = vp(n)
-    wp(nnnp) = wp(n)
-    dp(nnnp) = dp(n)
-    fk(nnnp) = fk(n)
-    fh(nnnp) = fh(n)
-    fg(nnnp) = fg(n)
-    ft(nnnp) = ft(n)
-    fz(nnnp) = fz(n)
+    pNumTemp = pNumTemp + 1
+    xp(pNumTemp) = xp(n)
+    yp(pNumTemp) = yp(n)
+    zp(pNumTemp) = zp(n)
+    up(pNumTemp) = up(n)
+    vp(pNumTemp) = vp(n)
+    wp(pNumTemp) = wp(n)
+    dp(pNumTemp) = dp(n)
+    fk(pNumTemp) = fk(n)
+    fh(pNumTemp) = fh(n)
+    fg(pNumTemp) = fg(n)
+    ft(pNumTemp) = ft(n)
+    fz(pNumTemp) = fz(n)
   end if ifimpact
   end do dospl
-  if (addnnp>=1) then
-    pNum = nnnp+addnnp
-    if (pNum>nnpmax) then
-      print*, pNum, nnpmax
+  if (pNumAdd>=1) then
+    pNum = pNumTemp+pNumAdd
+    if (pNum>pNumMax) then
+      print*, pNum, pNumMax
       print*, "particle number reach the threshold"
       stop
     else
-      xp(nnnp+1:nnnp+addnnp) = tempx(1:addnnp)
-      yp(nnnp+1:nnnp+addnnp) = tempy(1:addnnp)
-      zp(nnnp+1:nnnp+addnnp) = tempz(1:addnnp)
-      up(nnnp+1:nnnp+addnnp) = tempu(1:addnnp)
-      vp(nnnp+1:nnnp+addnnp) = tempv(1:addnnp)
-      wp(nnnp+1:nnnp+addnnp) = tempw(1:addnnp)
-      dp(nnnp+1:nnnp+addnnp) = tempd(1:addnnp)
-      fk(nnnp+1:nnnp+addnnp) = tempfk(1:addnnp)
-      fh(nnnp+1:nnnp+addnnp) = tempfh(1:addnnp)
-      fg(nnnp+1:nnnp+addnnp) = tempfg(1:addnnp)
-      ft(nnnp+1:nnnp+addnnp) = tempft(1:addnnp)
-      fz(nnnp+1:nnnp+addnnp) = tempfz(1:addnnp)
+      xp(pNumTemp+1:pNumTemp+pNumAdd) = tempx(1:pNumAdd)
+      yp(pNumTemp+1:pNumTemp+pNumAdd) = tempy(1:pNumAdd)
+      zp(pNumTemp+1:pNumTemp+pNumAdd) = tempz(1:pNumAdd)
+      up(pNumTemp+1:pNumTemp+pNumAdd) = tempu(1:pNumAdd)
+      vp(pNumTemp+1:pNumTemp+pNumAdd) = tempv(1:pNumAdd)
+      wp(pNumTemp+1:pNumTemp+pNumAdd) = tempw(1:pNumAdd)
+      dp(pNumTemp+1:pNumTemp+pNumAdd) = tempd(1:pNumAdd)
+      fk(pNumTemp+1:pNumTemp+pNumAdd) = tempfk(1:pNumAdd)
+      fh(pNumTemp+1:pNumTemp+pNumAdd) = tempfh(1:pNumAdd)
+      fg(pNumTemp+1:pNumTemp+pNumAdd) = tempfg(1:pNumAdd)
+      ft(pNumTemp+1:pNumTemp+pNumAdd) = tempft(1:pNumAdd)
+      fz(pNumTemp+1:pNumTemp+pNumAdd) = tempfz(1:pNumAdd)
     end if
   else
-    pNum = nnnp
+    pNum = pNumTemp
   end if
   !
   do n = 1, pNum
@@ -1416,9 +1602,9 @@ subroutine parCalculate
   volp = (pi*dpd**3)/6.0
   mp = rhos*volp
   point0(3) = zp(n) - fz(n)
-  if (zp(n)<zu) then
+  if (zp(n)<zUni) then
     hpl = 1
-    hrlx1 = (zu - point0(3))/(zu-initAveKz)
+    hrlx1 = (zUni - point0(3))/(zUni-initAveKz)
   else
     hpl = 0
     hrlx1 = 1.0
@@ -1443,21 +1629,21 @@ subroutine parCalculate
   !aucreep = 0.0
   !qcreepx = 0.0
   !qcreepy = 0.0
-  !do jp = 2, mky-1
-  !do ip = 2, mkxNode-1
-  !dzz = kz(ip, jp) - kz(ip-1, jp)
+  !do jk = 2, mky-1
+  !do ik = 2, mkxNode-1
+  !dzz = kz(ik, jk) - kz(ik-1, jk)
   !gg1 = 9.8*dzz/sqrt(dzz**2+kxDiff**2)
   !gg2 = 9.8*kxDiff/sqrt(dzz**2+kxDiff**2)
-  !qcreepx(ip, jp) = dt*(mupin(ip, jp) - dt*kxDiff*kyDiff*dpa*por*rhos*(gg1+gg2*0.5) - mupout(ip, jp))/kxDiff/rhos/por
-  !if (qcreepx(ip, jp)<0.0) qcreepx(ip, jp) = 0.0
-  !dzz = kz(ip, jp) - kz(ip, jp-1)
+  !qcreepx(ik, jk) = dt*(mupin(ik, jk) - dt*kxDiff*kyDiff*dpa*por*rhos*(gg1+gg2*0.5) - mupout(ik, jk))/kxDiff/rhos/por
+  !if (qcreepx(ik, jk)<0.0) qcreepx(ik, jk) = 0.0
+  !dzz = kz(ik, jk) - kz(ik, jk-1)
   !gg1 = 9.8*dzz/sqrt(dzz**2+kyDiff**2)
   !gg2 = 9.8*kyDiff/sqrt(dzz**2+kyDiff**2)
-  !qcreepy(ip, jp) = dt*(mvpin(ip, jp) - dt*kxDiff*kyDiff*dpa*por*rhos*(gg1+gg2*0.5) - mvpout(ip, jp))/kyDiff/rhos/por
-  !if (qcreepy(ip, jp)<0.0) qcreepy(ip, jp) = 0.0
-  !ucreep(ip, jp) = qcreepx(ip, jp)/dt/kyDiff/dpa
-  !vcreep(ip, jp) = qcreepy(ip, jp)/dt/kxDiff/dpa
-  !aucreep = aucreep + ucreep(ip, jp)/dfloat((mkxNode-2)*(mky-2))
+  !qcreepy(ik, jk) = dt*(mvpin(ik, jk) - dt*kxDiff*kyDiff*dpa*por*rhos*(gg1+gg2*0.5) - mvpout(ik, jk))/kyDiff/rhos/por
+  !if (qcreepy(ik, jk)<0.0) qcreepy(ik, jk) = 0.0
+  !ucreep(ik, jk) = qcreepx(ik, jk)/dt/kyDiff/dpa
+  !vcreep(ik, jk) = qcreepy(ik, jk)/dt/kxDiff/dpa
+  !aucreep = aucreep + ucreep(ik, jk)/dfloat((mkxNode-2)*(mky-2))
   !end do
   !end do
   !call pxch(mkxNode, mky, qcreepx, surfExType, neighbor, comm1D)
@@ -1474,10 +1660,10 @@ subroutine parCalculate
   !mmp = dpa**3*pi/6.0*rhos
   !nump = xMax*yMax*dpa*por/(pi*dpa**3/6.0)
   !uflx = uflx + nump*mmp*aucreep/xMax/yMax
-  !do jp = 2, mky-1
-  !do ip = 2, mkxNode-1
-  !vch = qcreepx(ip-1, jp) - qcreepx(ip, jp) + qcreepy(ip, jp-1) - qcreepy(ip, jp)
-  !pnch(ip, jp) = pnch(ip, jp) + vch
+  !do jk = 2, mky-1
+  !do ik = 2, mkxNode-1
+  !vch = qcreepx(ik-1, jk) - qcreepx(ik, jk) + qcreepy(ik, jk-1) - qcreepy(ik, jk)
+  !Dkz(ik, jk) = Dkz(ik, jk) + vch/kArea/por
   !end do
   !end do
   call surfexch
@@ -1557,13 +1743,13 @@ subroutine parCalculate
       ! unnvec = n1 (1->2), uttvec=n2 (2->1)
       unnvec = unit_vec(nnvec)
       uttvec = -unnvec
-      ! vec1=v12 (v1-v2), vec2=v21 (v2-v1)
-      vec1 = upvec1 - upvec2
-      vec2 = -vec1
+      ! vector1=v12 (v1-v2), vector2=v21 (v2-v1)
+      vector1 = upvec1 - upvec2
+      vector2 = -vector1
       ! nv1=n.v12, nv2=n.v21
-      nv1 = dot_prod(unnvec, vec1)
+      nv1 = dotProduct(unnvec, vector1)
       nv2 = nv1
-      tv1 = sqrt((vec1(1)-nv1*unnvec(1))**2+(vec1(2)-nv1*unnvec(2))**2+(vec1(3)-nv1*unnvec(3))**2)
+      tv1 = sqrt((vector1(1)-nv1*unnvec(1))**2+(vector1(2)-nv1*unnvec(2))**2+(vector1(3)-nv1*unnvec(3))**2)
       tv2 = tv1
       mm1 = (pi*dp(n)**3)/6.0*rhos
       mm2 = (pi*dp(nn)**3)/6.0*rhos
@@ -1579,20 +1765,20 @@ subroutine parCalculate
       !  beta2 = fric1*(1.0+els1)*nv2/tv2/(1.0+eta2)
       !end if
       !
-      up(n) = upvec1(1) - alpha1*nv1*unnvec(1) - beta1*(vec1(1)-nv1*unnvec(1))
-      vp(n) = upvec1(2) - alpha1*nv1*unnvec(2) - beta1*(vec1(2)-nv1*unnvec(2))
-      wp(n) = upvec1(3) - alpha1*nv1*unnvec(3) - beta1*(vec1(3)-nv1*unnvec(3))
-      up(nn) = upvec2(1) - alpha2*nv2*uttvec(1) - beta2*(vec2(1)-nv2*uttvec(1))
-      vp(nn) = upvec2(2) - alpha2*nv2*uttvec(2) - beta2*(vec2(2)-nv2*uttvec(2))
-      wp(nn) = upvec2(3) - alpha2*nv2*uttvec(3) - beta2*(vec2(3)-nv2*uttvec(3))
+      up(n) = upvec1(1) - alpha1*nv1*unnvec(1) - beta1*(vector1(1)-nv1*unnvec(1))
+      vp(n) = upvec1(2) - alpha1*nv1*unnvec(2) - beta1*(vector1(2)-nv1*unnvec(2))
+      wp(n) = upvec1(3) - alpha1*nv1*unnvec(3) - beta1*(vector1(3)-nv1*unnvec(3))
+      up(nn) = upvec2(1) - alpha2*nv2*uttvec(1) - beta2*(vector2(1)-nv2*uttvec(1))
+      vp(nn) = upvec2(2) - alpha2*nv2*uttvec(2) - beta2*(vector2(2)-nv2*uttvec(2))
+      wp(nn) = upvec2(3) - alpha2*nv2*uttvec(3) - beta2*(vector2(3)-nv2*uttvec(3))
       upvec1(1) = up(n)
       upvec1(2) = vp(n)
       upvec1(3) = wp(n)
       upvec2(1) = up(nn)
       upvec2(2) = vp(nn)
       upvec2(3) = wp(nn)
-      nv1 = dot_prod(unnvec, upvec1)
-      nv2 = dot_prod(unnvec, upvec2)
+      nv1 = dotProduct(unnvec, upvec1)
+      nv2 = dotProduct(unnvec, upvec2)
       if (nv1>=nv2) then
         xpvec2 = xpvec1 - rrrd*unnvec
       else
@@ -1624,7 +1810,7 @@ subroutine parCalculate
     end do
   end if
   ! pick out particles out of boundary
-  nnnp = 0
+  pNumTemp = 0
   nn = 0
   nni = 0
   pick: do n = 1, pNum
@@ -1665,22 +1851,22 @@ subroutine parCalculate
     chfgi(nni) = fg(n)
     chfti(nni) = ft(n)
   else
-    nnnp = nnnp + 1
-    xp(nnnp) = xp(n)
-    yp(nnnp) = yp(n)
-    zp(nnnp) = zp(n)
-    up(nnnp) = up(n)
-    vp(nnnp) = vp(n)
-    wp(nnnp) = wp(n)
-    dp(nnnp) = dp(n)
-    fk(nnnp) = fk(n)
-    fz(nnnp) = fz(n)
-    fh(nnnp) = fh(n)
-    fg(nnnp) = fg(n)
-    ft(nnnp) = ft(n)
+    pNumTemp = pNumTemp + 1
+    xp(pNumTemp) = xp(n)
+    yp(pNumTemp) = yp(n)
+    zp(pNumTemp) = zp(n)
+    up(pNumTemp) = up(n)
+    vp(pNumTemp) = vp(n)
+    wp(pNumTemp) = wp(n)
+    dp(pNumTemp) = dp(n)
+    fk(pNumTemp) = fk(n)
+    fz(pNumTemp) = fz(n)
+    fh(pNumTemp) = fh(n)
+    fg(pNumTemp) = fg(n)
+    ft(pNumTemp) = ft(n)
   end if
   end do pick
-  pNum = nnnp
+  pNum = pNumTemp
   ! particle exchange between processes
   call MPI_SENDRECV(nn,1,intType,neighbor(2),18,  &
     nnn,1,intType,neighbor(1),18,comm1D,status,ierr)
@@ -1787,8 +1973,8 @@ subroutine parCalculate
     do i = 2, mkxNode-1
     vlayer(i, j) = kxDiff*kyDiff*bedCellTkness(i, j)*por
     do k = 1, npdf
-    vbin(i, j, k) = bedPDist(i, j, k)*vlayer(i, j) + pdfch(i, j, k)
-    vlayer(i, j) = vlayer(i, j) + pdfch(i, j, k)
+    vbin(i, j, k) = bedPDist(i, j, k)*vlayer(i, j) + DbedPDist(i, j, k)
+    vlayer(i, j) = vlayer(i, j) + DbedPDist(i, j, k)
     end do
     end do
     end do
@@ -1822,8 +2008,8 @@ subroutine parCalculate
     do j = 1, mky
     pzpdfch(j) = bedCellTkness(mkxNode-1, j)
     do k = 1, npdf
-    jk = k + (j-1)*npdf
-    ppdfch(jk) = bedPDist(mkxNode-1, j, k)
+    jjkk = k + (j-1)*npdf
+    ppdfch(jjkk) = bedPDist(mkxNode-1, j, k)
     end do
     end do
     call MPI_SENDRECV(ppdfch,mky*npdf,realType,neighbor(2),201,  &
@@ -1833,16 +2019,16 @@ subroutine parCalculate
     do j = 1, mky
     bedCellTkness(1, j) = pzpdfchr(j)
     do k = 1, npdf
-    jk = k + (j-1)*npdf
-    bedPDist(1, j, k) = ppdfchr(jk)
+    jjkk = k + (j-1)*npdf
+    bedPDist(1, j, k) = ppdfchr(jjkk)
     end do
     end do
     ! i=2 send to i=mkxNode: send to 1 and receive from 2
     do j = 1, mky
     izpdfch(j) = bedCellTkness(2, j)
     do k = 1, npdf
-    jk = k + (j-1)*npdf
-    ipdfch(jk) = bedPDist(2, j, k)
+    jjkk = k + (j-1)*npdf
+    ipdfch(jjkk) = bedPDist(2, j, k)
     end do
     end do
     call MPI_SENDRECV(ipdfch,mky*npdf,realType,neighbor(1),202,  &
@@ -1852,8 +2038,8 @@ subroutine parCalculate
     do j = 1, mky
     bedCellTkness(mkxNode, j) = izpdfchr(j)
     do k = 1, npdf
-    jk = k + (j-1)*npdf
-    bedPDist(mkxNode, j, k) = ipdfchr(jk)
+    jjkk = k + (j-1)*npdf
+    bedPDist(mkxNode, j, k) = ipdfchr(jjkk)
     end do
     end do
     ! y=mky-1 send to y=1, y=2 send to y=mky
@@ -1924,26 +2110,26 @@ subroutine parCalculate
   deallocate(chupi, chvpi, chwpi)
   deallocate(chdpi, chfki, chfzi)
   deallocate(chfhi, chfgi, chfti)
-end subroutine parCalculate
+end subroutine particleCal
 
-subroutine parloc(iii, jjj, kkk1, kkk2, xxp, yyp, zzp, hhp, hr1, hl, dhcld)
+subroutine parloc(iLoc, jLoc, kkk1, kkk2, xxp, yyp, zzp, hhp, hr1, hl, dhcld)
   use public_val
   implicit none
   include "mpif.h"
   ! public
-  integer :: iii, jjj, kkk1, kkk2, hl
-  double precision, intent(in) :: xxp, yyp, zzp, hhp, hr1
-  double precision :: dhcld
+  integer :: iLoc, jLoc, kkk1, kkk2, hl
+  real(kind=dbPc), intent(in) :: xxp, yyp, zzp, hhp, hr1
+  real(kind=dbPc) :: dhcld
   ! local
   integer :: k
-  double precision :: zzw, zzw0, zzw1, zzw2, rzp
+  real(kind=dbPc) :: zzw, zzw0, zzw1, zzw2, rzp
   !
-  iii = int((xxp-xu(1))/xDiff) + 1
-  jjj = int((yyp-yv(1))/yDiff) + 1
-  if (iii<1) iii=1
-  if (jjj<1) jjj=1
-  if (iii>mxNode) iii=mxNode
-  if (jjj>my) jjj=my
+  iLoc = int((xxp-xu(1))/xDiff) + 1
+  jLoc = int((yyp-yv(1))/yDiff) + 1
+  if (iLoc<1) iLoc = 1
+  if (jLoc<1) jLoc = 1
+  if (iLoc>mxNode-1) iLoc = mxNode - 1
+  if (jLoc>my-1) jLoc = my - 1
   dhcld = 0.0
   if (hl==1) then
     if (hhp<zw(1)) then
@@ -2002,23 +2188,23 @@ subroutine parvol(uup, vvp, wwp, xxp, yyp, hhp, ddp, mmp, k, kk, hrlx1, dhcld, f
   include "mpif.h"
   ! public
   integer, intent(in) :: k, kk
-  double precision :: uup, vvp, wwp
-  double precision :: xxp, yyp, hhp, ffk
-  double precision, intent(in) :: ddp, mmp, hrlx1, dhcld
+  real(kind=dbPc) :: uup, vvp, wwp
+  real(kind=dbPc) :: xxp, yyp, hhp, ffk
+  real(kind=dbPc), intent(in) :: ddp, mmp, hrlx1, dhcld
   ! local
-  double precision :: alpha, beta
-  double precision :: ufp, vfp, wfp
-  double precision :: d1x, d1y, d1z
-  double precision :: d1u, d1v, d1w
-  double precision :: d2x, d2y, d2z
-  double precision :: d2u, d2v, d2w
-  double precision :: d3x, d3y, d3z
-  double precision :: d3u, d3v, d3w
-  double precision :: d4x, d4y, d4z
-  double precision :: d4u, d4v, d4w
-  double precision :: xxp0
+  real(kind=dbPc) :: alpha, beta
+  real(kind=dbPc) :: ufp, vfp, wfp
+  real(kind=dbPc) :: d1x, d1y, d1z
+  real(kind=dbPc) :: d1u, d1v, d1w
+  real(kind=dbPc) :: d2x, d2y, d2z
+  real(kind=dbPc) :: d2u, d2v, d2w
+  real(kind=dbPc) :: d3x, d3y, d3z
+  real(kind=dbPc) :: d3u, d3v, d3w
+  real(kind=dbPc) :: d4x, d4y, d4z
+  real(kind=dbPc) :: d4u, d4v, d4w
+  real(kind=dbPc) :: xxp0
   ! function
-  double precision :: ffd
+  real(kind=dbPc) :: ffd
   ! ufp, vfp, wfp
   if (k>mz) then
     ufp = hru(mz)
@@ -2081,23 +2267,23 @@ subroutine fluidField
   integer :: kk
   integer :: h
   integer :: ierr
-  double precision :: mixl
-  double precision :: dudz
-  double precision :: oo
-  double precision :: lmd
-  double precision :: shru
-  double precision :: ddz
-  double precision :: chru
-  double precision :: relax
-  double precision, dimension(mz) :: volpar, numpar, tvolpar
-  double precision, dimension(mz) :: afptx
-  double precision, dimension(mz) :: pfptx
-  double precision, dimension(mz) :: tfptx
-  double precision, dimension(mz) :: ataop
-  double precision, dimension(mz) :: ptaop
-  double precision, dimension(mz) :: tampd, tampu, aampd, aampu
+  real(kind=dbPc) :: mixl
+  real(kind=dbPc) :: dudz
+  real(kind=dbPc) :: oo
+  real(kind=dbPc) :: lmd
+  real(kind=dbPc) :: shru
+  real(kind=dbPc) :: ddz
+  real(kind=dbPc) :: chru
+  real(kind=dbPc) :: relax
+  real(kind=dbPc), dimension(mz) :: volpar, numpar, tvolpar
+  real(kind=dbPc), dimension(mz) :: afptx
+  real(kind=dbPc), dimension(mz) :: pfptx
+  real(kind=dbPc), dimension(mz) :: tfptx
+  real(kind=dbPc), dimension(mz) :: ataop
+  real(kind=dbPc), dimension(mz) :: ptaop
+  real(kind=dbPc), dimension(mz) :: tampd, tampu, aampd, aampu
   ! function
-  double precision :: ffd, ntmixl
+  real(kind=dbPc) :: ffd, ntmixl
   !
   !volpar = 0.0
   !do k = 1, mz
@@ -2157,15 +2343,15 @@ subroutine imgd
   integer :: ierr
   integer :: status(MPI_STATUS_SIZE)
   integer :: wn
-  double precision :: aaa
-  double precision :: totpz, avepz, tavepz
-  double precision :: posit
+  real(kind=dbPc) :: aaa
+  real(kind=dbPc) :: totpz, avepz, tavepz
+  real(kind=dbPc) :: posit
   !
   if (last==1 .or. ipar==0) then
     kx = 0.
     ky = 0.
     kz = 0.
-    pnch = 0.
+    Dkz = 0.0
     kxDiff = xMax/dfloat(mkx-2)
     kyDiff = yMax/dfloat(mky-2)
     if (myID==0) then
@@ -2201,7 +2387,7 @@ subroutine imgd
     aaa = kxDiff*kyDiff
     !do j = 1, mky
     !do i = 1, mkxNode
-    !kz(i, j) = kz(i, j) + pnch(i, j)/aaa/por
+    !kz(i, j) = kz(i, j) + Dkz(i, j)
     !end do
     !end do
     do j = 1, mky
@@ -2211,11 +2397,11 @@ subroutine imgd
     end do
     !do j = 1, mky
     !do i = 1, mkxNode
-    !if (kz(i, j)<0. .or. kz(i, j)>zMax .or. abs(pnch(i, j)/aaa/por)>=0.01) then
+    !if (kz(i, j)<0. .or. kz(i, j)>zMax .or. abs(Dkz(i, j))>=0.01) then
     ! print*, 'error: kz out of lower/upper boundary'
-    !  print*, 'z=', kz(i, j), '    z change=', pnch(i, j)/aaa/por
+    !  print*, 'z=', kz(i, j), '    z change=', Dkz(i, j)
     !  print*, 'i=', i, '  j=', j, '  myID=', myID
-    !  kz(i, j) = kz(i, j) - pnch(i, j)/aaa/por
+    !  kz(i, j) = kz(i, j) - Dkz(i, j)
     !end if
     !end do
     !end do
@@ -2246,7 +2432,7 @@ subroutine pxch(mkxNode, mky, kz, surfExType, neighbor, comm1D)
   integer :: comm1D
   integer :: surfExType
   integer, dimension(2) :: neighbor
-  double precision, dimension(mkxNode, mky) :: kz
+  real(kind=dbPc), dimension(mkxNode, mky) :: kz
   ! local
   integer :: i, j
   integer :: ierr
@@ -2261,12 +2447,12 @@ end subroutine pxch
 function ntmixl(lm, k, nu, ux, dz)
   implicit none
   ! public
-  double precision :: ntmixl
-  double precision, intent(in) :: lm, k, nu, ux, dz
+  real(kind=dbPc) :: ntmixl
+  real(kind=dbPc), intent(in) :: lm, k, nu, ux, dz
   ! local
   integer :: n
-  double precision :: xr, x1
-  double precision :: fx, gx, fxr
+  real(kind=dbPc) :: xr, x1
+  real(kind=dbPc) :: fx, gx, fxr
   x1 = 1.0
   n = 0
   do
@@ -2293,23 +2479,23 @@ subroutine surfexch
   integer :: i, j, k, jk
   integer :: ierr
   integer :: status(MPI_STATUS_SIZE)
-  double precision, dimension(mky) :: epnch, epnchr
-  double precision, dimension(mky) :: spnch, spnchr
-  double precision, dimension(mky*npdf) :: epdfch, epdfchr
-  double precision, dimension(mky*npdf) :: spdfch, spdfchr
+  real(kind=dbPc), dimension(mky) :: epnch, epnchr
+  real(kind=dbPc), dimension(mky) :: spnch, spnchr
+  real(kind=dbPc), dimension(mky*npdf) :: epdfch, epdfchr
+  real(kind=dbPc), dimension(mky*npdf) :: spdfch, spdfchr
   ! because the value of ghost cell has changed
   ! need to add ghost value back to real domain before exchange
-  ! pnch, pdfch add back
+  ! Dkz, DbedPDist add back
   ! x=mkxNode+1 add to x=3: send to 2 and receive from 1
   ! x=mkxNode add to x=2: send to 2 and receive from 1
   ! x=1 add to x=mkxNode-1: send to 1 and receive from 2
   do j = 1, mky
-  epnch(j) = pnch(mkxNode, j)
-  spnch(j) = pnch(1, j)
+  epnch(j) = Dkz(mkxNode, j)
+  spnch(j) = Dkz(1, j)
   do k = 1, npdf
   jk = k + (j-1)*npdf
-  epdfch(jk) = pdfch(mkxNode, j, k)
-  spdfch(jk) = pdfch(1, j, k)
+  epdfch(jk) = DbedPDist(mkxNode, j, k)
+  spdfch(jk) = DbedPDist(1, j, k)
   end do
   end do
   !
@@ -2329,35 +2515,35 @@ subroutine surfexch
     spdfchr,mky*npdf,realType,neighbor(2),108,comm1D,status,ierr)
   !
   do j = 1, mky
-  pnch(3, j) = pnch(3, j) + eepnchr(j)
-  pnch(2, j) = pnch(2, j) + epnchr(j)
-  pnch(mkxNode-1, j) = pnch(mkxNode-1, j) + spnchr(j)
+  Dkz(3, j) = Dkz(3, j) + eepnchr(j)
+  Dkz(2, j) = Dkz(2, j) + epnchr(j)
+  Dkz(mkxNode-1, j) = Dkz(mkxNode-1, j) + spnchr(j)
   do k = 1, npdf
   jk = k + (j-1)*npdf
-  pdfch(3, j, k) = pdfch(3, j, k) + eepdfchr(jk)
-  pdfch(2, j, k) = pdfch(2, j, k) + epdfchr(jk)
-  pdfch(mkxNode-1, j, k) = pdfch(mkxNode-1, j, k) + spdfchr(jk)
+  DbedPDist(3, j, k) = DbedPDist(3, j, k) + eepdfchr(jk)
+  DbedPDist(2, j, k) = DbedPDist(2, j, k) + epdfchr(jk)
+  DbedPDist(mkxNode-1, j, k) = DbedPDist(mkxNode-1, j, k) + spdfchr(jk)
   end do
   end do
   ! y=1 add to y=mky-1, y=mky add to y=2
   do i = 1, mkxNode
-  pnch(i, 2) = pnch(i, 2) + pnch(i, mky)
-  pnch(i, mky-1) = pnch(i, mky-1) + pnch(i, 1)
+  Dkz(i, 2) = Dkz(i, 2) + Dkz(i, mky)
+  Dkz(i, mky-1) = Dkz(i, mky-1) + Dkz(i, 1)
   do k = 1, npdf
-  pdfch(i, 2, k) = pdfch(i, 2, k) + pdfch(i, mky, k)
-  pdfch(i, mky-1, k) = pdfch(i, mky-1, k) + pdfch(i, 1, k)
+  DbedPDist(i, 2, k) = DbedPDist(i, 2, k) + DbedPDist(i, mky, k)
+  DbedPDist(i, mky-1, k) = DbedPDist(i, mky-1, k) + DbedPDist(i, 1, k)
   end do
   end do
-  ! pnch, pdfch exchange
+  ! Dkz, DbedPDist exchange
   ! x=2 send to x=mkxNode, x=mkxNode-1 send to x=1
-  call pxch(mkxNode, mky, pnch, surfExType, neighbor, comm1D)
+  call pxch(mkxNode, mky, Dkz, surfExType, neighbor, comm1D)
   ! y=2 send to y=mky, y=mky-1 send to y=1
   do i = 1, mkxNode
-  pnch(i, mky) = pnch(i, 2)
-  pnch(i, 1) = pnch(i, mky-1)
+  Dkz(i, mky) = Dkz(i, 2)
+  Dkz(i, 1) = Dkz(i, mky-1)
   do k = 1, npdf
-  pdfch(i, mky, k) = pdfch(i, 2, k)
-  pdfch(i, 1, k) = pdfch(i, mky-1, k)
+  DbedPDist(i, mky, k) = DbedPDist(i, 2, k)
+  DbedPDist(i, 1, k) = DbedPDist(i, mky-1, k)
   end do
   end do
 end subroutine surfexch
@@ -2377,22 +2563,22 @@ subroutine output
   integer :: tnnp
   integer :: numa
   integer, dimension(nNodes) :: cnt, displs
-  double precision :: tuflx, twflx
-  double precision :: tnorm_vpin, tnorm_vpout, tvvpin, tvvpout, tmpin, tmpout
-  double precision :: tnpin, tnpout
-  double precision, dimension(3) :: tvpin, tvpout
-  double precision, dimension(mx, my, mz) :: tu, tv, tw, tp
+  real(kind=dbPc) :: tuflx, twflx
+  real(kind=dbPc) :: tnorm_vpin, tnorm_vpout, tvvpin, tvvpout, tmpin, tmpout
+  real(kind=dbPc) :: tnpin, tnpout
+  real(kind=dbPc), dimension(3) :: tvpin, tvpout
+  real(kind=dbPc), dimension(mx, my, mz) :: tu, tv, tw, tp
   integer, dimension(mx, my, mz) :: tfp
-  double precision, dimension(mx) :: tx
-  double precision, dimension(mkx) :: tpx
-  double precision, dimension(mkx, mky) :: tpz, tpz4
-  double precision, dimension((mkxNode-2)*mky) :: apz
-  double precision, dimension((mkx-2)*mky) :: tapz
-  double precision, dimension((mkxNode-2)*mky) :: apz4
-  double precision, dimension((mkx-2)*mky) :: tapz4
-  double precision, dimension(mz) :: tuflxz, twflxz
-  double precision, dimension(mz) :: tpcoll, apcoll
-  double precision, allocatable, dimension(:) :: txp, typ, tzp, tdp, tup, tvp, twp, tfk, tfz, tfh, tfg, tft
+  real(kind=dbPc), dimension(mx) :: tx
+  real(kind=dbPc), dimension(mkx) :: tpx
+  real(kind=dbPc), dimension(mkx, mky) :: tpz, tpz4
+  real(kind=dbPc), dimension((mkxNode-2)*mky) :: apz
+  real(kind=dbPc), dimension((mkx-2)*mky) :: tapz
+  real(kind=dbPc), dimension((mkxNode-2)*mky) :: apz4
+  real(kind=dbPc), dimension((mkx-2)*mky) :: tapz4
+  real(kind=dbPc), dimension(mz) :: tuflxz, twflxz
+  real(kind=dbPc), dimension(mz) :: tpcoll, apcoll
+  real(kind=dbPc), allocatable, dimension(:) :: txp, typ, tzp, tdp, tup, tvp, twp, tfk, tfz, tfh, tfg, tft
   !
   nf = mod(last, nnf)
   ns = mod(last, nns)
@@ -2657,72 +2843,38 @@ subroutine output
   deallocate(txp, typ, tzp, tdp, tup, tvp, twp, tfk, tfz, tfh, tfg, tft)
 end subroutine output
 
-function normalPD(probDist, dpa, dSigma, npdf, rpdf)
+function closestPoint2Triangle(pointP, vertex1, vertex2, vertex3)
   implicit none
   ! public
-  double precision :: normalPD
-  integer, intent(in) :: npdf
-  double precision, intent(in) :: rpdf
-  double precision, intent(in) :: dpa, dSigma
-  double precision, intent(in), dimension(npdf) :: probDist
+  real(kind=dbPc) :: arebound
+  real(kind=dbPc), intent(in) :: alpha, beta
+  real(kind=dbPc), intent(in) :: angin, dp2
   ! local
-  double precision :: sigma, mu
-  double precision :: probMax, probNow
-  double precision :: binWidth
-  double precision :: x, y, rand1, rand2
-  integer :: iterNum, binXLoc
-  sigma = dSigma*1.0e4
-  mu = dpa*1.0e4
-  y = 1.0
-  probNow = 0.0
-  probMax = maxval(probDist)
-  binWidth = sigma*2.0*rpdf/dfloat(npdf)
-  iterNum = 0
-  do while (y>probNow)
-  iterNum = iterNum+1
-  call random_number(rand1)
-  call random_number(rand2)
-  binXLoc = int(rand1/1.0*dfloat(npdf)) + 1
-  y = rand2*probMax
-  if (binXLoc>npdf .or. binXLoc<1) cycle
-  probNow = probDist(binXLoc)
-  if (iterNum>10000) then
-    print*, 'normalPD, iterNum>10000', probDist
-    x = dpa
-    exit
-  end if
-  end do
-  x = binXLoc*binWidth - 0.5*binWidth + (mu-sigma*rpdf)
-  normalPD = x*1.0e-4
-end function normalPD
-
-function biDist(pp)
-  implicit none
-  ! public
-  integer :: biDist
-  double precision, intent(in) :: pp
-  ! local
-  double precision :: rand
+  integer :: n, iii
+  real(kind=dbPc) :: x, y
+  real(kind=dbPc) :: r1, r2
+  real(kind=dbPc) :: pdf
+  real(kind=dbPc) :: gama
+  real(kind=dbPc) :: xMax, xmin, xmid
+  real(kind=dbPc) :: da
+  real(kind=dbPc), parameter :: pi = acos(-1.0)
   !
-  biDist = 0
-  call random_number(rand)
-  if (rand>=pp) biDist = 1
-end function biDist
+end function closestPoint2Triangle
 
 function ffd(upp, ufp, ddp, nu, rho, rhos)
   implicit none
   ! public
-  double precision :: ffd
-  double precision, intent(in) :: upp, ufp
-  double precision, intent(in) :: ddp
-  double precision, intent(in) :: nu, rho, rhos
+  real(kind=dbPc) :: ffd
+  real(kind=dbPc), intent(in) :: upp, ufp
+  real(kind=dbPc), intent(in) :: ddp
+  real(kind=dbPc), intent(in) :: nu, rho, rhos
   ! local
-  double precision :: cd
-  double precision :: rep, frep
-  double precision :: beta
-  double precision :: mp
-  double precision :: ttp
-  double precision, parameter :: pi = acos(-1.0)
+  real(kind=dbPc) :: cd
+  real(kind=dbPc) :: rep, frep
+  real(kind=dbPc) :: beta
+  real(kind=dbPc) :: mp
+  real(kind=dbPc) :: ttp
+  real(kind=dbPc), parameter :: pi = acos(-1.0)
   !
   rep = abs(upp-ufp)*ddp/nu
   if (rep==0.) then
@@ -2747,11 +2899,11 @@ end function ffd
 function normal(mmu, sigma)
   implicit none
   ! public
-  double precision :: normal
-  double precision, intent(in) :: mmu, sigma
+  real(kind=dbPc) :: normal
+  real(kind=dbPc), intent(in) :: mmu, sigma
   !local
   integer :: flg
-  double precision :: pi, u1, u2, y1, y2
+  real(kind=dbPc) :: pi, u1, u2, y1, y2
   save flg
   data flg /0/
   parameter(pi = acos(-1.))
@@ -2771,10 +2923,10 @@ end function normal
 function expdev(lambda)
   implicit none
   ! public
-  double precision :: expdev
-  double precision, intent(in) :: lambda
+  real(kind=dbPc) :: expdev
+  real(kind=dbPc), intent(in) :: lambda
   ! local
-  double precision :: pv
+  real(kind=dbPc) :: pv
   !
   do while (.true.)
   call random_number(pv)
@@ -2790,12 +2942,12 @@ end function expdev
 function myerfc(x)
   implicit none
   ! public
-  double precision :: myerfc
-  double precision, intent(in) :: x
+  real(kind=dbPc) :: myerfc
+  real(kind=dbPc), intent(in) :: x
   ! function
-  double precision :: gammp, gammq
+  real(kind=dbPc) :: gammp, gammq
   ! local
-  double precision :: a
+  real(kind=dbPc) :: a
   !
   a = 0.5
   if (x<0.0) then
@@ -2808,12 +2960,12 @@ end function myerfc
 function gammq(a, x)
   implicit none
   ! public
-  double precision :: gammq
-  double precision, intent(in) :: a
-  double precision, intent(in) :: x
+  real(kind=dbPc) :: gammq
+  real(kind=dbPc), intent(in) :: a
+  real(kind=dbPc), intent(in) :: x
   ! local
   integer :: igser, igcf
-  double precision :: gammcf, gamser
+  real(kind=dbPc) :: gammcf, gamser
   !
   if (x<0. .or. a<=0.) return
   if (x<a+1.0) then
@@ -2836,12 +2988,12 @@ end function gammq
 function gammp(a, x)
   implicit none
   ! public
-  double precision :: gammp
-  double precision, intent(in) :: a
-  double precision, intent(in) :: x
+  real(kind=dbPc) :: gammp
+  real(kind=dbPc), intent(in) :: a
+  real(kind=dbPc), intent(in) :: x
   ! local
   integer :: igser, igcf
-  double precision :: gammcf, gamser
+  real(kind=dbPc) :: gammcf, gamser
   !
   if (x<0. .or. a<=0.) return
   if (x<a+1.0) then
@@ -2865,19 +3017,19 @@ subroutine gser(gamser, a, x, igser)
   implicit none
   ! public
   integer :: igser
-  double precision :: gamser
-  double precision, intent(in) :: a
-  double precision, intent(in) :: x
+  real(kind=dbPc) :: gamser
+  real(kind=dbPc), intent(in) :: a
+  real(kind=dbPc), intent(in) :: x
   ! function
-  double precision :: gammln
+  real(kind=dbPc) :: gammln
   ! local
   integer, parameter :: itmax = 100
   integer :: n
-  double precision, parameter :: eps = 3.0e-7
-  double precision :: gln
-  double precision :: ap
-  double precision :: del
-  double precision :: asum
+  real(kind=dbPc), parameter :: eps = 3.0e-7
+  real(kind=dbPc) :: gln
+  real(kind=dbPc) :: ap
+  real(kind=dbPc) :: del
+  real(kind=dbPc) :: asum
   !
   gln = gammln(a)
   if (x<=0.) then
@@ -2906,20 +3058,20 @@ subroutine gcf(gammcf, a, x, igcf)
   implicit none
   ! public
   integer :: igcf
-  double precision :: gammcf
-  double precision, intent(in) :: a
-  double precision, intent(in) :: x
+  real(kind=dbPc) :: gammcf
+  real(kind=dbPc), intent(in) :: a
+  real(kind=dbPc), intent(in) :: x
   ! function
-  double precision :: gammln
+  real(kind=dbPc) :: gammln
   ! local
   integer, parameter :: itmax = 100
   integer :: i
-  double precision :: gln
-  double precision, parameter :: eps = 3.0e-7
-  double precision, parameter :: fpmin = 1.0e-30
-  double precision :: an, b, c, d
-  double precision :: del
-  double precision :: h
+  real(kind=dbPc) :: gln
+  real(kind=dbPc), parameter :: eps = 3.0e-7
+  real(kind=dbPc), parameter :: fpmin = 1.0e-30
+  real(kind=dbPc) :: an, b, c, d
+  real(kind=dbPc) :: del
+  real(kind=dbPc) :: h
   !
   gln = gammln(a)
   b = x + 1.0 - a
@@ -2949,15 +3101,15 @@ end subroutine gcf
 function gammln(xx)
   implicit none
   ! public
-  double precision :: gammln
-  double precision, intent(in) :: xx
+  real(kind=dbPc) :: gammln
+  real(kind=dbPc), intent(in) :: xx
   ! local
   integer :: j
-  double precision :: ser
-  double precision :: tmp
-  double precision :: x, y
-  double precision, save :: cof(6)
-  double precision, save :: stp
+  real(kind=dbPc) :: ser
+  real(kind=dbPc) :: tmp
+  real(kind=dbPc) :: x, y
+  real(kind=dbPc), save :: cof(6)
+  real(kind=dbPc), save :: stp
   data cof, stp/76.18009172947146d0,-86.50532032941677d0, &
     24.01409824083091d0,-1.231739572450155d0, &
     .1208650973866179d-2,-.5395239384953d-5,  &
@@ -2978,18 +3130,18 @@ end function gammln
 function arebound(alpha, beta, angin, dp2)
   implicit none
   ! public
-  double precision :: arebound
-  double precision, intent(in) :: alpha, beta
-  double precision, intent(in) :: angin, dp2
+  real(kind=dbPc) :: arebound
+  real(kind=dbPc), intent(in) :: alpha, beta
+  real(kind=dbPc), intent(in) :: angin, dp2
   ! local
   integer :: n, iii
-  double precision :: x, y
-  double precision :: r1, r2
-  double precision :: pdf
-  double precision :: gama
-  double precision :: xMax, xmin, xmid
-  double precision :: da
-  double precision, parameter :: pi = acos(-1.0)
+  real(kind=dbPc) :: x, y
+  real(kind=dbPc) :: r1, r2
+  real(kind=dbPc) :: pdf
+  real(kind=dbPc) :: gama
+  real(kind=dbPc) :: xMax, xmin, xmid
+  real(kind=dbPc) :: da
+  real(kind=dbPc), parameter :: pi = acos(-1.0)
   !
   gama = 4.0/9.0*beta**2/(alpha+beta)**2/dp2
   xmin = -angin
