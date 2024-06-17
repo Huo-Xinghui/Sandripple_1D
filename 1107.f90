@@ -90,6 +90,81 @@ module public_parameter_module
     real(kind=dbPc), parameter :: pi = acos(-1.0) ! define Pi
 end module public_parameter_module
 
+! vector calculation
+module vector_cal
+    use public_parameter_module
+    implicit none
+    ! Providing an explicit interface for the functions in this module
+    interface
+        function dotProduct(vec1, vec2) result(res)
+            real(kind=dbPc), dimension(:), intent(in) :: vec1, vec2
+            real(kind=dbPc) :: res
+        end function dotProduct
+
+        function crossProduct(vec1, vec2) result(vRes)
+            real(kind=dbPc), dimension(3), intent(in) :: vec1, vec2
+            real(kind=dbPc), dimension(3) :: res
+        end function crossProduct
+
+        function norm2(vec) result(res)
+            real(kind=dbPc), dimension(:), intent(in) :: vec
+            real(kind=dbPc) :: res
+        end function norm2
+
+        function dirCos(vec) result(res)
+            real(kind=dbPc), dimension(:), intent(in) :: vec
+            real(kind=dbPc) :: sumSquares, res
+        end function dirCos
+    end interface
+contains
+    ! Calculate dot product of vec1 and vec2
+    function dotProduct(vec1, vec2) result(res)
+        real(kind=dbPc), dimension(:), intent(in) :: vec1, vec2
+        real(kind=dbPc) :: res
+        ! Temp
+        integer :: i
+
+        if (size(vec1) /= size(vec2)) then
+            print *, "Error: Vectors must be of the same size for dot product."  
+            stop
+        end if
+        res = vec1(1)*vec2(1) + vec1(2)*vec2(2) + vec1(3)*vec2(3)
+
+        res = 0.0
+        do i = 1, size(vec1)
+        res = res + vec1(i)*vec2(i)
+        end do
+    end function
+    !
+    function crossProduct(vec1, vec2) result(vRes)
+        vRes(1) = vec1(2)*vec2(3) - vec1(3)*vec2(2)
+        vRes(2) = vec1(3)*vec2(1) - vec1(1)*vec2(3)
+        vRes(3) = vec1(1)*vec2(2) - vec1(2)*vec2(1)
+    end function
+    !
+    function norm2(vec1) result(res)
+        res = sqrt(vec(1)**2+vec(2)**2+vec(3)**2)
+    end function
+    !
+    function unit_vec(vec1) result(res)
+        real(kind=dbPc) :: normv
+        !
+        normv = norm_2(vec1)
+        if (normv>0.0) then
+            res = vec/normv 
+        else
+            res = 0.0
+        end if
+    end function
+    !
+    function dist_p(vec1, vec2)
+        real(kind=dbPc) :: dist_p
+        real(kind=dbPc), intent(in), dimension(3) :: vec1, vec2
+        !
+        dist_p = sqrt((vec1(1)-vec2(1))**2+(vec1(2)-vec2(2))**2+(vec1(3)-vec2(3))**2)
+    end function
+end module vector_cal
+
 module public_val
     ! define in dataExType
     integer :: fieldExType
@@ -157,56 +232,6 @@ module public_val
     real(kind=dbPc), dimension(mz) :: pcoll, ttpcoll
     real(kind=dbPc), dimension(mkxNode, mky) :: ucreep, vcreep
 end module public_val
-
-! vector calculation
-module vector_cal
-    implicit none
-    private :: dbPc
-    integer, parameter :: dbPc = selected_real_kind(15, 307)
-contains
-    function dotProduct(vec1, vec2) result(res)
-        real(kind=dbPc), intent(in), dimension(3) :: vec1, vec2
-        real(kind=dbPc) :: res
-        !
-        res = vec1(1)*vec2(1) + vec1(2)*vec2(2) + vec1(3)*vec2(3)
-    end function
-    !
-    function crossProduct(vec1, vec2) result(res)
-        real(kind=dbPc), intent(in), dimension(3) :: vec1, vec2
-        real(kind=dbPc), dimension(3) :: res
-        !
-        res(1) = vec1(2)*vec2(3) - vec1(3)*vec2(2)
-        res(2) = vec1(3)*vec2(1) - vec1(1)*vec2(3)
-        res(3) = vec1(1)*vec2(2) - vec1(2)*vec2(1)
-    end function
-    !
-    function norm_2(vec)
-        real(kind=dbPc) :: norm_2
-        real(kind=dbPc), intent(in), dimension(3) :: vec
-        !
-        norm_2 = sqrt(vec(1)**2+vec(2)**2+vec(3)**2)
-    end function
-    !
-    function unit_vec(vec)
-        real(kind=dbPc), dimension(3) :: unit_vec
-        real(kind=dbPc), intent(in), dimension(3) :: vec
-        real(kind=dbPc) :: normv
-        !
-        normv = norm_2(vec)
-        if (normv>0.0) then
-            unit_vec = vec/normv 
-        else
-            unit_vec = 0.0
-        end if
-    end function
-    !
-    function dist_p(vec1, vec2)
-        real(kind=dbPc) :: dist_p
-        real(kind=dbPc), intent(in), dimension(3) :: vec1, vec2
-        !
-        dist_p = sqrt((vec1(1)-vec2(1))**2+(vec1(2)-vec2(2))**2+(vec1(3)-vec2(3))**2)
-    end function
-end module vector_cal
 
 module prob_distribution
     implicit none
