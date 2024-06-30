@@ -12,9 +12,9 @@ module public_parameter
     integer, parameter :: nx = 500 ! x grid num
     integer, parameter :: ny = 100 ! y grid num
     integer, parameter :: nz = 250 ! z grid num
+    integer, parameter :: nzUni = 100 ! z grid number above which zDiff becomes uniform
     real(kind=dbPc), parameter :: xDiff = xMax/nx
     real(kind=dbPc), parameter :: yDiff = yMax/nx
-    real(kind=dbPc), parameter :: zGridCtrl = 1.5 ! the control parameter of z grid
     integer, parameter :: nNodes = 5 ! num of subdomain
 
     ! time
@@ -24,12 +24,11 @@ module public_parameter
 
     ! fluid
 
-    real(kind=dbPc), parameter :: zUni = 0.1 ! the altitude that grid z becomes uniform
     real(kind=dbPc), parameter :: uStar = 0.5 ! fractional velocity
     real(kind=dbPc), parameter :: rho = 1.263 ! fluid density
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.4 ! von Kaman's constant
-    real(kind=dbPc), parameter :: zDiffMin = nu/uStar ! the smallest z grid size
+    real(kind=dbPc), parameter :: zDiffMin = nu/uStar ! smallest z grid size
 
     ! particle
 
@@ -104,7 +103,7 @@ module surface_operations
     type(surfaceGridType), dimension(mx, my) :: surfGrid
     real(kind=dbPc), dimension(npdf) :: initDiameterDist
 
-    public :: generateSurfGrid, surfaceInitiation, initDiameterDist
+    public :: generateSurfGrid, surfaceInitiation, initDiameterDist, surfGrid
 
 contains
 
@@ -199,58 +198,73 @@ module field_operations
 
     type gridType
         real(kind=dbPc), dimension(3) :: location
+        real(kind=dbPc) :: zDiff
     end type gridType
 
     type(gridType), dimension(mx + 1, my + 1, nz + 1) :: vectorGrid
     type(gridType), dimension(mx, my, nz) :: scalarGrid
-    real(kind=dbPc) :: zCurrent, zDiffCurrent
-    real(kind=dbPc), dimension(nz) :: zDiff
+    real(kind=dbPc) :: zDiffMax, refineRatio
 
     public :: generateGrid
 
 contains
 
     subroutine generateGrid
+        use surface_operations
         implicit none
         integer :: i, j, k
 
-        zDiffMax = zMax/nz
-        zDiff(1) = zDiffMin
-        zCurrent = 0.0
-
-        vectorGrid(1, :, :)%location(1) = -xDiff
-        vectorGrid(:, 1, :)%location(2) = -yDiff
-        vectorGrid(:, :, 1)%location(3) = zCurrent
-
-        do k = 1, nz + 1
-            do j = 2, my + 1
-                do i = 2, mx + 1
-                    vectorGrid(i, j, k)%location(1) = vectorGrid(i - 1, j, k)%location(1) + xDiff
-                    vectorGrid(i, j, k)%location(2) = vectorGrid(i, j - 1, k)%location(2) + yDiff
+        do i = 1, mx
+            do j = 1, my
+                if (i == 1) then
+                    vectorGrid(i, j, 1)%location(1) = -xDiff
+                else
+                    vectorGrid(i, j, 1)%location(1) = vectorGrid(i - 1, j, 1)%location(1) + xDiff
+                end if
+                if (j == 1) then
+                    vectorGrid(i, j, 1)%location(2) = -yDiff
+                else
+                    vectorGrid(i, j, 1)%location(2) = vectorGrid(i, j - 1, 1)%location(2) + yDiff
+                end if
+                vectorGrid(i, j, 1)%location(3) = surfGrid(i, j)%location(3)
+                vectorGrid(i, j, 1)%zDiff = zDiffMin
+                zDiffMax = (zMax - surfGrid(i, j)%location(3))/nz
+                refineRatio = (zDiffMax/zDiffMin)**(1.0/(nzUni - 1))
+                do k = 2, nz
+                    if (i == 1) then
+                        vectorGrid(i, j, k)%location(1) = -xDiff
+                    else
+                        vectorGrid(i, j, k)%location(1) = vectorGrid(i - 1, j, k)%location(1) + xDiff
+                    end if
+                    if (j == 1) then
+                        vectorGrid(i, j, k)%location(2) = -yDiff
+                    else
+                        vectorGrid(i, j, k)%location(2) = vectorGrid(i, j - 1, k)%location(2) + yDiff
+                    end if
+                    vectorGrid(i, j, k)%location(3) = vectorGrid(i, j, k - 1)%location(3) + vectorGrid(i, j, k - 1)%zDiff
+                    if (k <= nzUni) then
+                        vectorGrid(i, j, k)%zDiff = vectorGrid(i, j, k - 1)%zDiff*refineRatio
+                    else
+                        vectorGrid(i, j, k)%zDiff = zDiffMax
+                    end if
                 end do
+                if (i == 1) then
+                    vectorGrid(i, j, nz + 1)%location(1) = -xDiff
+                else
+                    vectorGrid(i, j, nz + 1)%location(1) = vectorGrid(i - 1, j, nz + 1)%location(1) + xDiff
+                end if
+                if (j == 1) then
+                    vectorGrid(i, j, nz + 1)%location(2) = -yDiff
+                else
+                    vectorGrid(i, j, nz + 1)%location(2) = vectorGrid(i, j - 1, nz + 1)%location(2) + yDiff
+                end if
+                vectorGrid(i, j, nz + 1)%location(3) = zMax
+                vectorGrid(i, j, nz)%zDiff = zMax - vectorGrid(i, j, nz)%location(3)
+                vectorGrid(i, j, nz + 1)%zDiff = vectorGrid(i, j, nz)%zDiff
             end do
         end do
-
-        do k = 2, nz + 1
-            if (zCurrent < zUni) then
-                ! Exponential refinement towards zUni, but not exceeding zDiffMax
-                zDiffCurrent = zDiffMin*zGridCtrl**(k - 2)
-                zDiffCurrent = min(zDiffCurrent, zDiffMax)
-            else
-                ! Uniform spacing above zUni
-                zDiffCurrent = zDiffMax
-            end if
-
-            zCurrent = zCurrent + zDiffCurrent
-            vectorGrid(i) = zCurrent
-            zDiff(i) = zDiffCurrent ! Store the current grid spacing in zDiff array
-
-            ! If reached or exceeded zMax, adjust the last grid point and exit
-            if (zCurrent >= zMax) then
-                vectorGrid(nz) = zMax
-                exit
-            end if
-        end do
+        vectorGrid(mx + 1, :, :) = vectorGrid(mx, :, :)
+        vectorGrid(:, my + 1, :) = vectorGrid(:, my, :)
 
         do k = 1, mz
             do j = 1, my
@@ -264,6 +278,7 @@ contains
                     scalarGrid(i, j, k)%location(3) = (vectorGrid(i, j, k + 1)%location(3) - &
                                                        vectorGrid(i, j, k)%location(3))/2.0 + &
                                                       vectorGrid(i, j, k)%location(3)
+                    scalarGrid(i, j, k)%zDiff = vectorGrid(i, j, k)%zDiff
                 end do
             end do
         end do
