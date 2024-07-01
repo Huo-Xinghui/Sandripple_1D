@@ -69,42 +69,6 @@ module prob_distribution
     implicit none
 contains
     ! need to check
-    function valObeyCertainProbDist(probDist, averageParticleD, distRange)
-        implicit none
-        ! public
-        real(kind=dbPc) :: valObeyCertainProbDist
-        real(kind=dbPc), intent(in) :: distRange
-        real(kind=dbPc), intent(in) :: averageParticleD, stddDeviation
-        real(kind=dbPc), intent(in) :: probDist(:)
-        ! local
-        real(kind=dbPc) :: probMax, probNow
-        real(kind=dbPc) :: binNum
-        real(kind=dbPc) :: binWidth
-        real(kind=dbPc) :: x, y, rand1, rand2
-        integer :: iterNum, binXLoc
-        y = 1.0
-        probNow = 0.0
-        probMax = maxval(probDist)
-        binNum = size(probDist)
-        binWidth = 2.0*distRange/binNum
-        iterNum = 0
-        do while (y > probNow)
-            iterNum = iterNum + 1
-            call random_number(rand1)
-            call random_number(rand2)
-            binXLoc = int(rand1/1.0*binNum) + 1
-            y = rand2*probMax
-            if (binXLoc > binNum .or. binXLoc < 1) cycle
-            probNow = probDist(binXLoc)
-            if (iterNum > 10000) then
-                print *, 'valObeyCertainProbDist, iterNum>10000', probDist
-                x = averageParticleD
-                exit
-            end if
-        end do
-        x = binXLoc*binWidth - 0.5*binWidth + (mu - sigma*distRange)
-        valObeyCertainProbDist = x*1.0e-4
-    end function valObeyCertainProbDist
 
     function biDist(pp)
         implicit none

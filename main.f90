@@ -97,11 +97,11 @@ module surface_operations
     type surfaceGridType
         real(kind=dbPc), dimension(3) :: location
         real(kind=dbPc) :: averageDiameter
-        real(kind=dbPc), dimension(npdf) :: diameterDistribution
+        real(kind=dbPc), dimension(npdf + 2) :: diameterDistribution
     end type surfaceGridType
 
     type(surfaceGridType), dimension(mx, my) :: surfGrid
-    real(kind=dbPc), dimension(npdf) :: initDiameterDist
+    real(kind=dbPc), dimension(npdf + 2) :: initDiameterDist
 
     public :: generateSurfGrid, surfaceInitiation, initDiameterDist, surfGrid
 
@@ -141,7 +141,9 @@ contains
             end if
         else if (ipd == 1) then
             if (npdf == 1) then
-                initDiameterDist = 1.0
+                initDiameterDist(1) = 1.0
+                initDiameterDist(2) = 0.0 ! Bin width
+                initDiameterDist(3) = dpa ! Bin start
             else
                 print *, 'Bin number (npdf) must = 1 for uniform particle diameter'
                 stop
@@ -150,6 +152,8 @@ contains
             if (npdf == 2) then
                 initDiameterDist(1) = prob1
                 initDiameterDist(2) = 1.0 - initDiameterDist(1)
+                initDiameterDist(3) = 2.0*dpStddDev ! Bin width
+                initDiameterDist(4) = dpa - 2.0*dpStddDev ! Bin start
             else
                 print *, 'Bin number (npdf) must = 2 for Bernoulli distribution'
                 stop
@@ -161,7 +165,7 @@ contains
                     surfGrid(i, j)%location(3) = initAmp*sin(initOmg*surfGrid(i, j)%location(1)) + initSurfElevation
                 end if
                 surfGrid(i, j)%averageDiameter = dpa
-                do k = 1, npdf
+                do k = 1, npdf + 2
                     surfGrid(i, j)%diameterDistribution(k) = initDiameterDist(k)
                 end do
             end do
@@ -171,7 +175,7 @@ contains
     subroutine normalDistHistogram(histogram)
         implicit none
         integer :: i
-        real(kind=dbPc), dimension(npdf) :: histogram
+        real(kind=dbPc), dimension(npdf + 2) :: histogram
         real(kind=dbPc) :: binWidth, binStart, binEnd
 
         ! Calculate the range and width of each bin
@@ -188,6 +192,8 @@ contains
             histogram(i) = histogram(i)*binWidth
         end do
         histogram = histogram/sum(histogram)
+        histogram(npdf + 1) = binWidth
+        histogram(npdf + 2) = binStart
     end subroutine normalDistHistogram
 end module surface_operations
 
@@ -205,13 +211,14 @@ module field_operations
     type(gridType), dimension(mx, my, nz) :: scalarGrid
     real(kind=dbPc) :: zDiffMax, refineRatio
 
-    public :: generateGrid
+    public :: generateGrid, scalarGrid
 
 contains
 
     subroutine generateGrid
         use surface_operations
         implicit none
+
         integer :: i, j, k
 
         do i = 1, mx
@@ -266,7 +273,7 @@ contains
         vectorGrid(mx + 1, :, :) = vectorGrid(mx, :, :)
         vectorGrid(:, my + 1, :) = vectorGrid(:, my, :)
 
-        do k = 1, mz
+        do k = 1, nz
             do j = 1, my
                 do i = 1, mx
                     scalarGrid(i, j, k)%location(1) = (vectorGrid(i + 1, j, k)%location(1) - &
@@ -290,19 +297,15 @@ module particle_operations
     implicit none
     private
 
-    type particleType
+    type particleList
         real(kind=dbPc), dimension(3) :: location
         real(kind=dbPc), dimension(3) :: velocity
         real(kind=dbPc) :: diameter
-        integer, dimension(3) :: ijk
-    end type particleType
-
-    type particleList
-        type(particleType) :: data
+        integer, dimension(3) :: indices
         type(particleList), pointer :: next => null()
     end type particleList
 
-    type(particleList), pointer :: head => null(), tail => null(), particle => null()
+    type(particleList), pointer :: pListHead => null(), pListTail => null(), particle => null()
     integer pNum
 
     public :: particleInitiation
@@ -312,6 +315,7 @@ contains
     subroutine particleInitiation
         use surface_operations
         implicit none
+
         integer :: n
         real(kind=dbPc) :: rand1, rand2, rand3
 
@@ -321,85 +325,96 @@ contains
             call random_number(rand2)
             call random_number(rand3)
             allocate (particle)
-            particle%data%location(1) = xMax*rand1
-            particle%data%location(2) = yMax*rand2
-            particle%data%location(3) = zMax*rand3
-            call particleIJK
-            if (ipd == 0) then
-                dp(n) = valObeyCertainProbDist(prob, dpa, dSigma, npdf, rpdf)
-            else if (ipd == 1) then
-                dp(n) = dpa
-            else if (ipd == 2) then
-                probBi = prob(1)
-                biDistTag = biDist(probBi)
-                if (biDistTag == 0) then
-                    dp(n) = dpa - dSigma
-                else
-                    dp(n) = dpa + dSigma
-                end if
+            particle%location(1) = xMax*rand1
+            particle%location(2) = yMax*rand2
+            particle%location(3) = zMax*rand3
+            particle%velocity = 0.0
+            particle%diameter = valObeyCertainPDF(initDiameterDist)
+            call determineParticleIndices
+            if (.not. associated(pListHead)) then
+                pListHead => particle
+                pListTail => particle
+            else
+                pListTail%next => particle
+                pListTail => particle
             end if
-        end do
-        do j = 1, mky
-            do i = 1, mkxNode
-                do k = 1, npdf
-                    bedPDist(i, j, k) = prob(k)
-                end do
-            end do
         end do
     end subroutine particleInitiation
 
-    subroutine particleIJK(xxp, yyp, iLoc, jLoc, ikLoc, jkLoc, iTag, jTag)
+    subroutine determineParticleIndices
+        use surface_operations
+        use field_operations
         implicit none
-        include "mpif.h"
-        ! public
-        real(kind=dbPc), intent(in) :: xxp, yyp ! particle coordinate location
-        integer, intent(out) :: iLoc, jLoc ! i, j of particle in the wind field
-        integer, intent(out) :: ikLoc, jkLoc ! i, j of particle on the surface
-        ! Tag==0: particle in computational domain.
-        ! Tag==1: particle in LEFT gost cell. Tag==2: particle in RIGHT gost cell
-        integer, intent(out) :: iTag, jTag
-        ! local
-        integer :: k
-        real(kind=dbPc) :: zzw, zzw0, zzw1, zzw2, rzp
-        !
-        iLoc = int((xxp - xu(1))/xDiff) + 1
-        jLoc = int((yyp - yv(1))/yDiff) + 1
-        ikLoc = int((xxp - kx(1))/kxDiff) + 1
-        jkLoc = int((yyp - ky(1))/kyDiff) + 1
-        if (iLoc < 2) then
-            iLoc = 1
-            ikLoc = 1
-            iTag = 1
-        else if (iLoc > mxNode - 1) then
-            iLoc = mxNode
-            ikLoc = mkxNode
-            iTag = 2
-        else
-            iTag = 0
+
+        integer :: ip, jp, kp
+        real(kind=dbPc) :: currentZ
+
+        ip = int((particle%location(1) + xDiff)/xDiff) + 1
+        jp = int((particle%location(2) + yDiff)/yDiff) + 1
+        if (ip < 2) then
+            ip = 1
+        else if (ip > mx - 1) then
+            ip = mx
         end if
-        if (jLoc < 2) then
-            jLoc = 1
-            jkLoc = 1
-            jTag = 1
-        else if (jLoc > my - 1) then
-            jLoc = my
-            jkLoc = mky
-            jTag = 2
-        else
-            jTag = 0
+        if (jp < 2) then
+            jp = 1
+        else if (jp > my - 1) then
+            jp = my
         end if
-    end subroutine particleIJK
+        currentZ = surfGrid(ip, jp)%location(3)
+        kp = 0
+        if (particle%location(3) <= currentZ) then
+            kp = -1
+        else if (particle%location(3) > zMax) then
+            kp = 0
+        else
+            do kp = 1, nz
+                currentZ = currentZ + scalarGrid(ip, jp, kp)%zDiff
+                if (particle%location(3) < currentZ) then
+                    exit
+                end if
+            end do
+        end if
+        particle%indices(1) = ip
+        particle%indices(2) = jp
+        particle%indices(3) = kp
+    end subroutine determineParticleIndices
+
+    function valObeyCertainPDF(histogram)
+        implicit none
+
+        real(kind=dbPc) :: valObeyCertainPDF
+        real(kind=dbPc), dimension(npdf + 2), intent(in) :: histogram
+
+        integer :: i
+        real(kind=dbPc) :: rand
+        real(kind=dbPc) :: cumulativeProb
+
+        call random_number(rand)
+        cumulativeProb = 0.0
+        do i = 1, npdf
+            cumulativeProb = cumulativeProb + histogram(i)
+            if (cumulativeProb >= rand) then
+                valObeyCertainPDF = histogram(npdf + 2) + (i - 0.5)*histogram(npdf + 1)
+                exit
+            end if
+        end do
+    end function valObeyCertainPDF
 end module particle_operations
 
-module output_file_generation
+module output_operations
     use public_parameter
     implicit none
+
     private
-    public :: outPutFile
+
+    public :: generateOutPutFile
 
 contains
 
-    subroutine outPutFile
+    subroutine generateOutPutFile
+        implicit none
+
         character(len=32) bashCmd
 
         bashCmd = 'mkdir particle_loc'
@@ -409,59 +424,59 @@ contains
         bashCmd = 'mkdir field3D'
         call system(trim(adjustl(bashCmd)))
 
-        open (unit=32, file='./particle_loc/particle_loc0.plt')
-        write (32, "(A82)") 'variables = "XP", "YP", "ZP", "DP", "UP", "VP", "WP", "FK", "FZ", "FH", "FG", "FT"'
-        close (32)
+        open (unit=10, file='./field/field0.plt')
+        write (10, *) 'variables = "X", "Y", "Z", "U"'
+        close (10)
 
-        open (unit=33, file='./surface/surface0.plt')
-        write (33, *) 'variables = "X", "Y", "Z", "DP"'
-        close (33)
+        open (unit=11, file='./surface/surface0.plt')
+        write (11, *) 'variables = "X", "Y", "Z", "D"'
+        close (11)
 
-        open (unit=42, file='./field3D/field3D0.plt')
-        write (42, *) 'variables = "X", "Y", "Z", "concentration"'
-        close (42)
+        open (unit=12, file='./particle_loc/particle_loc0.plt')
+        write (12, "(A82)") 'variables = "X", "Y", "Z", "U", "V", "W", "D"'
+        close (12)
 
-        open (unit=31, file='particle_num.plt')
-        write (31, *) 'variables = "T", "Num"'
-        close (31)
+        !open (unit=31, file='particle_num.plt')
+        !write (31, *) 'variables = "T", "Num"'
+        !close (31)
 
-        open (unit=35, file='average_flux.plt')
-        write (35, *) 'variables = "T", "uFlux", "wFlux", "salength"'
-        close (35)
+        !open (unit=35, file='average_flux.plt')
+        !write (35, *) 'variables = "T", "uFlux", "wFlux", "salength"'
+        !close (35)
 
-        open (unit=36, file='flux_vs_height.plt')
-        write (36, *) 'variables = "Z", "uFlux", "wFlux"'
-        close (36)
+        !open (unit=36, file='flux_vs_height.plt')
+        !write (36, *) 'variables = "Z", "uFlux", "wFlux"'
+        !close (36)
 
-        open (unit=43, file='htao.plt')
-        write (43, *) 'variables = "Z", "taoa", "taop", "vfrac", "u", "fptx"'
-        close (43)
+        !open (unit=43, file='htao.plt')
+        !write (43, *) 'variables = "Z", "taoa", "taop", "vfrac", "u", "fptx"'
+        !close (43)
 
-        open (unit=39, file='vin.plt')
-        write (39, *) 'variables = "T", "upin", "vpin", "wpin", "norm_vpin"'
-        close (39)
+        !open (unit=39, file='vin.plt')
+        !write (39, *) 'variables = "T", "upin", "vpin", "wpin", "norm_vpin"'
+        !close (39)
 
-        open (unit=46, file='vout.plt')
-        write (46, *) 'variables = "T", "upout", "vpout", "wpout", "norm_vpout"'
-        close (46)
+        !open (unit=46, file='vout.plt')
+        !write (46, *) 'variables = "T", "upout", "vpout", "wpout", "norm_vpout"'
+        !close (46)
 
-        open (unit=44, file='eminout.plt')
-        write (44, *) 'variables = "T", "vvpin", "vvpout", "mpin", "mpout"'
-        close (44)
+        !open (unit=44, file='eminout.plt')
+        !write (44, *) 'variables = "T", "vvpin", "vvpout", "mpin", "mpout"'
+        !close (44)
 
-        open (unit=45, file='numinout.plt')
-        write (45, *) 'variables = "T", "numin", "numout"'
-        close (45)
-    end subroutine outPutFile
-
-end module output_file_generation
+        !open (unit=45, file='numinout.plt')
+        !write (45, *) 'variables = "T", "numin", "numout"'
+        !close (45)
+    end subroutine generateOutPutFile
+end module output_operations
 
 program main
     use public_parameter
     use field_operations
     use surface_operations
-    use output_file_generation
+    use output_operations
     implicit none
+
     integer :: last
 
     call random_seed()
@@ -471,15 +486,14 @@ program main
     call surfaceInitiation
     ! generate grid
     call generateGrid
-    ! initiate pareticle
+    ! initiate particle
     call particleInitiation
     ! creat output file
-    call outPutFile
+    call generateOutPutFile
     last = 1
 
     ! start iteration loop
     do
-        ! calculate particle movement
         if (ipar == 1) then
             call particleCal
             if (last < sstart) then
