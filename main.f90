@@ -43,7 +43,7 @@ module public_parameter
     real(kind=dbPc), parameter :: dpa = 2.5e-4 ! average particle diameter
     real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
-    real(kind=dbPc), parameter :: repoAng = 30.0 ! repose angle
+    real(kind=dbPc), parameter :: repostAngle = 30.0 ! repose angle
     real(kind=dbPc), parameter :: els = 0.9 ! normal restitution coefficient
     real(kind=dbPc), parameter :: fric = 0.0 ! tangential restitution coefficient
     real(kind=dbPc), parameter :: els1 = 0.9 ! normal restitution coefficient (mid-air collision)
@@ -98,16 +98,18 @@ module surface_operations
         real(kind=dbPc), dimension(3) :: location
         real(kind=dbPc) :: averageDiameter
         real(kind=dbPc), dimension(npdf + 2) :: diameterDistribution
+        integer :: avalanchTo, avalanchFrom
     end type surfaceGridType
 
     type(surfaceGridType), dimension(mx, my) :: surfGrid
     real(kind=dbPc), dimension(npdf + 2) :: initDiameterDist
 
-    public :: generateSurfGrid, surfaceInitiation, initDiameterDist, surfGrid
+    public :: generateSurfaceGrid, surfaceInitiation, determineParticleRollDirection
+    public :: surfGrid, initDiameterDist
 
 contains
 
-    subroutine generateSurfGrid
+    subroutine generateSurfaceGrid
         implicit none
         integer :: i, j
 
@@ -126,7 +128,7 @@ contains
         ! Justify the location to the center of the surface grid
         surfGrid%location(1) = surfGrid%location(1) + 0.5*xDiff
         surfGrid%location(2) = surfGrid%location(2) + 0.5*yDiff
-    end subroutine generateSurfGrid
+    end subroutine generateSurfaceGrid
 
     subroutine surfaceInitiation
         implicit none
@@ -195,6 +197,75 @@ contains
         histogram(npdf + 1) = binWidth
         histogram(npdf + 2) = binStart
     end subroutine normalDistHistogram
+
+    subroutine determineParticleRollDirection
+        use omp_lib
+        implicit none
+        integer :: i, j, k, threadID, numThreads
+        real(kind=dbPc) :: centerZ, westZ, eastZ, northZ, southZ
+        real(kind=dbPc), dimension(4) :: slopes
+        real(kind=dbPc) :: tanRepostAngle, maxSlope
+
+        ! avalanchTo:
+        !       3 ^
+        !         |
+        !  2 <----0----> 1
+        !         |
+        !         v 4
+
+        ! avalanchFrom:
+        !       3 |
+        !         v
+        !  2 ---->0<---- 1
+        !         ^
+        !         | 4
+
+        tanRepostAngle = tan(repostAngle/180.0*pi)
+        ! Initialize OpenMP
+        numThreads = omp_get_max_threads()
+        call omp_set_num_threads(numThreads)
+
+        !$omp parallel do private(i, j, k, centerZ, westZ, eastZ, northZ, southZ, slopes, maxSlope) &
+        !$omp& shared(surfGrid, xDiff, yDiff, repostAngle, pi, nx, ny)
+        do j = 2, ny
+            do i = 2, nx
+                centerZ = surfGrid(i, j)%location(3)
+                westZ = surfGrid(i - 1, j)%location(3)
+                eastZ = surfGrid(i + 1, j)%location(3)
+                northZ = surfGrid(i, j + 1)%location(3)
+                southZ = surfGrid(i, j - 1)%location(3)
+
+                slopes(1) = (centerZ - eastZ)/xDiff
+                slopes(2) = (centerZ - westZ)/xDiff
+                slopes(3) = (centerZ - northZ)/yDiff
+                slopes(4) = (centerZ - southZ)/yDiff
+
+                surfGrid(i, j)%avalanchTo = 0
+                maxSlope = tanRepostAngle
+                do k = 1, 4
+                    if (slopes(k) > maxSlope) then
+                        maxSlope = slopes(k)
+                        surfGrid(i, j)%avalanchTo = k
+                    end if
+                end do
+
+                slopes(1) = (eastZ - centerZ)/xDiff
+                slopes(2) = (westZ - centerZ)/xDiff
+                slopes(3) = (northZ - centerZ)/yDiff
+                slopes(4) = (southZ - centerZ)/yDiff
+
+                surfGrid(i, j)%avalanchFrom = 0
+                maxSlope = tanRepostAngle
+                do k = 1, 4
+                    if (slopes(k) > maxSlope) then
+                        maxSlope = slopes(k)
+                        surfGrid(i, j)%avalanchFrom = k
+                    end if
+                end do
+            end do
+        end do
+        !$omp end parallel do
+    end subroutine determineParticleRollDirection
 end module surface_operations
 
 module field_operations
@@ -481,7 +552,7 @@ program main
 
     call random_seed()
     ! generate surfGrid and initial bed
-    call generateSurfGrid
+    call generateSurfaceGrid
     ! initiate surface
     call surfaceInitiation
     ! generate grid
@@ -495,6 +566,7 @@ program main
     ! start iteration loop
     do
         if (ipar == 1) then
+            call determineParticleRollDirection
             call particleCal
             if (last < sstart) then
                 Dkz = 0.0
