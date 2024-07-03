@@ -1,0 +1,35 @@
+//“launch.json”文件内容
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Fortran (gdb)",
+            "type": "cppdbg",
+            "request": "launch",
+            "targetArchitecture": "x86",
+            "program": "${workspaceFolder}\\${fileBasenameNoExtension}.exe",
+            "miDebuggerPath": "gdb.exe",
+            // "miDebuggerPath": "D:\\BaiduSyncdisk\\MyCodes\\Fortran\\hello.exe",//结合自己的路径!
+            "args": [], //命令行参数
+            //"environment": [],
+            "stopAtEntry": false, // 是否使用外部控制台
+            "cwd": "${workspaceFolder}",
+            "externalConsole": true,
+            "preLaunchTask": "gfortran" //在launch之前运行的任务，对应tasks.json中的任务，默认"${defaultBuildTask}"
+            //"MIMode": "gdb",
+            // "setupCommands": [
+            //   {
+            //     "description": "Enable pretty-printing for gdb",
+            //     "text": "-enable-pretty-printing",
+            //     "ignoreFailures": true
+            //   }
+            // ]
+        },
+        {
+            "name": "Intel Debug Attach",
+            "type": "cppvsdbg",
+            "request": "attach",
+            "processId": "${command:pickProcess}"
+        }
+    ]
+}
