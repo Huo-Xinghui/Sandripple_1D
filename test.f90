@@ -46,7 +46,7 @@ program particle_linked_list
 
     ! 清理链表
     current => head
-    while(associated(current))
+    while (associated(current))
     tail => current
     current => current%next
     deallocate (tail)
