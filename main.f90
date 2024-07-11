@@ -44,12 +44,12 @@ module public_parameter
     real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
     real(kind=dbPc), parameter :: repostAngle = 30.0 ! repose angle
-    real(kind=dbPc), parameter :: els = 0.9 ! normal restitution coefficient
-    real(kind=dbPc), parameter :: fric = 0.0 ! tangential restitution coefficient
+    real(kind=dbPc), parameter :: resCoeffN = 0.9 ! normal restitution coefficient
+    real(kind=dbPc), parameter :: resCoeffT = 0.0 ! tangential restitution coefficient
     real(kind=dbPc), parameter :: els1 = 0.9 ! normal restitution coefficient (mid-air collision)
     real(kind=dbPc), parameter :: fric1 = 0.0 ! tangential restitution coefficient (mid-air collision)
     real(kind=dbPc), parameter :: bedCellTknessInit = dpa*5.0 ! thickness of the thin surface layer on particle bed
-    real(kind=dbPc), parameter :: rhos = 2650.0 ! particle density
+    real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: nkl = 1.0 ! one particle stands for x particles
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
     integer, parameter :: pNumMax = 1000000 ! max particle num in one subdomain
@@ -542,6 +542,7 @@ contains
         implicit none
 
         integer ip, jp
+        integer :: iterateNum
         real(kind=dbPc), dimension(2) :: LocalLoc ! particle local location
         real(kind=dbPc), dimension(3) :: node1, node2, node3
         real(kind=dbPc), dimension(3) :: vector12, vector13
@@ -549,6 +550,16 @@ contains
         real(kind=dbPc), dimension(3) :: particleProjection
         real(kind=dbPc), dimension(3) :: impactVelocity
         real(kind=dbPc), dimension(3) :: impactCoordinateX, impactCoordinateY, impactCoordinateZ
+        real(kind=dbPc) :: eta, alpha, beta, gama, sigma, lambda, mu
+        real(kind=dbPc) :: d1, d2, averageD1D2, nonDimD1, nonDimD2
+        real(kind=dbPc) :: m1, m2
+        real(kind=dbPc) :: v1, v2
+        real(kind=dbPc) :: theta1, theta2, theta2Min, theta2Max, theta2Mid
+        real(kind=dbPc) :: pT2T1, pMax
+        real(kind=dbPc) :: rand1, rand2
+        real(kind=dbPc) :: pointX, pointY
+        real(kind=dbPc) :: E1, E2
+        real(kind=dbPc) :: eBar
 
         particle => pListHead
         do while (associated(particle))
@@ -623,6 +634,53 @@ contains
                     impactCoordinateX = crossProduct(impactCoordinateY, impactCoordinateZ)
                     impactVelocity(1) = dotProduct(particle%velocity, impactCoordinateX)
                     impactVelocity(2) = dotProduct(particle%velocity, impactCoordinateY)
+                    ! Splash function of Lammel et al. 2017
+                    d1 = particle%diameter
+                    d2 = surfGrid(ip, jp)%averageDiameter
+                    averageD1D2 = (d1 + d2)/2.0
+                    nonDimD1 = d1/averageD1D2
+                    nonDimD2 = d2/averageD1D2
+                    eta = resCoeffN*nonDimD1**3/(nonDimD1**3 + resCoeffN*nonDimD2**3)
+                    alpha = (1.0 + resCoeffN)/(1.0 + eta) - 1.0
+                    beta = 1.0 - (2.0/7.0)*(1.0 - resCoeffT)/(1.0 + eta)
+                    theta1 = atan(abs(impactVelocity(3)/impactVelocity(1)))
+                    eBar = beta - (beta**2 - alpha**2)*nonDimD2*theta1/(2.0*beta)
+                    v1 = vectorMagnitude(impactVelocity)
+                    v2 = v1*eBar
+
+                    gama = 4.0/9.0/nonDimD2*(beta/(alpha + beta))**2
+                    theta2Min = -theta1
+                    theta2Max = 2.0*sqrt(theta1/gama) - theta1
+                    theta2Mid = (theta2Max + theta2Min)/2.0
+                    pMax = gama*(theta1 + theta2Mid)/theta1*log(2.0*theta1/gama/(theta1 + theta2Mid)**2)*1.2
+                    iterateNum = 0
+                    do
+                        iterateNum = iterateNum + 1
+                        call random_number(rand1)
+                        call random_number(rand2)
+                        pointX = (theta2Max - theta2Min)*rand1 + theta2Min
+                        pointY = rand2*min(pMax, 1)
+                        pointY = max(pointY, 0.0)
+                        pT2T1 = gama*(theta1 + pointX)/theta1*log(2.0*theta1/gama/(theta1 + pointX)**2)
+                        if (pointY <= pT2T1 .or. iterateNum > 10000) then
+                            theta2 = pointX
+                            exit
+                        end if
+                    end do
+
+                    norm_vin = norm_2(pVelVec)
+                    ee1 = 0.5*mm1*norm_vin**2
+                    ! particle rebound
+                    angout1 = arebound(alpha, beta, angin1, dd2)
+                    norm_vout = pp*norm_vin
+                    ee2 = mm1/2.0*norm_vout**2
+                    vout(3) = norm_vout*sin(angout1)
+                    if (vout(3) < sqrt(2.0*gg3*0.5*(d1 + d2)) .or. pp <= 0.0 .or. pp > 1.0 .or. angout1 <= 0.0) then
+                        nne = 0
+                        pp = 0.0
+                    else
+                        nne = 1
+                    end if
                 end if
             end if
         end do
@@ -727,60 +785,6 @@ contains
                     print *, 'whichSurfTri error1'
                     stop
                 end select
-                ! properties of injector and particles in the bed
-                d1 = dp(n)
-                d2 = bedPD(ipp, jpp)
-                mm1 = (pi*d1**3)/6.0*rhos
-                mm2 = (pi*d2**3)/6.0*rhos
-                if (abs(vin(1)) > 0.0) then
-                    angin1 = atan(abs(vin(3)/vin(1)))
-                else
-                    angin1 = pi/2.0
-                end if
-                vpin = vpin + vin
-                norm_vpin = norm_vpin + norm_vin
-                vvpin = vvpin + norm_vin**2
-                mpin = mpin + mm1
-                npin = npin + 1.0
-                mupin(ik, jk) = mupin(ik, jk) + mm1*vin(1)
-                mvpin(ik, jk) = mvpin(ik, jk) + mm1*vin(3)
-                !pVelVec(1) = pVelVec(1) - ucreep(ipp, jpp)
-                !pVelVec(2) = pVelVec(2) - vcreep(ipp, jpp)
-                norm_vin = norm_2(pVelVec)
-                ee1 = 0.5*mm1*norm_vin**2
-                ! particle rebound
-                if (isp == 0) then ! lammel
-                    dd1 = d1/(0.5*(d1 + d2))
-                    dd2 = d2/(0.5*(d1 + d2))
-                    mmu = els*dd1**3/(dd1**3 + els*dd2**3)
-                    alpha = (1.0 + els)/(1.0 + mmu) - 1.0
-                    beta = 1.0 - (2.0/7.0)*(1.0 - fric)/(1.0 + mmu)
-                    ! particle rebound
-                    pp = beta - (beta**2 - alpha**2)*dd2*angin1/(2.0*beta)
-                    angout1 = arebound(alpha, beta, angin1, dd2)
-                    norm_vout = pp*norm_vin
-                    ee2 = mm1/2.0*norm_vout**2
-                    vout(3) = norm_vout*sin(angout1)
-                    if (vout(3) < sqrt(2.0*gg3*0.5*(d1 + d2)) .or. pp <= 0.0 .or. pp > 1.0 .or. angout1 <= 0.0) then
-                        nne = 0
-                        pp = 0.0
-                    else
-                        nne = 1
-                    end if
-                else ! kok
-                    pp = 0.95*(1.0 - exp(-2.0*norm_vin))
-                    nne = biDist(pp)
-                    if (nne > 0) then
-                        mmu = 0.6*norm_vin
-                        sigma = 0.25*norm_vin
-                        norm_vout = normal(mmu, sigma)
-                        ee2 = 0.5*mm2*norm_vout**2
-                        ammu1 = 30.0/180.0*pi
-                        aSigma1 = 15.0/180.0*pi
-                        angout1 = normal(ammu1, aSigma1)
-                        if (norm_vout <= 0. .or. angout1 <= 0.) nne = 0
-                    end if
-                end if
                 if (nne == 0) then
                     ! influence of repose angle
                     select case (rollDirBump(ipp, jpp))
