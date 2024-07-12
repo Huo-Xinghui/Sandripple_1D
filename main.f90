@@ -552,14 +552,15 @@ contains
         real(kind=dbPc), dimension(3) :: impactCoordinateX, impactCoordinateY, impactCoordinateZ
         real(kind=dbPc) :: eta, alpha, beta, gama, sigma, lambda, mu
         real(kind=dbPc) :: d1, d2, averageD1D2, nonDimD1, nonDimD2
-        real(kind=dbPc) :: m1, m2
         real(kind=dbPc) :: v1, v2
         real(kind=dbPc) :: theta1, theta2, theta2Min, theta2Max, theta2Mid
         real(kind=dbPc) :: pT2T1, pMax
         real(kind=dbPc) :: rand1, rand2
         real(kind=dbPc) :: pointX, pointY
-        real(kind=dbPc) :: E1, E2
         real(kind=dbPc) :: eBar
+        real(kind=dbPc) :: m1, m2
+        real(kind=dbPc) :: E1, E2, Ed2, Eeff
+        real(kind=dbPc) :: tau_s
 
         particle => pListHead
         do while (associated(particle))
@@ -645,8 +646,6 @@ contains
                     beta = 1.0 - (2.0/7.0)*(1.0 - resCoeffT)/(1.0 + eta)
                     theta1 = atan(abs(impactVelocity(3)/impactVelocity(1)))
                     eBar = beta - (beta**2 - alpha**2)*nonDimD2*theta1/(2.0*beta)
-                    v1 = vectorMagnitude(impactVelocity)
-                    v2 = v1*eBar
 
                     gama = 4.0/9.0/nonDimD2*(beta/(alpha + beta))**2
                     theta2Min = -theta1
@@ -668,7 +667,29 @@ contains
                         end if
                     end do
 
-                    norm_vin = norm_2(pVelVec)
+m1 = rhoP*(pi*d1**3)/6.0
+m2 = rhoP*(pi*d2**3)/6.0
+                    v1 = vectorMagnitude(impactVelocity)
+E1 = (m1*v1**2)/2.0
+                    Ed2 = m2*9.8*d2
+                    Eeff = Ed2*(1.0 - tau_a(1)/tau_s)
+                    if (Eeff/Ed2 < 0.1) then
+                        Eeff = Ed2*0.1
+                    end if
+                    lambda = 2.0*log((1.0 - pp**2)*ee1/eed2)
+                    if (lambda <= 0.0) then
+                        ne = 0
+                    else
+                        sigma = sqrt(lambda)*log(2.0)
+                        mmu = log((1.0 - pp**2)*ee1) - lambda*log(2.0)
+                        merfc = myerfc((log(eed2) - mmu)/(sqrt(2.0)*sigma))
+                        ee2bar = eed2*((1.0 - pp**2)*ee1/eed2)**(1.0 - (2.0 - log(2.0))*log(2.0))
+                        ne = int(0.06*((1.0 - pp**2)*ee1/(2.0*ee2bar))*merfc)
+                    end if
+! Shao et al. 2000
+                    tau_s = rho*0.0123*(rhoP/rho*9.8*d2 + 3.0e-4/(rho*d2))
+
+                    v2 = v1*eBar
                     ee1 = 0.5*mm1*norm_vin**2
                     ! particle rebound
                     angout1 = arebound(alpha, beta, angin1, dd2)
@@ -684,153 +705,11 @@ contains
                 end if
             end if
         end do
-        point0 = closestPoint2Triangle(point0, point1, point2, point3)
-        unitSurfNormal = unit_vec(surfNormal)
-        !
-        pLocVec(1) = xp(n)
-        pLocVec(2) = yp(n)
-        pLocVec(3) = zp(n)
-        vec1p = pLocVec - point1
-        dotP1 = dotProduct(vec12, vec1p)
-        dotP2 = dotProduct(vec13, vec1p)
         if (dotP1 <= 0.0 .and. dotP2 <= 0.0) then
             point0 = point1
         else
-            vec2p = pLocVec - point2
-            dotP3 = dotProduct(vec12, vec2p)
-            dotP4 = dotProduct(vec13, vec2p)
-            if (dotP3 >= 0.0 .and. dotP4 <= dotP3) then
-                point0 = point2
-            else
-                lam23 = dotP1*dotP4 - dotP3*dotP2
-                if (lam23 <= 0.0 .and. dotP1 >= 0.0 .and. dotP3 <= 0.0) then
-                end if
-            end if
-            lambda3 = (vec1(1)*vec3(2) - vec1(2)*vec3(1))/(vec1(1)*vec2(2) - vec1(2)*vec2(1))
-            lambda2 = (vec3(1) - vec2(1)*lambda3)/vec1(1)
-            lambda1 = 1.0 - lambda2 - lambda3
-            point0(1) = pLocVec(1)
-            point0(2) = pLocVec(2)
-            point0(3) = lambda1*point1(3) + lambda2*point2(3) + lambda3*point3(3)
-            !
-            fz(n) = pLocVec(3) - point0(3)
-            !
-            vin(3) = dotProduct(pVelVec, unitSurfNormal)
             ifimpact: if (fz(n) <= 0.0 .and. vin(3) < 0.0) then
-                ! information of inject particle
-                pVelVec(1) = up(n)
-                pVelVec(2) = vp(n)
-                pVelVec(3) = wp(n)
-                ttvec = crossProduct(surfNormal, pVelVec)
-                tnvec = crossProduct(ttvec, surfNormal)
-                utnvec = unit_vec(tnvec)
-                uttvec = unit_vec(ttvec)
-                vin(1) = dotProduct(pVelVec, utnvec)
-                vin(2) = dotProduct(pVelVec, uttvec)
-                gg(1) = 0.0
-                gg(2) = 0.0
-                gg(3) = 9.8
-                gg3 = 9.8 !abs(dotProduct(gg, unitSurfNormal))
-                norm_vin = norm_2(pVelVec)
-                ! nearest point to impact point
-                d01 = dist_p(point0, point1)
-                d02 = dist_p(point0, point2)
-                d03 = dist_p(point0, point3)
-                select case (whichSurfTri)
-                case (1)
-                    if (d01 <= d02 .and. d01 <= d03) then
-                        ipp = ik
-                        jpp = jk
-                    else if (d02 <= d01 .and. d02 <= d03) then
-                        ipp = ik + 1
-                        jpp = jk + 1
-                    else if (d03 <= d01 .and. d03 <= d02) then
-                        ipp = ik
-                        jpp = jk + 1
-                    end if
-                case (2)
-                    if (d01 <= d02 .and. d01 <= d03) then
-                        ipp = ik
-                        jpp = jk
-                    else if (d02 <= d01 .and. d02 <= d03) then
-                        ipp = ik + 1
-                        jpp = jk + 1
-                    else if (d03 <= d01 .and. d03 <= d02) then
-                        ipp = ik + 1
-                        jpp = jk
-                    end if
-                case (3)
-                    if (d01 <= d02 .and. d01 <= d03) then
-                        ipp = ik + 1
-                        jpp = jk
-                    else if (d02 <= d01 .and. d02 <= d03) then
-                        ipp = ik
-                        jpp = jk + 1
-                    else if (d03 <= d01 .and. d03 <= d02) then
-                        ipp = ik
-                        jpp = jk
-                    end if
-                case (4)
-                    if (d01 <= d02 .and. d01 <= d03) then
-                        ipp = ik + 1
-                        jpp = jk
-                    else if (d02 <= d01 .and. d02 <= d03) then
-                        ipp = ik
-                        jpp = jk + 1
-                    else if (d03 <= d01 .and. d03 <= d02) then
-                        ipp = ik + 1
-                        jpp = jk + 1
-                    end if
-                case default
-                    print *, 'whichSurfTri error1'
-                    stop
-                end select
                 if (nne == 0) then
-                    ! influence of repose angle
-                    select case (rollDirBump(ipp, jpp))
-                    case (0)
-                        ii = ipp
-                        jj = jpp
-                    case (1)
-                        ii = ipp + 1
-                        jj = jpp
-                    case (2)
-                        ii = ipp - 1
-                        jj = jpp
-                    case (3)
-                        ii = ipp
-                        jj = jpp + 1
-                    case (4)
-                        ii = ipp
-                        jj = jpp - 1
-                    case default
-                        print *, rollDirBump(ipp, jpp), 'rollDirBump error'
-                        stop
-                    end select
-                    if (ipd /= 2) then
-                        iii = int((d1 - dpa + dSigma*3.0)/dSigma/6.0*dfloat(npdf)) + 1
-                        if (iii > npdf) iii = npdf
-                        if (iii <= 0) iii = 1
-                    else
-                        if (d1 < dpa) then
-                            iii = 1
-                        else if (d1 > dpa) then
-                            iii = 2
-                        else
-                            print *, 'error on d1=', d1, '/=', dpa, 'or', dpa + dSigma
-                            stop
-                        end if
-                    end if
-                    vch = nkl*(pi*d1**3)/6.0/por
-                    if (jj >= mky + 1) jj = 3
-                    if (ii <= mkxNode) then
-                        Dkz(ii, jj) = Dkz(ii, jj) + vch/kArea
-                        DbedPDist(ii, jj, iii) = DbedPDist(ii, jj, iii) + vch
-                    else
-                        eepnch(jj) = eepnch(jj) + vch
-                        jjkk = iii + (jj - 1)*npdf
-                        eepdfch(jjkk) = eepdfch(jjkk) + vch
-                    end if
                 else
                     ammu2 = 0.0
                     aSigma2 = 10.0/180.0*pi
@@ -868,23 +747,6 @@ contains
                 end if
                 ! particle splash
                 if (isp == 0) then ! lammel
-                    utaot = sqrt(0.0123*(rhos/rho*9.8*bedPD(ipp, jpp) + 3.0e-4/(rho*bedPD(ipp, jpp))))
-                    taot = rho*utaot**2
-                    eed2x = mm2*gg3*d2
-                    eed2 = eed2x*(1.0 - htao(1)/taot)
-                    if (eed2/eed2x <= 0.1) then
-                        eed2 = eed2x*0.1
-                    end if
-                    lambda = 2.0*log((1.0 - pp**2)*ee1/eed2)
-                    if (lambda <= 0.0) then
-                        ne = 0
-                    else
-                        sigma = sqrt(lambda)*log(2.0)
-                        mmu = log((1.0 - pp**2)*ee1) - lambda*log(2.0)
-                        merfc = myerfc((log(eed2) - mmu)/(sqrt(2.0)*sigma))
-                        ee2bar = eed2*((1.0 - pp**2)*ee1/eed2)**(1.0 - (2.0 - log(2.0))*log(2.0))
-                        ne = int(0.06*((1.0 - pp**2)*ee1/(2.0*ee2bar))*merfc)
-                    end if
                 else ! kok
                     mm2 = (pi*bedPD(ipp, jpp)**3)/6.0*rhos
                     nee = 0.03*norm_vin/sqrt(9.8*bedPD(ipp, jpp))
