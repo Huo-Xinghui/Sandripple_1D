@@ -1,7 +1,7 @@
 module public_parameter
     ! constants
     implicit none
-    integer, parameter :: dbPc = selected_real_kind(14, 307)
+    integer, parameter :: dbPc = selected_real_kind(15, 307)
     real(kind=dbPc), parameter :: pi = 3.14159265358979323846
 
     ! computational domain
@@ -52,7 +52,7 @@ module public_parameter
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: nkl = 1.0 ! one particle stands for x particles
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
-    integer, parameter :: pNumMax = 1000000 ! max particle num in one subdomain
+    integer, parameter :: pNumMax = 1e7 ! max particle num
     integer, parameter :: nspmax = 10000 ! max eject particle num in one time step
 
     ! bed surface
@@ -74,7 +74,7 @@ module public_parameter
     integer, parameter :: irsf = 0 ! surface irsf=0: erodable, irsf=1: rigid
     ! output per x steps
     integer, parameter :: nnf = 1e5 ! field
-    integer, parameter :: nns = 1e4 ! tau_a & tau_p
+    integer, parameter :: nns = 1e4 ! tau_f & tau_p
     integer, parameter :: nnc = 1e4 ! num of moving particles
     integer, parameter :: nnkl = 1e5 ! particle information
     integer, parameter :: nnsf = 1e4 ! surface, surfaced
@@ -88,6 +88,104 @@ module public_parameter
     integer, parameter :: mx = nx + 2 ! x grid num +2
     integer, parameter :: my = ny + 2 ! y grid num +2
 end module public_parameter
+
+module parallel_operations
+    use public_parameter
+    implicit none
+    private
+
+    type parallelType
+        integer :: ID
+        integer :: nx, mx
+        integer :: i1, in
+        integer :: i0, im
+        integer, dimension(2) :: neighbor
+        real(kind=dbPc) :: sx, ex
+    end type parallelType
+
+    type(parallelType) :: currentNode
+    integer :: comm3d, ierr, coords, nbrLeft, nbrRight
+    integer :: MPI_surfaceGridType
+
+    public :: parallelInitiation, createMpiStructure, freeMpiStructure
+    public :: comm3d, currentNode, MPI_surfaceGridType, MPI_gridType
+
+contains
+
+    subroutine parallelInitiation
+        implicit none
+        ! create MPI Cartesian topology
+        call MPI_CART_CREATE(MPI_COMM_WORLD, 1, nNodes, .true., .true., comm3d, ierr)
+        call MPI_COMM_RANK(comm3d, currentNode%ID, ierr)
+        call MPI_CART_GET(comm3d, 1, nNodes, .true., coords, ierr)
+        ! find neighbors
+        !
+        !       |           |
+        !       |           |
+        !     -----------------
+        !       |           |
+        !       |           |
+        !     1 |   myid    | 2
+        !       |           |
+        !       |           |
+        !     -----------------
+        !       |           |
+        !       |           |
+        !
+        call MPI_CART_SHIFT(comm3d, 0, 1, nbrLeft, nbrRight, ierr)
+        currentNode%neighbor(1) = nbrLeft
+        currentNode%neighbor(2) = nbrRight
+        call MPI_BARRIER(comm3d, ierr)
+
+        !             sx         ex
+        ! 1  |  2 3 4  |  5 6 7  |  8 9 10  |  11
+        !   sx         ex       sx          ex
+        ! for the 3rd node shown above:
+        ! currentNode%nx = 3 (8, 9, 10)
+        ! currentNode%mx = 5 (7, 8, 9, 10, 11)
+        ! currentNode%i0 = 7
+        ! currentNode%i1 = 8
+        ! currentNode%in = 10
+        ! currentNode%im = 11
+        currentNode%nx = nx/nNodes
+        currentNode%mx = nx + 2
+        currentNode%i1 = currentNode%ID*currentNode%nx + 2
+        currentNode%i0 = i1 - 1
+        currentNode%in = (currentNode%ID + 1)*currentNode%nx + 1
+        currentNode%im = in + 1
+    end subroutine parallelInitiation
+
+    subroutine createMpiStructure
+        implicit none
+        integer, dimension(5):: surfaceGridTypeBlockLen
+        integer, dimension(5):: surfaceGridTypeDisp
+        integer, dimension(5):: surfaceGridTypeOld
+        integer, dimension(4):: gridTypeBlockLen
+        integer, dimension(4):: gridTypeDisp
+        integer, dimension(4):: gridTypeOld
+
+        surfaceGridTypeBlockLen = [1, 1, 1, 3, npdf + 2]
+        surfaceGridTypeDisp = [0, kind(0), 2*kind(0), 2*kind(0) + kind(0.0_dbPc), 2*kind(0) + 4*kind(0.0_dbPc)]
+        surfaceGridTypeOld = [MPI_INTEGER, MPI_INTEGER, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE]
+        call MPI_TYPE_CREATE_STRUCT(5, surfaceGridTypeBlockLen, surfaceGridTypeDisp, surfaceGridTypeOld, &
+                                    MPI_surfaceGridType, ierr)
+        call MPI_TYPE_COMMIT(MPI_surfaceGridType, ierr)
+
+        gridTypeBlockLen = [1, 1, 1, 3]
+        gridTypeDisp = [0, kind(0.0_dbPc), 2*kind(0.0_dbPc), 3*kind(0.0_dbPc)]
+        gridTypeOld = [MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE]
+        call MPI_TYPE_CREATE_STRUCT(4, gridTypeBlockLen, gridTypeDisp, gridTypeOld, MPI_gridType, ierr)
+        call MPI_TYPE_COMMIT(MPI_gridType, ierr)
+    end subroutine createMpiStructure
+
+    subroutine freeMpiStructure
+        implicit none
+
+        call MPI_TYPE_FREE(MPI_surfaceGridType, ierr)
+        call MPI_TYPE_FREE(MPI_gridType, ierr)
+    end subroutine freeMpiStructure
+
+end module parallel_operations
 
 module vector_operations
     use public_parameter
@@ -168,10 +266,11 @@ module surface_operations
     private
 
     type surfaceGridType
-        real(kind=dbPc), dimension(3) :: location
+        integer :: avalanchTo
+        integer :: avalanchFrom
         real(kind=dbPc) :: averageDiameter
+        real(kind=dbPc), dimension(3) :: location
         real(kind=dbPc), dimension(npdf + 2) :: diameterDistribution
-        integer :: avalanchTo, avalanchFrom
     end type surfaceGridType
 
     type(surfaceGridType), dimension(mx, my) :: surfGrid
@@ -183,6 +282,7 @@ module surface_operations
 contains
 
     subroutine generateSurfaceGrid
+        use parallel_operations
         implicit none
         integer :: i, j
 
@@ -197,15 +297,12 @@ contains
                 surfGrid(i, j)%location(2) = surfGrid(i, j - 1)%location(2) + yDiff
             end do
         end do
-
-        ! Justify the location to the center of the surface grid
-        surfGrid%location(1) = surfGrid%location(1) + 0.5*xDiff
-        surfGrid%location(2) = surfGrid%location(2) + 0.5*yDiff
     end subroutine generateSurfaceGrid
 
     subroutine surfaceInitiation
         implicit none
         integer :: i, j, k
+        integer :: ierr
 
         if (ipd == 0) then
             if (npdf >= 3) then
@@ -245,6 +342,8 @@ contains
                 end do
             end do
         end do
+        call MPI_BARRIER(comm3d, ierr)
+        call MPI_BCAST(surfGrid, mx*my, MPI_surfaceGridType, 0, comm3d, ierr)
     end subroutine surfaceInitiation
 
     subroutine normalDistHistogram(histogram)
@@ -272,9 +371,8 @@ contains
     end subroutine normalDistHistogram
 
     subroutine determineParticleRollDirection
-        use omp_lib
         implicit none
-        integer :: i, j, k, threadID, numThreads
+        integer :: i, j, k
         real(kind=dbPc) :: centerZ, westZ, eastZ, northZ, southZ
         real(kind=dbPc), dimension(4) :: slopes
         real(kind=dbPc) :: tanRepostAngle, maxSlope
@@ -294,12 +392,6 @@ contains
         !         | 4
 
         tanRepostAngle = tan(repostAngle/180.0*pi)
-        ! Initialize OpenMP
-        numThreads = omp_get_max_threads()
-        call omp_set_num_threads(numThreads)
-
-        !$omp parallel do private(i, j, k, centerZ, westZ, eastZ, northZ, southZ, slopes, maxSlope) &
-        !$omp& shared(surfGrid, xDiff, yDiff, repostAngle, pi, nx, ny)
         do j = 2, ny
             do i = 2, nx
                 centerZ = surfGrid(i, j)%location(3)
@@ -337,8 +429,8 @@ contains
                 end do
             end do
         end do
-        !$omp end parallel do
     end subroutine determineParticleRollDirection
+
 end module surface_operations
 
 module field_operations
@@ -347,51 +439,38 @@ module field_operations
     private
 
     type gridType
-        real(kind=dbPc), dimension(3) :: location
         real(kind=dbPc) :: zDiff
+        real(kind=dbPc) :: tau_p
+        real(kind=dbPc) :: tau_t
+        real(kind=dbPc), dimension(3) :: location
     end type gridType
 
-    type(gridType), dimension(mx + 1, my + 1, nz + 1) :: vectorGrid
+    type(gridType), dimension(mx, my, nz + 1) :: vectorGrid
     type(gridType), dimension(mx, my, nz) :: scalarGrid
     real(kind=dbPc) :: zDiffMax, refineRatio
 
-    public :: generateGrid, scalarGrid
+    public :: generateGrid, fieldInitiation
+    public :: vectorGrid, scalarGrid
 
 contains
 
     subroutine generateGrid
+        use parallel_operations
         use surface_operations
         implicit none
 
         integer :: i, j, k
+        integer :: ierr
 
         do i = 1, mx
             do j = 1, my
-                if (i == 1) then
-                    vectorGrid(i, j, 1)%location(1) = -xDiff
-                else
-                    vectorGrid(i, j, 1)%location(1) = vectorGrid(i - 1, j, 1)%location(1) + xDiff
-                end if
-                if (j == 1) then
-                    vectorGrid(i, j, 1)%location(2) = -yDiff
-                else
-                    vectorGrid(i, j, 1)%location(2) = vectorGrid(i, j - 1, 1)%location(2) + yDiff
-                end if
-                vectorGrid(i, j, 1)%location(3) = surfGrid(i, j)%location(3)
+                vectorGrid(i, j, 1)%location = surfGrid(i, j)%location
                 vectorGrid(i, j, 1)%zDiff = zDiffMin
                 zDiffMax = (zMax - surfGrid(i, j)%location(3))/nz
                 refineRatio = (zDiffMax/zDiffMin)**(1.0/(nzUni - 1))
                 do k = 2, nz
-                    if (i == 1) then
-                        vectorGrid(i, j, k)%location(1) = -xDiff
-                    else
-                        vectorGrid(i, j, k)%location(1) = vectorGrid(i - 1, j, k)%location(1) + xDiff
-                    end if
-                    if (j == 1) then
-                        vectorGrid(i, j, k)%location(2) = -yDiff
-                    else
-                        vectorGrid(i, j, k)%location(2) = vectorGrid(i, j - 1, k)%location(2) + yDiff
-                    end if
+                    vectorGrid(i, j, k)%location(1) = surfGrid(i, j)%location(1)
+                    vectorGrid(i, j, k)%location(2) = surfGrid(i, j)%location(2)
                     vectorGrid(i, j, k)%location(3) = vectorGrid(i, j, k - 1)%location(3) + vectorGrid(i, j, k - 1)%zDiff
                     if (k <= nzUni) then
                         vectorGrid(i, j, k)%zDiff = vectorGrid(i, j, k - 1)%zDiff*refineRatio
@@ -399,27 +478,19 @@ contains
                         vectorGrid(i, j, k)%zDiff = zDiffMax
                     end if
                 end do
-                if (i == 1) then
-                    vectorGrid(i, j, nz + 1)%location(1) = -xDiff
-                else
-                    vectorGrid(i, j, nz + 1)%location(1) = vectorGrid(i - 1, j, nz + 1)%location(1) + xDiff
-                end if
-                if (j == 1) then
-                    vectorGrid(i, j, nz + 1)%location(2) = -yDiff
-                else
-                    vectorGrid(i, j, nz + 1)%location(2) = vectorGrid(i, j - 1, nz + 1)%location(2) + yDiff
-                end if
+                vectorGrid(i, j, nz + 1)%location(1) = surfGrid(i, j)%location(1)
+                vectorGrid(i, j, nz + 1)%location(2) = surfGrid(i, j)%location(2)
                 vectorGrid(i, j, nz + 1)%location(3) = zMax
                 vectorGrid(i, j, nz)%zDiff = zMax - vectorGrid(i, j, nz)%location(3)
                 vectorGrid(i, j, nz + 1)%zDiff = vectorGrid(i, j, nz)%zDiff
             end do
         end do
-        vectorGrid(mx + 1, :, :) = vectorGrid(mx, :, :)
-        vectorGrid(:, my + 1, :) = vectorGrid(:, my, :)
+        currentNode%sx = vectorGrid(currentNode%i1, ny, nz)%location(1)
+        currentNode%ex = vectorGrid(currentNode%im, ny, nz)%location(1)
 
         do k = 1, nz
-            do j = 1, my
-                do i = 1, mx
+            do j = 1, my - 1
+                do i = 1, mx - 1
                     scalarGrid(i, j, k)%location(1) = (vectorGrid(i + 1, j, k)%location(1) - &
                                                        vectorGrid(i, j, k)%location(1))/2.0 + &
                                                       vectorGrid(i, j, k)%location(1)
@@ -431,9 +502,34 @@ contains
                                                       vectorGrid(i, j, k)%location(3)
                     scalarGrid(i, j, k)%zDiff = vectorGrid(i, j, k)%zDiff
                 end do
+                scalarGrid(mx, j, k)%location(1) = scalarGrid(mx - 1, j, k)%location(1) + xDiff
+                scalarGrid(mx, j, k)%location(2) = scalarGrid(mx - 1, j, k)%location(2)
+                scalarGrid(mx, j, k)%location(3) = (vectorGrid(mx, j, k + 1)%location(3) - &
+                                                    vectorGrid(mx, j, k)%location(3))/2.0 + &
+                                                   vectorGrid(mx, j, k)%location(3)
+                scalarGrid(mx, j, k)%zDiff = vectorGrid(mx, j, k)%zDiff
+            end do
+            do i = 1, mx
+                scalarGrid(i, my, k)%location(1) = scalarGrid(i, my - 1, k)%location(1)
+                scalarGrid(i, my, k)%location(2) = scalarGrid(i, my - 1, k)%location(2) + yDiff
+                scalarGrid(i, my, k)%location(3) = (vectorGrid(i, my, k + 1)%location(3) - &
+                                                    vectorGrid(i, my, k)%location(3))/2.0 + &
+                                                   vectorGrid(i, my, k)%location(3)
+                scalarGrid(i, my, k)%zDiff = vectorGrid(i, my, k)%zDiff
             end do
         end do
+        call MPI_BARRIER(comm3d, ierr)
+        call MPI_BCAST(vectorGrid, mx*my*(nz + 1), MPI_gridType, 0, comm3d, ierr)
+        call MPI_BCAST(scalarGrid, mx*my*nz, MPI_gridType, 0, comm3d, ierr)
     end subroutine generateGrid
+
+    subroutine fieldInitiation
+        implicit none
+
+        vectorGrid%tau_p = 0.0
+        vectorGrid%tau_t = rho*uStar**2
+    end subroutine fieldInitiation
+
 end module field_operations
 
 module particle_operations
@@ -441,78 +537,76 @@ module particle_operations
     implicit none
     private
 
-    type particleList
+    type particleType
         real(kind=dbPc), dimension(3) :: location
         real(kind=dbPc), dimension(3) :: velocity
         real(kind=dbPc) :: diameter
         real(kind=dbPc) :: altitude
         integer, dimension(3) :: indices
-        type(particleList), pointer :: next => null()
-    end type particleList
+    end type particleType
 
-    type(particleList), pointer :: pListHead => null(), pListTail => null(), particle => null()
+    type(particleType), allocatable, dimension(:) :: particle
     integer pNum
 
-    public :: particleInitiation
+    public :: particleInitiation, particle, pNum
 
 contains
 
     subroutine particleInitiation
+        use parallel_operations
         use surface_operations
+        use field_operations
         implicit none
 
         integer :: n
         real(kind=dbPc) :: rand1, rand2, rand3
+        type(particleType) :: currentParticle
 
         pNum = pNumInit
+        allocate (particle(pNum))
         do n = 1, pNum
+            currentParticle = particle(n)
             call random_number(rand1)
             call random_number(rand2)
             call random_number(rand3)
-            allocate (particle)
-            particle%location(1) = xMax*rand1
-            particle%location(2) = yMax*rand2
-            particle%location(3) = zMax*rand3
-            particle%velocity = 0.0
-            particle%diameter = valObeyCertainPDF(initDiameterDist)
-            call determineParticleIndices
-            if (.not. associated(pListHead)) then
-                pListHead => particle
-                pListTail => particle
-            else
-                pListTail%next => particle
-                pListTail => particle
-            end if
+            currentParticle%location(1) = currentNode%sx + (currentNode%ex - currentNode%sx)*rand1
+            currentParticle%location(2) = yMax*rand2
+            currentParticle%location(3) = zMax*rand3
+            currentParticle%velocity = 0.0
+            currentParticle%diameter = valObeyCertainPDF(initDiameterDist)
+            call determineParticleIndices(currentParticle)
+            particle(n) = currentParticle
         end do
     end subroutine particleInitiation
 
-    subroutine determineParticleIndices
+    subroutine determineParticleIndices(currentP)
         use surface_operations
         use field_operations
         implicit none
 
         integer :: ip, jp, kp
         real(kind=dbPc) :: currentZ
+        type(particleType) :: currentP
 
-        ip = int(mod(particle%location(1), xMax)/xDiff) + 2
-        jp = int(mod(particle%location(2), yMax)/yDiff) + 2
+        ip = int(mod(currentP%location(1), xMax)/xDiff) + 2
+        jp = int(mod(currentP%location(2), yMax)/yDiff) + 2
         currentZ = surfGrid(ip, jp)%location(3)
         kp = 0
-        if (particle%location(3) <= currentZ) then
+        if (currentP%location(3) <= currentZ) then
             kp = -1
-        else if (particle%location(3) > zMax) then
+        else if (currentP%location(3) > zMax) then
             kp = 0
         else
             do kp = 1, nz
                 currentZ = currentZ + scalarGrid(ip, jp, kp)%zDiff
-                if (particle%location(3) < currentZ) then
+                if (currentP%location(3) < currentZ) then
                     exit
                 end if
             end do
         end if
-        particle%indices(1) = ip
-        particle%indices(2) = jp
-        particle%indices(3) = kp
+        currentP%indices(1) = ip
+        currentP%indices(2) = jp
+        currentP%indices(3) = kp
     end subroutine determineParticleIndices
 
     function valObeyCertainPDF(histogram)
@@ -536,19 +630,25 @@ contains
         end do
     end function valObeyCertainPDF
 
-    subroutine calculateImpactSplash
+    subroutine calculateSplash
+        use parallel_operations
+        use field_operations
         use surface_operations
         use vector_operations
         implicit none
 
+        integer ierr
         integer ip, jp
         integer :: iterateNum
+        integer :: ejectNum
+        integer :: realNum
+        type(particleType) currentParticle
         real(kind=dbPc), dimension(2) :: LocalLoc ! particle local location
         real(kind=dbPc), dimension(3) :: node1, node2, node3
         real(kind=dbPc), dimension(3) :: vector12, vector13
         real(kind=dbPc), dimension(3) :: surfaceNormalVector
         real(kind=dbPc), dimension(3) :: particleProjection
-        real(kind=dbPc), dimension(3) :: impactVelocity
+        real(kind=dbPc), dimension(3) :: impactVelocity, reboundVelocity
         real(kind=dbPc), dimension(3) :: impactCoordinateX, impactCoordinateY, impactCoordinateZ
         real(kind=dbPc) :: eta, alpha, beta, gama, sigma, lambda, mu
         real(kind=dbPc) :: d1, d2, averageD1D2, nonDimD1, nonDimD2
@@ -559,15 +659,17 @@ contains
         real(kind=dbPc) :: pointX, pointY
         real(kind=dbPc) :: eBar
         real(kind=dbPc) :: m1, m2
-        real(kind=dbPc) :: E1, E2, Ed2, Eeff
+        real(kind=dbPc) :: E1, E2, Ed2, Eeff, E2Bar
         real(kind=dbPc) :: tau_s
 
-        particle => pListHead
-        do while (associated(particle))
-            ip = particle%indices(1)
-            jp = particle%indices(2)
-            LocalLoc(1) = particle%location(1) - surfGrid(ip, jp)%location(1)
-            LocalLoc(2) = particle%location(2) - surfGrid(ip, jp)%location(2)
+        call MPI_BARRIER(comm3d, ierr)
+        realNum = 0
+        do n = 1, pNum
+            currentParticle = particle(n)
+            ip = currentParticle%indices(1)
+            jp = currentParticle%indices(2)
+            LocalLoc(1) = currentParticle%location(1) - surfGrid(ip, jp)%location(1)
+            LocalLoc(2) = currentParticle%location(2) - surfGrid(ip, jp)%location(2)
 
             if (mod(ip + jp, 2) == 0) then
                 ! ip+jp = Even num
@@ -620,23 +722,24 @@ contains
                     surfaceNormalVector = unitVector(crossProduct(vector13, vector12))
                 end if
             end if
-            particleProjection(1) = particle%location(1)
-            particleProjection(2) = particle%location(2)
+            particleProjection(1) = currentParticle%location(1)
+            particleProjection(2) = currentParticle%location(2)
             particleProjection(3) = node3(3) + &
-                                    (surfaceNormalVector(1)*(particle%location(1) - node3(1)) + &
-                                     surfaceNormalVector(2)*(particle%location(2) - node3(2)))/ &
+                                    (surfaceNormalVector(1)*(currentParticle%location(1) - node3(1)) + &
+                                     surfaceNormalVector(2)*(currentParticle%location(2) - node3(2)))/ &
                                     (-surfaceNormalVector(3))
-            particle%altitude = particle%location(3) - particleProjection(3)
-            if (particle%altitude <= 0.0) then
+            currentParticle%altitude = currentParticle%location(3) - particleProjection(3)
+            if (currentParticle%altitude < 0.5*currentParticle%diameter) then
+                currentParticle%altitude = 0.5*currentParticle%diameter
                 impactCoordinateZ = surfaceNormalVector
-                impactVelocity(3) = dotProduct(particle%velocity, impactCoordinateZ)
+                impactVelocity(3) = dotProduct(currentParticle%velocity, impactCoordinateZ)
                 if (impactVelocity(3) < 0.0) then
-                    impactCoordinateY = crossProduct(impactCoordinateZ, particle%velocity)
-                    impactCoordinateX = crossProduct(impactCoordinateY, impactCoordinateZ)
-                    impactVelocity(1) = dotProduct(particle%velocity, impactCoordinateX)
-                    impactVelocity(2) = dotProduct(particle%velocity, impactCoordinateY)
+                    impactCoordinateY = unitVector(crossProduct(impactCoordinateZ, currentParticle%velocity))
+                    impactCoordinateX = unitVector(crossProduct(impactCoordinateY, impactCoordinateZ))
+                    impactVelocity(1) = dotProduct(currentParticle%velocity, impactCoordinateX)
+                    impactVelocity(2) = dotProduct(currentParticle%velocity, impactCoordinateY)
                     ! Splash function of Lammel et al. 2017
-                    d1 = particle%diameter
+                    d1 = currentParticle%diameter
                     d2 = surfGrid(ip, jp)%averageDiameter
                     averageD1D2 = (d1 + d2)/2.0
                     nonDimD1 = d1/averageD1D2
@@ -650,6 +753,7 @@ contains
                     gama = 4.0/9.0/nonDimD2*(beta/(alpha + beta))**2
                     theta2Min = -theta1
                     theta2Max = 2.0*sqrt(theta1/gama) - theta1
+                    theta2Max = min(theta2Max, pi)
                     theta2Mid = (theta2Max + theta2Min)/2.0
                     pMax = gama*(theta1 + theta2Mid)/theta1*log(2.0*theta1/gama/(theta1 + theta2Mid)**2)*1.2
                     iterateNum = 0
@@ -667,40 +771,35 @@ contains
                         end if
                     end do
 
-m1 = rhoP*(pi*d1**3)/6.0
-m2 = rhoP*(pi*d2**3)/6.0
+                    m1 = rhoP*(pi*d1**3)/6.0
+                    m2 = rhoP*(pi*d2**3)/6.0
                     v1 = vectorMagnitude(impactVelocity)
-E1 = (m1*v1**2)/2.0
+                    E1 = (m1*v1**2)/2.0
                     Ed2 = m2*9.8*d2
-                    Eeff = Ed2*(1.0 - tau_a(1)/tau_s)
-                    if (Eeff/Ed2 < 0.1) then
-                        Eeff = Ed2*0.1
-                    end if
-                    lambda = 2.0*log((1.0 - pp**2)*ee1/eed2)
-                    if (lambda <= 0.0) then
-                        ne = 0
-                    else
-                        sigma = sqrt(lambda)*log(2.0)
-                        mmu = log((1.0 - pp**2)*ee1) - lambda*log(2.0)
-                        merfc = myerfc((log(eed2) - mmu)/(sqrt(2.0)*sigma))
-                        ee2bar = eed2*((1.0 - pp**2)*ee1/eed2)**(1.0 - (2.0 - log(2.0))*log(2.0))
-                        ne = int(0.06*((1.0 - pp**2)*ee1/(2.0*ee2bar))*merfc)
-                    end if
-! Shao et al. 2000
+                    ! Shao et al. 2000
                     tau_s = rho*0.0123*(rhoP/rho*9.8*d2 + 3.0e-4/(rho*d2))
+                    Eeff = Ed2*(1.0 - vectorGrid(ip, jp, 1)%tau_t/tau_s)
+                    lambda = 2.0*log((1.0 - eBar**2)*E1/Ed2)
+                    sigma = sqrt(lambda)*log(2.0)
+                    mu = log((1.0 - eBar**2)*E1) - lambda*log(2.0)
+                    E2Bar = Ed2*((1.0 - eBar**2)*E1/Ed2)**(1.0 - (2.0 - log(2.0))*log(2.0))
+                    ejectNum = nint(0.06*((1.0 - eBar**2)*E1/(2.0*E2Bar))*erfc((log(Eeff) - mu)/(sqrt(2.0)*sigma)))
 
                     v2 = v1*eBar
-                    ee1 = 0.5*mm1*norm_vin**2
-                    ! particle rebound
-                    angout1 = arebound(alpha, beta, angin1, dd2)
-                    norm_vout = pp*norm_vin
-                    ee2 = mm1/2.0*norm_vout**2
-                    vout(3) = norm_vout*sin(angout1)
-                    if (vout(3) < sqrt(2.0*gg3*0.5*(d1 + d2)) .or. pp <= 0.0 .or. pp > 1.0 .or. angout1 <= 0.0) then
-                        nne = 0
-                        pp = 0.0
-                    else
-                        nne = 1
+                    E2 = (m2*v2**2)/2.0
+                    ! whether rebound
+                    if (theta2 > 0.0 .and. E2 > Ed2 .and. eBar > 0.0) then
+                        realNum = realNum + 1
+                        currentParticle%location(3) = particleProjection(3) + 0.5*currentParticle%diameter
+                        reboundVelocity(1) = v2*cos(theta2)
+                        reboundVelocity(2) = 0.0
+                        reboundVelocity(3) = v2*sin(theta2)
+                        currentParticle%velocity(1) = reboundVelocity(1)*impactCoordinateX
+                        currentParticle%velocity(2) = reboundVelocity(2)*impactCoordinateY
+                        currentParticle%velocity(3) = reboundVelocity(3)*impactCoordinateZ
+                        currentParticle%altitude = 0.5*currentParticle%diameter
+                        call determineParticleIndices(currentParticle)
+                        particle(realNum) = currentParticle
                     end if
                 end if
             end if
@@ -882,7 +981,7 @@ E1 = (m1*v1**2)/2.0
                 fz(pNumTemp) = fz(n)
             end if ifimpact
 
-            end subroutine calculateImpactSplash
+            end subroutine calculateSplash
             end module particle_operations
 
             module output_operations
@@ -955,23 +1054,36 @@ E1 = (m1*v1**2)/2.0
 
             program main
                 use public_parameter
+                use parallel_operations
                 use field_operations
                 use surface_operations
                 use output_operations
                 implicit none
 
+                include "mpif.h"
+                integer :: ierr
                 integer :: last
 
+                ! find indices of subdomain and check that dimensions of arrays are sufficient
+                if (mod(nx, nNodes) /= 0) then
+                    print *, 'nx cannot diveded by nNodes'
+                    stop
+                end if
+                call MPI_INIT(ierr)
                 call random_seed()
+                call parallelInitiation
+                call createMpiStructure
                 ! generate surfGrid and initial bed
                 call generateSurfaceGrid
                 ! initiate surface
                 call surfaceInitiation
                 ! generate grid
                 call generateGrid
+                ! initiate fluid field
+                call fieldInitiation
                 ! initiate particle
                 call particleInitiation
-                ! creat output file
+                ! create output file
                 call generateOutPutFile
                 last = 1
 
@@ -1012,5 +1124,6 @@ E1 = (m1*v1**2)/2.0
                     last = last + 1
                     if (time > tla) exit
                 end do
+                call freeMpiStructure
             end program main
 
