@@ -8,10 +8,10 @@ module public_parameter
 
     real(kind=dbPc), parameter :: xMax = 1.0 ! x size
     real(kind=dbPc), parameter :: yMax = 0.2 ! y size
-    real(kind=dbPc), parameter :: zMax = 0.5 ! z size
+    real(kind=dbPc), parameter :: zMax = 0.3 ! z size
     integer, parameter :: nx = 500 ! x grid num
     integer, parameter :: ny = 100 ! y grid num
-    integer, parameter :: nz = 250 ! z grid num
+    integer, parameter :: nz = 150 ! z grid num
     integer, parameter :: nzUni = 100 ! z grid number above which zDiff becomes uniform
     real(kind=dbPc), parameter :: xDiff = xMax/nx
     real(kind=dbPc), parameter :: yDiff = yMax/nx
@@ -43,6 +43,10 @@ module public_parameter
     real(kind=dbPc), parameter :: dpa = 2.5e-4 ! average particle diameter
     real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
+    ! The range and width of each bin
+    real(kind=dbPc), parameter :: binWidth = 6.0*dpStddDev/npdf
+    real(kind=dbPc), parameter :: binStart = dpa - 3.0*dpStddDev
+    real(kind=dbPc), parameter :: binEnd = dpa + 3.0*dpStddDev
     real(kind=dbPc), parameter :: repostAngle = 30.0 ! repose angle
     real(kind=dbPc), parameter :: resCoeffN = 0.9 ! normal restitution coefficient
     real(kind=dbPc), parameter :: resCoeffT = 0.0 ! tangential restitution coefficient
@@ -52,8 +56,7 @@ module public_parameter
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: nkl = 1.0 ! one particle stands for x particles
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
-    integer, parameter :: pNumMax = 1e7 ! max particle num
-    integer, parameter :: nspmax = 10000 ! max eject particle num in one time step
+    integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
 
     ! bed surface
 
@@ -157,17 +160,19 @@ contains
 
     subroutine createMpiStructure
         implicit none
-        integer, dimension(5):: surfaceGridTypeBlockLen
-        integer, dimension(5):: surfaceGridTypeDisp
-        integer, dimension(5):: surfaceGridTypeOld
+        integer, dimension(7):: surfaceGridTypeBlockLen
+        integer, dimension(7):: surfaceGridTypeDisp
+        integer, dimension(7):: surfaceGridTypeOld
         integer, dimension(4):: gridTypeBlockLen
         integer, dimension(4):: gridTypeDisp
         integer, dimension(4):: gridTypeOld
 
-        surfaceGridTypeBlockLen = [1, 1, 1, 3, npdf + 2]
-        surfaceGridTypeDisp = [0, kind(0), 2*kind(0), 2*kind(0) + kind(0.0_dbPc), 2*kind(0) + 4*kind(0.0_dbPc)]
-        surfaceGridTypeOld = [MPI_INTEGER, MPI_INTEGER, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE]
-        call MPI_TYPE_CREATE_STRUCT(5, surfaceGridTypeBlockLen, surfaceGridTypeDisp, surfaceGridTypeOld, &
+        surfaceGridTypeBlockLen = [1, 1, 1, 1, 3, npdf, npdf]
+        surfaceGridTypeDisp = [0, kind(0), 2*kind(0), 2*kind(0) + kind(0.0_dbPc), &
+                               2*kind(0) + 2*kind(0.0_dbPc), 2*kind(0) + 5*kind(0.0_dbPc), &
+                               2*kind(0) + 5*kind(0.0_dbPc) + npdf*kind(0.0_dbPc)]
+        surfaceGridTypeOld = [MPI_INTEGER, MPI_INTEGER, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE]
+        call MPI_TYPE_CREATE_STRUCT(7, surfaceGridTypeBlockLen, surfaceGridTypeDisp, surfaceGridTypeOld, &
                                     MPI_surfaceGridType, ierr)
         call MPI_TYPE_COMMIT(MPI_surfaceGridType, ierr)
 
@@ -185,13 +190,31 @@ contains
         call MPI_TYPE_FREE(MPI_gridType, ierr)
     end subroutine freeMpiStructure
 
+    subroutine parallelGatherParticle
+        use particle_operations
+        implicit none
+        integer, dimension(nNodes) :: count, displacement
+
+        ! ekalhxh
+        call MPI_BARRIER(comm3d, ierr)
+        call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_INTEGER, MPI_SUM, comm3d, ierr)
+        allocate (allParticle(pNumTotal))
+        displs(1) = 0
+        call MPI_GATHER(nnp, 1, inttype, cnt, 1, inttype, 0, comm3d, ierr)
+        do i = 2, dims
+            displs(i) = displs(i - 1) + cnt(i - 1)
+        end do
+        call MPI_GATHERV(xp, nnp, realtype, txp, cnt, displs, realtype, 0, comm3d, ierr)
+
+    end subroutine parallelGatherParticle
+
 end module parallel_operations
 
 module vector_operations
     use public_parameter
     implicit none
     private
-    public :: dotProduct, crossProduct, vectorMagnitude, unitVector
+    public :: dotProduct, crossProduct, vectorMagnitude, unitVector, distance
 
     interface dotProduct
         module procedure dotProductNd
@@ -207,6 +230,11 @@ module vector_operations
 
     interface unitVector
         module procedure unitVectorNd
+    end interface
+
+    interface distance
+        module procedure distance2d
+        module procedure distance3d
     end interface
 
 contains
@@ -258,6 +286,23 @@ contains
             unitVectorNd = 0.0  ! Return the zero vector if the input vector has zero magnitude
         end if
     end function unitVectorNd
+
+    ! Compute the distance between two 2D points
+    pure function distance2d(p1, p2)
+        real(kind=dbPc), dimension(2), intent(in) :: p1, p2
+        real(kind=dbPc) :: distance2d
+
+        distance2d = sqrt((p1(1) - p2(1))**2 + (p1(2) - p2(2))**2)
+    end function distance2d
+
+    ! Compute the distance between two 3D points
+    pure function distance3d(p1, p2)
+        real(kind=dbPc), dimension(3), intent(in) :: p1, p2
+        real(kind=dbPc) :: distance3d
+
+        distance3d = sqrt((p1(1) - p2(1))**2 + (p1(2) - p2(2))**2 + (p1(3) - p2(3))**2)
+    end function distance3d
+
 end module vector_operations
 
 module surface_operations
@@ -269,12 +314,14 @@ module surface_operations
         integer :: avalanchTo
         integer :: avalanchFrom
         real(kind=dbPc) :: averageDiameter
+        real(kind=dbPc) :: zChange
         real(kind=dbPc), dimension(3) :: location
-        real(kind=dbPc), dimension(npdf + 2) :: diameterDistribution
+        real(kind=dbPc), dimension(npdf) :: diameterDistribution
+        real(kind=dbPc), dimension(npdf) :: binVolumeChange
     end type surfaceGridType
 
     type(surfaceGridType), dimension(mx, my) :: surfGrid
-    real(kind=dbPc), dimension(npdf + 2) :: initDiameterDist
+    real(kind=dbPc), dimension(npdf) :: initDiameterDist
 
     public :: generateSurfaceGrid, surfaceInitiation, determineParticleRollDirection
     public :: surfGrid, initDiameterDist
@@ -337,7 +384,7 @@ contains
                     surfGrid(i, j)%location(3) = initAmp*sin(initOmg*surfGrid(i, j)%location(1)) + initSurfElevation
                 end if
                 surfGrid(i, j)%averageDiameter = dpa
-                do k = 1, npdf + 2
+                do k = 1, npdf
                     surfGrid(i, j)%diameterDistribution(k) = initDiameterDist(k)
                 end do
             end do
@@ -349,13 +396,7 @@ contains
     subroutine normalDistHistogram(histogram)
         implicit none
         integer :: i
-        real(kind=dbPc), dimension(npdf + 2) :: histogram
-        real(kind=dbPc) :: binWidth, binStart, binEnd
-
-        ! Calculate the range and width of each bin
-        binWidth = 6.0*dpStddDev/npdf
-        binStart = dpa - 3.0*dpStddDev
-        binEnd = dpa + 3.0*dpStddDev
+        real(kind=dbPc), dimension(npdf) :: histogram
 
         ! Initialize the histogram array to zero
         histogram = 0.0
@@ -366,8 +407,6 @@ contains
             histogram(i) = histogram(i)*binWidth
         end do
         histogram = histogram/sum(histogram)
-        histogram(npdf + 1) = binWidth
-        histogram(npdf + 2) = binStart
     end subroutine normalDistHistogram
 
     subroutine determineParticleRollDirection
@@ -546,9 +585,11 @@ module particle_operations
     end type particleType
 
     type(particleType), allocatable, dimension(:) :: particle
-    integer pNum
+    type(particleType), allocatable, dimension(:) :: allParticle
+    integer pNum, pNumTotal
 
-    public :: particleInitiation, particle, pNum
+    public :: particleInitiation, particleSplash
+    public :: particle, allParticle, pNum, pNumTotal
 
 contains
 
@@ -577,6 +618,7 @@ contains
             call determineParticleIndices(currentParticle)
             particle(n) = currentParticle
         end do
+
     end subroutine particleInitiation
 
     subroutine determineParticleIndices(currentP)
@@ -584,26 +626,31 @@ contains
         use field_operations
         implicit none
 
-        integer :: ip, jp, kp
+        integer :: ip, jp, kp, tempKp
         real(kind=dbPc) :: currentZ
         type(particleType) :: currentP
 
-        ip = int(mod(currentP%location(1), xMax)/xDiff) + 2
-        jp = int(mod(currentP%location(2), yMax)/yDiff) + 2
+        ip = floor(mod(currentP%location(1), xMax)/xDiff) + 2
+        jp = floor(mod(currentP%location(2), yMax)/yDiff) + 2
+        if (ip == 1) then
+            ip = mx - 1
+        else if (ip <= 0) then
+            ip = nx + ip
+        end if
+        if (jp == 1) then
+            jp = my - 1
+        else if (jp <= 0) then
+            jp = ny + jp
+        end if
         currentZ = surfGrid(ip, jp)%location(3)
         kp = 0
-        if (currentP%location(3) <= currentZ) then
-            kp = -1
-        else if (currentP%location(3) > zMax) then
-            kp = 0
-        else
-            do kp = 1, nz
-                currentZ = currentZ + scalarGrid(ip, jp, kp)%zDiff
-                if (currentP%location(3) < currentZ) then
-                    exit
-                end if
-            end do
-        end if
+        do tempKp = 1, nz
+            currentZ = currentZ + scalarGrid(ip, jp, tempKp)%zDiff
+            if (currentP%location(3) < currentZ) then
+                kp = tempKp
+                exit
+            end if
+        end do
         currentP%indices(1) = ip
         currentP%indices(2) = jp
         currentP%indices(3) = kp
@@ -613,7 +660,7 @@ contains
         implicit none
 
         real(kind=dbPc) :: valObeyCertainPDF
-        real(kind=dbPc), dimension(npdf + 2), intent(in) :: histogram
+        real(kind=dbPc), dimension(npdf), intent(in) :: histogram
 
         integer :: i
         real(kind=dbPc) :: rand
@@ -624,46 +671,60 @@ contains
         do i = 1, npdf
             cumulativeProb = cumulativeProb + histogram(i)
             if (cumulativeProb >= rand) then
-                valObeyCertainPDF = histogram(npdf + 2) + (i - 0.5)*histogram(npdf + 1)
+                valObeyCertainPDF = binStart + (i - 0.5)*binWidth
                 exit
             end if
         end do
     end function valObeyCertainPDF
 
-    subroutine calculateSplash
+    subroutine particleSplash
         use parallel_operations
         use field_operations
         use surface_operations
         use vector_operations
         implicit none
 
-        integer ierr
-        integer ip, jp
+        integer :: n, nadd
+        integer :: totalEjectNum
+        integer :: ierr
+        integer :: ip, jp
         integer :: iterateNum
         integer :: ejectNum
-        integer :: realNum
+        integer :: currentTotalNum
+        integer :: whichVertex
+        integer :: closestIP, closestJP
+        integer :: whichBin
+        integer :: changedIP, changedJP
         type(particleType) currentParticle
         real(kind=dbPc), dimension(2) :: LocalLoc ! particle local location
-        real(kind=dbPc), dimension(3) :: node1, node2, node3
+        real(kind=dbPc), dimension(3) :: vertex1, vertex2, vertex3
         real(kind=dbPc), dimension(3) :: vector12, vector13
         real(kind=dbPc), dimension(3) :: surfaceNormalVector
         real(kind=dbPc), dimension(3) :: particleProjection
         real(kind=dbPc), dimension(3) :: impactVelocity, reboundVelocity
         real(kind=dbPc), dimension(3) :: impactCoordinateX, impactCoordinateY, impactCoordinateZ
+        real(kind=dbPc), dimension(3) :: particleVertexDistance
         real(kind=dbPc) :: eta, alpha, beta, gama, sigma, lambda, mu
         real(kind=dbPc) :: d1, d2, averageD1D2, nonDimD1, nonDimD2
         real(kind=dbPc) :: v1, v2
         real(kind=dbPc) :: theta1, theta2, theta2Min, theta2Max, theta2Mid
         real(kind=dbPc) :: pT2T1, pMax
-        real(kind=dbPc) :: rand1, rand2
+        real(kind=dbPc) :: rand1, rand2, rand3
         real(kind=dbPc) :: pointX, pointY
         real(kind=dbPc) :: eBar
         real(kind=dbPc) :: m1, m2
         real(kind=dbPc) :: E1, E2, Ed2, Eeff, E2Bar
         real(kind=dbPc) :: tau_s
+        real(kind=dbPc) :: minDistance
+        real(kind=dbPc) :: ejectVolume, rollVolume
+        type(particleType), dimension(maxEjectNum) :: addParticle
+        type(particleType), allocatable, dimension(:) :: tempParticle
 
-        call MPI_BARRIER(comm3d, ierr)
-        realNum = 0
+        allocate (tempParticle(pNum + maxEjectNum))
+        surfGrid%zChange = 0.0
+        surfGrid%binVolumeChange = 0.0
+        currentTotalNum = 0
+        totalEjectNum = 0
         do n = 1, pNum
             currentParticle = particle(n)
             ip = currentParticle%indices(1)
@@ -681,19 +742,19 @@ contains
                 ! Left triangle: whichTriangle=1
                 ! Right triangle: whichTriangle=2
                 ! Current surfGrid%location is at point 1, it is the local origin
-                node1 = surfGrid(ip, jp)%location
-                node2 = surfGrid(ip + 1, jp + 1)%location
+                vertex1 = surfGrid(ip, jp)%location
+                vertex2 = surfGrid(ip + 1, jp + 1)%location
                 if (LocalLoc(1)/LocalLoc(2) <= xDiff/yDiff) then
                     whichTriangle = 1
-                    node3 = surfGrid(ip, jp + 1)%location
-                    vector12 = node2 - node1
-                    vector13 = node3 - node1
+                    vertex3 = surfGrid(ip, jp + 1)%location
+                    vector12 = vertex2 - vertex1
+                    vector13 = vertex3 - vertex1
                     surfaceNormalVector = unitVector(crossProduct(vector12, vector13))
                 else
                     whichTriangle = 2
-                    node3 = surfGrid(ip + 1, jp)%location
-                    vector12 = node2 - node1
-                    vector13 = node3 - node1
+                    vertex3 = surfGrid(ip + 1, jp)%location
+                    vector12 = vertex2 - vertex1
+                    vector13 = vertex3 - vertex1
                     surfaceNormalVector = unitVector(crossProduct(vector13, vector12))
                 end if
             else
@@ -706,424 +767,475 @@ contains
                 ! Left triangle: whichTriangle=3
                 ! Right triangle: whichTriangle=4
                 ! Current surfGrid%location is at the lower left point 3, it is the local origin
-                node1 = surfGrid(ip + 1, jp)%location
-                node2 = surfGrid(ip, jp + 1)%location
+                vertex1 = surfGrid(ip + 1, jp)%location
+                vertex2 = surfGrid(ip, jp + 1)%location
                 if (LocalLoc(1)/(yDiff - LocalLoc(2)) <= xDiff/yDiff) then
                     whichTriangle = 3
-                    node3 = surfGrid(ip, jp)%location
-                    vector12 = node2 - node1
-                    vector13 = node3 - node1
+                    vertex3 = surfGrid(ip, jp)%location
+                    vector12 = vertex2 - vertex1
+                    vector13 = vertex3 - vertex1
                     surfaceNormalVector = unitVector(crossProduct(vector12, vector13))
                 else
                     whichTriangle = 4
-                    node3 = surfGrid(ip + 1, jp + 1)%location
-                    vector12 = node2 - node1
-                    vector13 = node3 - node1
+                    vertex3 = surfGrid(ip + 1, jp + 1)%location
+                    vector12 = vertex2 - vertex1
+                    vector13 = vertex3 - vertex1
                     surfaceNormalVector = unitVector(crossProduct(vector13, vector12))
                 end if
             end if
+
             particleProjection(1) = currentParticle%location(1)
             particleProjection(2) = currentParticle%location(2)
-            particleProjection(3) = node3(3) + &
-                                    (surfaceNormalVector(1)*(currentParticle%location(1) - node3(1)) + &
-                                     surfaceNormalVector(2)*(currentParticle%location(2) - node3(2)))/ &
+            particleProjection(3) = vertex3(3) + &
+                                    (surfaceNormalVector(1)*(currentParticle%location(1) - vertex3(1)) + &
+                                     surfaceNormalVector(2)*(currentParticle%location(2) - vertex3(2)))/ &
                                     (-surfaceNormalVector(3))
             currentParticle%altitude = currentParticle%location(3) - particleProjection(3)
-            if (currentParticle%altitude < 0.5*currentParticle%diameter) then
-                currentParticle%altitude = 0.5*currentParticle%diameter
-                impactCoordinateZ = surfaceNormalVector
-                impactVelocity(3) = dotProduct(currentParticle%velocity, impactCoordinateZ)
-                if (impactVelocity(3) < 0.0) then
-                    impactCoordinateY = unitVector(crossProduct(impactCoordinateZ, currentParticle%velocity))
-                    impactCoordinateX = unitVector(crossProduct(impactCoordinateY, impactCoordinateZ))
-                    impactVelocity(1) = dotProduct(currentParticle%velocity, impactCoordinateX)
-                    impactVelocity(2) = dotProduct(currentParticle%velocity, impactCoordinateY)
-                    ! Splash function of Lammel et al. 2017
-                    d1 = currentParticle%diameter
-                    d2 = surfGrid(ip, jp)%averageDiameter
-                    averageD1D2 = (d1 + d2)/2.0
-                    nonDimD1 = d1/averageD1D2
-                    nonDimD2 = d2/averageD1D2
-                    eta = resCoeffN*nonDimD1**3/(nonDimD1**3 + resCoeffN*nonDimD2**3)
-                    alpha = (1.0 + resCoeffN)/(1.0 + eta) - 1.0
-                    beta = 1.0 - (2.0/7.0)*(1.0 - resCoeffT)/(1.0 + eta)
-                    theta1 = atan(abs(impactVelocity(3)/impactVelocity(1)))
-                    eBar = beta - (beta**2 - alpha**2)*nonDimD2*theta1/(2.0*beta)
 
-                    gama = 4.0/9.0/nonDimD2*(beta/(alpha + beta))**2
-                    theta2Min = -theta1
-                    theta2Max = 2.0*sqrt(theta1/gama) - theta1
-                    theta2Max = min(theta2Max, pi)
-                    theta2Mid = (theta2Max + theta2Min)/2.0
-                    pMax = gama*(theta1 + theta2Mid)/theta1*log(2.0*theta1/gama/(theta1 + theta2Mid)**2)*1.2
-                    iterateNum = 0
-                    do
-                        iterateNum = iterateNum + 1
+            particleVertexDistance(1) = distance(particleProjection, vertex1)
+            particleVertexDistance(2) = distance(particleProjection, vertex2)
+            particleVertexDistance(3) = distance(particleProjection, vertex3)
+            minDistance = particleVertexDistance(1)
+            whichVertex = 1
+            do i = 2, 3
+                if (particleVertexDistance(i) < minDistance) then
+                    minDistance = particleVertexDistance(i)
+                    whichVertex = i
+                end if
+            end do
+            select case (whichTriangle)
+                !   3 ------- 2
+                !     |    /|
+                !     |  /  |
+                !     |/    |
+                !   1 ------- 3
+                ! Left triangle: whichTriangle=1
+                ! Right triangle: whichTriangle=2
+            case (1)
+                select case (whichVertex)
+                case (1)
+                    closestIP = ip
+                    closestJP = jp
+                case (2)
+                    closestIP = ip + 1
+                    closestJP = jp + 1
+                case (3)
+                    closestIP = ip
+                    closestJP = jp + 1
+                end select
+            case (2)
+                select case (whichVertex)
+                case (1)
+                    closestIP = ip
+                    closestJP = jp
+                case (2)
+                    closestIP = ip + 1
+                    closestJP = jp + 1
+                case (3)
+                    closestIP = ip + 1
+                    closestJP = jp
+                end select
+                !   2 ------- 3
+                !     |\    |
+                !     |  \  |
+                !     |    \|
+                !   3 ------- 1
+                ! Left triangle: whichTriangle=3
+                ! Right triangle: whichTriangle=4
+            case (3)
+                select case (whichVertex)
+                case (1)
+                    closestIP = ip + 1
+                    closestJP = jp
+                case (2)
+                    closestIP = ip
+                    closestJP = jp + 1
+                case (3)
+                    closestIP = ip
+                    closestJP = jp
+                end select
+            case (4)
+                select case (whichVertex)
+                case (1)
+                    closestIP = ip + 1
+                    closestJP = jp
+                case (2)
+                    closestIP = ip
+                    closestJP = jp + 1
+                case (3)
+                    closestIP = ip + 1
+                    closestJP = jp + 1
+                end select
+            end select
+            if (closestIP >= mx) then
+                closestIP = closestIP - mx + 2
+            end if
+            if (closestJP >= my) then
+                closestJP = closestJP - my + 2
+            end if
+
+            impactCoordinateZ = surfaceNormalVector
+            impactVelocity(3) = dotProduct(currentParticle%velocity, impactCoordinateZ)
+            if (currentParticle%altitude < 0.5*currentParticle%diameter .and. impactVelocity(3) < 0.0) then
+                impactCoordinateY = unitVector(crossProduct(impactCoordinateZ, currentParticle%velocity))
+                impactCoordinateX = unitVector(crossProduct(impactCoordinateY, impactCoordinateZ))
+                impactVelocity(1) = dotProduct(currentParticle%velocity, impactCoordinateX)
+                impactVelocity(2) = dotProduct(currentParticle%velocity, impactCoordinateY)
+
+                ! Splash function of Lammel et al. 2017
+                d1 = currentParticle%diameter
+                d2 = surfGrid(closestIP, closestJP)%averageDiameter
+                averageD1D2 = (d1 + d2)/2.0
+                nonDimD1 = d1/averageD1D2
+                nonDimD2 = d2/averageD1D2
+                eta = resCoeffN*nonDimD1**3/(nonDimD1**3 + resCoeffN*nonDimD2**3)
+                alpha = (1.0 + resCoeffN)/(1.0 + eta) - 1.0
+                beta = 1.0 - (2.0/7.0)*(1.0 - resCoeffT)/(1.0 + eta)
+                theta1 = atan(abs(impactVelocity(3)/impactVelocity(1)))
+                eBar = beta - (beta**2 - alpha**2)*nonDimD2*theta1/(2.0*beta)
+
+                gama = 4.0/9.0/nonDimD2*(beta/(alpha + beta))**2
+                theta2Min = -theta1
+                theta2Max = 2.0*sqrt(theta1/gama) - theta1
+                theta2Max = min(theta2Max, pi)
+                theta2Mid = (theta2Max + theta2Min)/2.0
+                pMax = gama*(theta1 + theta2Mid)/theta1*log(2.0*theta1/gama/(theta1 + theta2Mid)**2)*1.2
+                iterateNum = 0
+                do
+                    iterateNum = iterateNum + 1
+                    call random_number(rand1)
+                    call random_number(rand2)
+                    pointX = (theta2Max - theta2Min)*rand1 + theta2Min
+                    pointY = rand2*min(pMax, 1)
+                    pointY = max(pointY, 0.0)
+                    pT2T1 = gama*(theta1 + pointX)/theta1*log(2.0*theta1/gama/(theta1 + pointX)**2)
+                    if (pointY <= pT2T1 .or. iterateNum > 10000) then
+                        theta2 = pointX
+                        exit
+                    end if
+                end do
+
+                m1 = rhoP*(pi*d1**3)/6.0
+                m2 = rhoP*(pi*d2**3)/6.0
+                v1 = vectorMagnitude(impactVelocity)
+                E1 = (m1*v1**2)/2.0
+                Ed2 = m2*9.8*d2
+                ! Shao et al. 2000
+                tau_s = rho*0.0123*(rhoP/rho*9.8*d2 + 3.0e-4/(rho*d2))
+                Eeff = Ed2*(1.0 - vectorGrid(closestIP, closestJP, 1)%tau_t/tau_s)
+                lambda = 2.0*log((1.0 - eBar**2)*E1/Ed2)
+                sigma = sqrt(lambda)*log(2.0)
+                mu = log((1.0 - eBar**2)*E1) - lambda*log(2.0)
+                E2Bar = Ed2*((1.0 - eBar**2)*E1/Ed2)**(1.0 - (2.0 - log(2.0))*log(2.0))
+                ejectNum = nint(0.06*((1.0 - eBar**2)*E1/(2.0*E2Bar))*erfc((log(Eeff) - mu)/(sqrt(2.0)*sigma)))
+
+                v2 = v1*eBar
+                E2 = (m2*v2**2)/2.0
+                ! whether rebound
+                if (theta2 <= 0.0 .or. E2 < Ed2 .or. eBar < 0.0) then
+                    select case (surfGrid(closestIP, closestJP)%avalanchTo)
+                    case (1)
+                        changedIP = closestIP + 1
+                        changedJP = closestJP
+                    case (2)
+                        changedIP = closestIP - 1
+                        changedJP = closestJP
+                    case (3)
+                        changedIP = closestIP
+                        changedJP = closestJP + 1
+                    case (4)
+                        changedIP = closestIP
+                        changedJP = closestJP - 1
+                    case default
+                        changedIP = closestIP
+                        changedJP = closestJP
+                    end select
+                    if (changedIP >= mx) then
+                        changedIP = changedIP - mx + 2
+                    else if (changedIP <= 1) then
+                        changedIP = changedIP + mx - 2
+                    end if
+                    if (changedJP >= my) then
+                        changedJP = changedJP - my + 2
+                    else if (changedJP <= 1) then
+                        changedJP = changedJP + my - 2
+                    end if
+
+                    surfGrid(changedIP, changedJP)%zChange = surfGrid(changedIP, changedJP)%zChange &
+                                                             + (pi*d1**3)/6.0/xDiff/yDiff
+
+                    if (ipd /= 1) then
+                        whichBin = floor((currentParticle%diameter - binStart)/binWidth) + 1
+                        whichBin = max(whichBin, 1)
+                        whichBin = min(whichBin, npdf)
+                        surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) = &
+                            surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) + (pi*d1**3)/6.0/xDiff/yDiff
+                    end if
+                else
+                    currentTotalNum = currentTotalNum + 1
+                    currentParticle%altitude = 0.5*d1
+                    currentParticle%location(3) = particleProjection(3) + 0.5*d1
+                    reboundVelocity(1) = v2*cos(theta2)
+                    reboundVelocity(2) = 0.0
+                    reboundVelocity(3) = v2*sin(theta2)
+                    currentParticle%velocity(1) = reboundVelocity(1)*impactCoordinateX
+                    currentParticle%velocity(2) = reboundVelocity(2)*impactCoordinateY
+                    currentParticle%velocity(3) = reboundVelocity(3)*impactCoordinateZ
+                    call determineParticleIndices(currentParticle)
+                    tempParticle(currentTotalNum) = currentParticle
+                end if
+
+                ejectVolume = 0.0
+                do nadd = 1, ejectNum
+                    call random_number(rand1)
+                    E2 = exp(mu + sigma*sqrt(2.0)*erfinv(2.0*rand1 - 1.0))
+                    d2 = valObeyCertainPDF(surfGrid(closestIP, closestJP)%diameterDistribution)
+                    m2 = rhoP*(pi*d2**3)/6.0
+                    rand3 = -1.0
+                    do while (rand3 < 0.0)
                         call random_number(rand1)
                         call random_number(rand2)
-                        pointX = (theta2Max - theta2Min)*rand1 + theta2Min
-                        pointY = rand2*min(pMax, 1)
-                        pointY = max(pointY, 0.0)
-                        pT2T1 = gama*(theta1 + pointX)/theta1*log(2.0*theta1/gama/(theta1 + pointX)**2)
-                        if (pointY <= pT2T1 .or. iterateNum > 10000) then
-                            theta2 = pointX
-                            exit
-                        end if
+                        rand3 = 1.0 - rand1 - rand2
                     end do
+                    totalEjectNum = totalEjectNum + 1
+                    addParticle(totalEjectNum)%location(1) = rand1*vertex1(1) + rand2*vertex2(1) + rand3*vertex3(1)
+                    addParticle(totalEjectNum)%location(2) = rand1*vertex1(2) + rand2*vertex2(2) + rand3*vertex3(2)
+                    addParticle(totalEjectNum)%location(3) = rand1*vertex1(3) + rand2*vertex2(3) + rand3*vertex3(3) + 0.5*d2
+                    addParticle(totalEjectNum)%altitude = 0.5*d2
+                    addParticle(totalEjectNum)%velocity(1) = 0.0
+                    addParticle(totalEjectNum)%velocity(2) = 0.0
+                    addParticle(totalEjectNum)%velocity(3) = sqrt(2.0*E2/m2)
+                    addParticle(totalEjectNum)%diameter = d2
+                    addParticle(totalEjectNum)%indices(1) = ip
+                    addParticle(totalEjectNum)%indices(2) = jp
+                    addParticle(totalEjectNum)%indices(3) = 1
 
-                    m1 = rhoP*(pi*d1**3)/6.0
-                    m2 = rhoP*(pi*d2**3)/6.0
-                    v1 = vectorMagnitude(impactVelocity)
-                    E1 = (m1*v1**2)/2.0
-                    Ed2 = m2*9.8*d2
-                    ! Shao et al. 2000
-                    tau_s = rho*0.0123*(rhoP/rho*9.8*d2 + 3.0e-4/(rho*d2))
-                    Eeff = Ed2*(1.0 - vectorGrid(ip, jp, 1)%tau_t/tau_s)
-                    lambda = 2.0*log((1.0 - eBar**2)*E1/Ed2)
-                    sigma = sqrt(lambda)*log(2.0)
-                    mu = log((1.0 - eBar**2)*E1) - lambda*log(2.0)
-                    E2Bar = Ed2*((1.0 - eBar**2)*E1/Ed2)**(1.0 - (2.0 - log(2.0))*log(2.0))
-                    ejectNum = nint(0.06*((1.0 - eBar**2)*E1/(2.0*E2Bar))*erfc((log(Eeff) - mu)/(sqrt(2.0)*sigma)))
+                    ejectVolume = ejectVolume + (pi*d2**3)/6.0
 
-                    v2 = v1*eBar
-                    E2 = (m2*v2**2)/2.0
-                    ! whether rebound
-                    if (theta2 > 0.0 .and. E2 > Ed2 .and. eBar > 0.0) then
-                        realNum = realNum + 1
-                        currentParticle%location(3) = particleProjection(3) + 0.5*currentParticle%diameter
-                        reboundVelocity(1) = v2*cos(theta2)
-                        reboundVelocity(2) = 0.0
-                        reboundVelocity(3) = v2*sin(theta2)
-                        currentParticle%velocity(1) = reboundVelocity(1)*impactCoordinateX
-                        currentParticle%velocity(2) = reboundVelocity(2)*impactCoordinateY
-                        currentParticle%velocity(3) = reboundVelocity(3)*impactCoordinateZ
-                        currentParticle%altitude = 0.5*currentParticle%diameter
-                        call determineParticleIndices(currentParticle)
-                        particle(realNum) = currentParticle
+                    if (ipd /= 1) then
+                        whichBin = floor((d2 - binStart)/binWidth) + 1
+                        whichBin = max(whichBin, 1)
+                        whichBin = min(whichBin, npdf)
+                        surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) = &
+                            surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) - (pi*d2**3)/6.0/xDiff/yDiff
                     end if
+                end do
+                surfGrid(closestIP, closestJP)%zChange = surfGrid(closestIP, closestJP)%zChange &
+                                                         - ejectVolume/xDiff/yDiff
+
+                select case (surfGrid(closestIP, closestJP)%avalanchFrom)
+                case (1)
+                    changedIP = closestIP + 1
+                    changedJP = closestJP
+                case (2)
+                    changedIP = closestIP - 1
+                    changedJP = closestJP
+                case (3)
+                    changedIP = closestIP
+                    changedJP = closestJP + 1
+                case (4)
+                    changedIP = closestIP
+                    changedJP = closestJP - 1
+                case default
+                    changedIP = closestIP
+                    changedJP = closestJP
+                end select
+                if (changedIP >= mx) then
+                    changedIP = changedIP - mx + 2
+                else if (changedIP <= 1) then
+                    changedIP = changedIP + mx - 2
                 end if
+                if (changedJP >= my) then
+                    changedJP = changedJP - my + 2
+                else if (changedJP <= 1) then
+                    changedJP = changedJP + my - 2
+                end if
+
+                rollVolume = 0.0
+                do while (rollVolume < ejectVolume .and. ejectNum > 0)
+                    d2 = valObeyCertainPDF(surfGrid(changedIP, changedJP)%diameterDistribution)
+                    rollVolume = rollVolume + (pi*d2**3)/6.0
+                    if (ipd /= 1) then
+                        whichBin = floor((d2 - binStart)/binWidth) + 1
+                        whichBin = max(whichBin, 1)
+                        whichBin = min(whichBin, npdf)
+                        surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) = &
+                            surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) - (pi*d2**3)/6.0/xDiff/yDiff
+                        surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) = &
+                            surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) + (pi*d2**3)/6.0/xDiff/yDiff
+                    end if
+                end do
+                surfGrid(changedIP, changedJP)%zChange = surfGrid(changedIP, changedJP)%zChange &
+                                                         - rollVolume/xDiff/yDiff
+                surfGrid(closestIP, closestJP)%zChange = surfGrid(closestIP, closestJP)%zChange &
+                                                         + rollVolume/xDiff/yDiff
+            else
+                currentTotalNum = currentTotalNum + 1
+                tempParticle(currentTotalNum) = currentParticle
             end if
         end do
-        if (dotP1 <= 0.0 .and. dotP2 <= 0.0) then
-            point0 = point1
-        else
-            ifimpact: if (fz(n) <= 0.0 .and. vin(3) < 0.0) then
-                if (nne == 0) then
-                else
-                    ammu2 = 0.0
-                    aSigma2 = 10.0/180.0*pi
-                    !angout2 = normal(ammu2, aSigma2)
-                    vout(1) = norm_vout*cos(angout1) !*cos(angout2)
-                    vout(2) = 0.0 !norm_vout*cos(angout1)*sin(angout2)
-                    vout(3) = norm_vout*sin(angout1)
-                    vector1 = vout(1)*utnvec
-                    vector2 = vout(2)*uttvec
-                    vector3 = vout(3)*unitSurfNormal
-                    upvec2 = vector1 + vector2 + vector3
-                    !upvec2(1) = upvec2(1) + ucreep(ipp, jpp)
-                    !upvec2(2) = upvec2(2) + vcreep(ipp, jpp)
-                    pNumTemp = pNumTemp + 1
-                    xp(pNumTemp) = point0(1) !+ upvec2(1)*dt
-                    yp(pNumTemp) = point0(2) !+ upvec2(2)*dt
-                    zp(pNumTemp) = point0(3) !+ upvec2(3)*dt
-                    up(pNumTemp) = upvec2(1)
-                    vp(pNumTemp) = upvec2(2)
-                    wp(pNumTemp) = upvec2(3)
-                    dp(pNumTemp) = d1
-                    fk(pNumTemp) = 0.0 !fk(n) !upvec2(1)*dt
-                    fh(pNumTemp) = 0.0
-                    fg(pNumTemp) = zp(pNumTemp)
-                    ft(pNumTemp) = 0.0
-                    fz(pNumTemp) = 0.0 !upvec2(3)*dt
-                    wflx = wflx + nkl*mm1/xMax/yMax/dt
-                    vpout = vpout + vout
-                    norm_vpout = norm_vpout + norm_vout
-                    vvpout = vvpout + norm_vout**2
-                    mpout = mpout + mm1
-                    mupout(ik, jk) = mupout(ik, jk) + mm2*vout(1)
-                    mvpout(ik, jk) = mvpout(ik, jk) + mm2*vout(2)
-                    npout = npout + 1.0
-                end if
-                ! particle splash
-                if (isp == 0) then ! lammel
-                else ! kok
-                    mm2 = (pi*bedPD(ipp, jpp)**3)/6.0*rhos
-                    nee = 0.03*norm_vin/sqrt(9.8*bedPD(ipp, jpp))
-                    ne = int(nee)
-                end if
-                if (ne >= 1) then
-                    ! influence of repose angle
-                    select case (rollDirSink(ipp, jpp))
-                    case (0)
-                        ii = ipp
-                        jj = jpp
-                    case (1)
-                        ii = ipp + 1
-                        jj = jpp
-                    case (2)
-                        ii = ipp - 1
-                        jj = jpp
-                    case (3)
-                        ii = ipp
-                        jj = jpp + 1
-                    case (4)
-                        ii = ipp
-                        jj = jpp - 1
-                    case default
-                        print *, rollDirSink(ipp, jpp), 'rollDirSink error'
-                        stop
-                    end select
-                    splp: do kd = 1, ne
-                        ammu1 = 60.0/180.0*pi
-                        ammu2 = 0.0
-                        aSigma1 = 15.0/180.0*pi
-                        aSigma2 = 10.0/180.0*pi
-                        if (ipd == 0) then
-                            ppdf = bedPDist(ipp, jpp, :)
-                            dpd = valObeyCertainProbDist(ppdf, dpa, dSigma, npdf, rpdf)
-                        else if (ipd == 1) then
-                            dpd = dpa
-                        else if (ipd == 2) then
-                            ppdf = bedPDist(ipp, jpp, 1)
-                            nbi = biDist(ppdf)
-                            if (nbi == 1) then
-                                dpd = dpa - dSigma
-                            else
-                                dpd = dpa + dSigma
-                            end if
-                        end if
-                        mm2 = (pi*dpd**3)/6.0*rhos
-                        if (isp == 0) then ! lammel
-                            ee2 = exp(normal(mmu, sigma))
-                            norm_vout = sqrt(2.0*ee2/mm2)
-                        else ! kok
-                            mmu = 0.08*norm_vin
-                            lambda = 1.0/mmu
-                            norm_vout = expdev(lambda)
-                            ee2 = 0.5*mm2*norm_vout**2
-                        end if
-                        !lambda = 1.0/ammu1
-                        !angout1 = expdev(lambda)
-                        !angout1 = abs(normal(ammu1, aSigma1)) !Dupont
-                        !angout2 = normal(ammu2, aSigma2)
-                        vout(1) = 0.0 !norm_vout*cos(angout1) !*cos(angout2)
-                        vout(2) = 0.0 !norm_vout*cos(angout1)*sin(angout2)
-                        vout(3) = norm_vout !*sin(angout1)
-                        vector1 = vout(1)*utnvec
-                        vector2 = vout(2)*uttvec
-                        vector3 = vout(3)*unitSurfNormal
-                        upvec2 = vector1 + vector2 + vector3
-                        !upvec2(1) = upvec2(1) + ucreep(ipp, jpp)
-                        !upvec2(2) = upvec2(2) + vcreep(ipp, jpp)
-                        call random_number(rr1)
-                        call random_number(rr2)
-                        call random_number(rr3)
-                        pNumAdd = pNumAdd + 1
-                        tempx(pNumAdd) = point0(1) + upvec2(1)*dt*rr1
-                        tempy(pNumAdd) = point0(2) + upvec2(2)*dt*rr2
-                        tempz(pNumAdd) = point0(3) + upvec2(3)*dt*rr3
-                        tempu(pNumAdd) = 0.0 !upvec2(1)
-                        tempv(pNumAdd) = 0.0 !upvec2(2)
-                        tempw(pNumAdd) = norm_vout !upvec2(3)
-                        tempd(pNumAdd) = dpd
-                        tempfk(pNumAdd) = 0.0 !upvec2(1)*dt
-                        tempfh(pNumAdd) = 0.0
-                        tempfg(pNumAdd) = tempz(pNumAdd)
-                        tempft(pNumAdd) = 0.0
-                        tempfz(pNumAdd) = 0.0 !upvec2(3)*dt
-                        wflx = wflx + nkl*mm2/xMax/yMax/dt
-                        vpout = vpout + vout
-                        norm_vpout = norm_vpout + norm_vout
-                        vvpout = vvpout + norm_vout**2
-                        mpout = mpout + mm2
-                        mupout(ik, jk) = mupout(ik, jk) + mm2*vout(1)
-                        mvpout(ik, jk) = mvpout(ik, jk) + mm2*vout(2)
-                        npout = npout + 1.0
-                        if (ipd /= 2) then
-                            iii = int((dpd - dpa + dSigma*3.0)/dSigma/6.0*dfloat(npdf)) + 1
-                            if (iii > npdf) iii = npdf
-                            if (iii <= 0) iii = 1
-                        else
-                            if (dpd < dpa) then
-                                iii = 1
-                            else if (dpd > dpa) then
-                                iii = 2
-                            else
-                                print *, 'error on dpd=', dpd, '/=', dpa, 'or', dpa + dSigma
-                                stop
-                            end if
-                        end if
-                        vch = nkl*(pi*dpd**3)/6.0/por
-                        if (jj == mky + 1) jj = 3
-                        if (ii <= mkxNode) then
-                            Dkz(ii, jj) = Dkz(ii, jj) - vch/kArea
-                            DbedPDist(ii, jj, iii) = DbedPDist(ii, jj, iii) - vch
-                        else
-                            eepnch(jj) = eepnch(jj) - vch
-                            jjkk = iii + (jj - 1)*npdf
-                            eepdfch(jjkk) = eepdfch(jjkk) - vch
-                        end if
-                    end do splp
-                end if
-            else
-                pNumTemp = pNumTemp + 1
-                xp(pNumTemp) = xp(n)
-                yp(pNumTemp) = yp(n)
-                zp(pNumTemp) = zp(n)
-                up(pNumTemp) = up(n)
-                vp(pNumTemp) = vp(n)
-                wp(pNumTemp) = wp(n)
-                dp(pNumTemp) = dp(n)
-                fk(pNumTemp) = fk(n)
-                fh(pNumTemp) = fh(n)
-                fg(pNumTemp) = fg(n)
-                ft(pNumTemp) = ft(n)
-                fz(pNumTemp) = fz(n)
-            end if ifimpact
 
-            end subroutine calculateSplash
-            end module particle_operations
+        pNum = currentTotalNum
+        if (totalEjectNum > 0) then
+            pNum = pNum + totalEjectNum
+            tempParticle(currentTotalNum + 1:pNum) = addParticle(1:totalEjectNum)
+        else if (totalEjectNum > maxEjectNum) then
+            print *, "The eject number in one time step", totalEjectNum, ">", maxEjectNum
+            stop
+        end if
+        deallocate (particle)
+        allocate (particle(pNum))
+        particle = tempParticle(1:pNum)
+        deallocate (tempParticle)
 
-            module output_operations
-                use public_parameter
-                implicit none
+        call MPI_BARRIER(comm3d, ierr)
+        call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_INTEGER, MPI_SUM, comm3d, ierr)
+        deallocate (allParticle)
+        allocate (allParticle(pNumTotal))
 
-                private
+    end subroutine particleSplash
+end module particle_operations
 
-                public :: generateOutPutFile
+module output_operations
+    use public_parameter
+    implicit none
 
-            contains
+    private
 
-                subroutine generateOutPutFile
-                    implicit none
+    public :: generateOutPutFile
 
-                    character(len=32) bashCmd
+contains
 
-                    bashCmd = 'mkdir particle_loc'
-                    call system(trim(adjustl(bashCmd)))
-                    bashCmd = 'mkdir surface'
-                    call system(trim(adjustl(bashCmd)))
-                    bashCmd = 'mkdir field3D'
-                    call system(trim(adjustl(bashCmd)))
+    subroutine generateOutPutFile
+        implicit none
 
-                    open (unit=10, file='./field/field0.plt')
-                    write (10, *) 'variables = "X", "Y", "Z", "U"'
-                    close (10)
+        character(len=32) bashCmd
 
-                    open (unit=11, file='./surface/surface0.plt')
-                    write (11, *) 'variables = "X", "Y", "Z", "D"'
-                    close (11)
+        bashCmd = 'mkdir particle_loc'
+        call system(trim(adjustl(bashCmd)))
+        bashCmd = 'mkdir surface'
+        call system(trim(adjustl(bashCmd)))
+        bashCmd = 'mkdir field3D'
+        call system(trim(adjustl(bashCmd)))
 
-                    open (unit=12, file='./particle_loc/particle_loc0.plt')
-                    write (12, "(A82)") 'variables = "X", "Y", "Z", "U", "V", "W", "D"'
-                    close (12)
+        open (unit=10, file='./field/field0.plt')
+        write (10, *) 'variables = "X", "Y", "Z", "U"'
+        close (10)
 
-                    !open (unit=31, file='particle_num.plt')
-                    !write (31, *) 'variables = "T", "Num"'
-                    !close (31)
+        open (unit=11, file='./surface/surface0.plt')
+        write (11, *) 'variables = "X", "Y", "Z", "D"'
+        close (11)
 
-                    !open (unit=35, file='average_flux.plt')
-                    !write (35, *) 'variables = "T", "uFlux", "wFlux", "salength"'
-                    !close (35)
+        open (unit=12, file='./particle_loc/particle_loc0.plt')
+        write (12, "(A82)") 'variables = "X", "Y", "Z", "U", "V", "W", "D"'
+        close (12)
 
-                    !open (unit=36, file='flux_vs_height.plt')
-                    !write (36, *) 'variables = "Z", "uFlux", "wFlux"'
-                    !close (36)
+        !open (unit=31, file='particle_num.plt')
+        !write (31, *) 'variables = "T", "Num"'
+        !close (31)
 
-                    !open (unit=43, file='htao.plt')
-                    !write (43, *) 'variables = "Z", "taoa", "taop", "vfrac", "u", "fptx"'
-                    !close (43)
+        !open (unit=35, file='average_flux.plt')
+        !write (35, *) 'variables = "T", "uFlux", "wFlux", "salength"'
+        !close (35)
 
-                    !open (unit=39, file='vin.plt')
-                    !write (39, *) 'variables = "T", "upin", "vpin", "wpin", "norm_vpin"'
-                    !close (39)
+        !open (unit=36, file='flux_vs_height.plt')
+        !write (36, *) 'variables = "Z", "uFlux", "wFlux"'
+        !close (36)
 
-                    !open (unit=46, file='vout.plt')
-                    !write (46, *) 'variables = "T", "upout", "vpout", "wpout", "norm_vpout"'
-                    !close (46)
+        !open (unit=43, file='htao.plt')
+        !write (43, *) 'variables = "Z", "taoa", "taop", "vfrac", "u", "fptx"'
+        !close (43)
 
-                    !open (unit=44, file='eminout.plt')
-                    !write (44, *) 'variables = "T", "vvpin", "vvpout", "mpin", "mpout"'
-                    !close (44)
+        !open (unit=39, file='vin.plt')
+        !write (39, *) 'variables = "T", "upin", "vpin", "wpin", "norm_vpin"'
+        !close (39)
 
-                    !open (unit=45, file='numinout.plt')
-                    !write (45, *) 'variables = "T", "numin", "numout"'
-                    !close (45)
-                end subroutine generateOutPutFile
-            end module output_operations
+        !open (unit=46, file='vout.plt')
+        !write (46, *) 'variables = "T", "upout", "vpout", "wpout", "norm_vpout"'
+        !close (46)
 
-            program main
-                use public_parameter
-                use parallel_operations
-                use field_operations
-                use surface_operations
-                use output_operations
-                implicit none
+        !open (unit=44, file='eminout.plt')
+        !write (44, *) 'variables = "T", "vvpin", "vvpout", "mpin", "mpout"'
+        !close (44)
 
-                include "mpif.h"
-                integer :: ierr
-                integer :: last
+        !open (unit=45, file='numinout.plt')
+        !write (45, *) 'variables = "T", "numin", "numout"'
+        !close (45)
+    end subroutine generateOutPutFile
+end module output_operations
 
-                ! find indices of subdomain and check that dimensions of arrays are sufficient
-                if (mod(nx, nNodes) /= 0) then
-                    print *, 'nx cannot diveded by nNodes'
-                    stop
-                end if
-                call MPI_INIT(ierr)
-                call random_seed()
-                call parallelInitiation
-                call createMpiStructure
-                ! generate surfGrid and initial bed
-                call generateSurfaceGrid
-                ! initiate surface
-                call surfaceInitiation
-                ! generate grid
-                call generateGrid
-                ! initiate fluid field
-                call fieldInitiation
-                ! initiate particle
-                call particleInitiation
-                ! create output file
-                call generateOutPutFile
-                last = 1
+program main
+    use public_parameter
+    use parallel_operations
+    use field_operations
+    use surface_operations
+    use output_operations
+    implicit none
 
-                ! start iteration loop
-                do
-                    if (ipar == 1) then
-                        call determineParticleRollDirection
-                        call pickOutImpactParticles
-                        call calculateParticleSplash
-                        if (last < sstart) then
-                            Dkz = 0.0
-                            do i = 1, mkxNode
-                                do j = 1, mky
-                                    bedCellTkness(i, j) = bedCellTknessInit
-                                    if (irsf == 0) then
-                                        do k = 1, npdf
-                                            bedPDist(i, j, k) = prob(k)
-                                        end do
-                                        bedPD(i, j) = dpa
-                                    else
-                                        bedPDist(i, j, 2) = 0.5*(0.5*sin(initOmg*kx(i)) + 0.5)
-                                        bedPDist(i, j, 1) = 1.0 - bedPDist(i, j, 2)
-                                        bedPD(i, j) = bedPDist(i, j, 1)*(dpa - dpStddDev) + bedPDist(i, j, 2)*(dpa + dpStddDev)
-                                    end if
-                                end do
+    include "mpif.h"
+    integer :: ierr
+    integer :: last
+
+    ! find indices of subdomain and check that dimensions of arrays are sufficient
+    if (mod(nx, nNodes) /= 0) then
+        print *, 'nx cannot diveded by nNodes'
+        stop
+    end if
+    call MPI_INIT(ierr)
+    call random_seed()
+    call parallelInitiation
+    call createMpiStructure
+    ! generate surfGrid and initial bed
+    call generateSurfaceGrid
+    ! initiate surface
+    call surfaceInitiation
+    ! generate grid
+    call generateGrid
+    ! initiate fluid field
+    call fieldInitiation
+    ! initiate particle
+    call particleInitiation
+    ! create output file
+    call generateOutPutFile
+    last = 1
+
+    ! start iteration loop
+    do
+        if (ipar == 1) then
+            call determineParticleRollDirection
+            call pickOutImpactParticles
+            call calculateParticleSplash
+            if (last < sstart) then
+                Dkz = 0.0
+                do i = 1, mkxNode
+                    do j = 1, mky
+                        bedCellTkness(i, j) = bedCellTknessInit
+                        if (irsf == 0) then
+                            do k = 1, npdf
+                                bedPDist(i, j, k) = prob(k)
                             end do
+                            bedPD(i, j) = dpa
+                        else
+                            bedPDist(i, j, 2) = 0.5*(0.5*sin(initOmg*kx(i)) + 0.5)
+                            bedPDist(i, j, 1) = 1.0 - bedPDist(i, j, 2)
+                            bedPD(i, j) = bedPDist(i, j, 1)*(dpa - dpStddDev) + bedPDist(i, j, 2)*(dpa + dpStddDev)
                         end if
-                    end if
-                    ! calculate fluid field
-                    call fluidField
-                    ! generate boundary key point
-                    call imgd
-                    phirho = 1.0
-                    ! output result
-                    call output
-                    ! time advance
-                    time = time + dt
-                    last = last + 1
-                    if (time > tla) exit
+                    end do
                 end do
-                call freeMpiStructure
-            end program main
+            end if
+        end if
+        ! calculate fluid field
+        call fluidField
+        ! generate boundary key point
+        call imgd
+        phirho = 1.0
+        ! output result
+        call output
+        ! time advance
+        time = time + dt
+        last = last + 1
+        if (time > tla) exit
+    end do
+    call freeMpiStructure
+end program main
 
