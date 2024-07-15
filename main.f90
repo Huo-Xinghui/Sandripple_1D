@@ -108,7 +108,7 @@ module parallel_operations
 
     type(parallelType) :: currentNode
     integer :: comm3d, ierr, coords, nbrLeft, nbrRight
-    integer :: MPI_surfaceGridType
+    integer :: MPI_surfaceGridType, MPI_gridType
 
     public :: parallelInitiation, createMpiStructure, freeMpiStructure
     public :: comm3d, currentNode, MPI_surfaceGridType, MPI_gridType
@@ -153,9 +153,9 @@ contains
         currentNode%nx = nx/nNodes
         currentNode%mx = nx + 2
         currentNode%i1 = currentNode%ID*currentNode%nx + 2
-        currentNode%i0 = i1 - 1
+        currentNode%i0 = currentNode%i1 - 1
         currentNode%in = (currentNode%ID + 1)*currentNode%nx + 1
-        currentNode%im = in + 1
+        currentNode%im = currentNode%in + 1
     end subroutine parallelInitiation
 
     subroutine createMpiStructure
@@ -163,9 +163,9 @@ contains
         integer, dimension(7):: surfaceGridTypeBlockLen
         integer, dimension(7):: surfaceGridTypeDisp
         integer, dimension(7):: surfaceGridTypeOld
-        integer, dimension(4):: gridTypeBlockLen
-        integer, dimension(4):: gridTypeDisp
-        integer, dimension(4):: gridTypeOld
+        integer, dimension(3):: gridTypeBlockLen
+        integer, dimension(3):: gridTypeDisp
+        integer, dimension(3):: gridTypeOld
 
         surfaceGridTypeBlockLen = [1, 1, 1, 1, 3, npdf, npdf]
         surfaceGridTypeDisp = [0, kind(0), 2*kind(0), 2*kind(0) + kind(0.0_dbPc), &
@@ -176,10 +176,10 @@ contains
                                     MPI_surfaceGridType, ierr)
         call MPI_TYPE_COMMIT(MPI_surfaceGridType, ierr)
 
-        gridTypeBlockLen = [1, 1, 1, 3]
-        gridTypeDisp = [0, kind(0.0_dbPc), 2*kind(0.0_dbPc), 3*kind(0.0_dbPc)]
-        gridTypeOld = [MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE]
-        call MPI_TYPE_CREATE_STRUCT(4, gridTypeBlockLen, gridTypeDisp, gridTypeOld, MPI_gridType, ierr)
+        gridTypeBlockLen = [1, 3, 3]
+        gridTypeDisp = [0, kind(0.0_dbPc), 4*kind(0.0_dbPc)]
+        gridTypeOld = [MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE]
+        call MPI_TYPE_CREATE_STRUCT(3, gridTypeBlockLen, gridTypeDisp, gridTypeOld, MPI_gridType, ierr)
         call MPI_TYPE_COMMIT(MPI_gridType, ierr)
     end subroutine createMpiStructure
 
@@ -190,21 +190,26 @@ contains
         call MPI_TYPE_FREE(MPI_gridType, ierr)
     end subroutine freeMpiStructure
 
+    subroutine parallelExchangeParticle
+        implicit none
+        integer :: pNumSend, pNumRecv
+
+    end subroutine parallelExchangeParticle
+
     subroutine parallelGatherParticle
         use particle_operations
         implicit none
         integer, dimension(nNodes) :: count, displacement
 
-        ! ekalhxh
-        call MPI_BARRIER(comm3d, ierr)
-        call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_INTEGER, MPI_SUM, comm3d, ierr)
-        allocate (allParticle(pNumTotal))
-        displs(1) = 0
-        call MPI_GATHER(nnp, 1, inttype, cnt, 1, inttype, 0, comm3d, ierr)
-        do i = 2, dims
-            displs(i) = displs(i - 1) + cnt(i - 1)
-        end do
-        call MPI_GATHERV(xp, nnp, realtype, txp, cnt, displs, realtype, 0, comm3d, ierr)
+        !call MPI_BARRIER(comm3d, ierr)
+        !call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_INTEGER, MPI_SUM, comm3d, ierr)
+        !allocate (allParticle(pNumTotal))
+        !displs(1) = 0
+        !call MPI_GATHER(nnp, 1, inttype, cnt, 1, inttype, 0, comm3d, ierr)
+        !do i = 2, dims
+        !    displs(i) = displs(i - 1) + cnt(i - 1)
+        !end do
+        !call MPI_GATHERV(xp, nnp, realtype, txp, cnt, displs, realtype, 0, comm3d, ierr)
 
     end subroutine parallelGatherParticle
 
@@ -479,13 +484,12 @@ module field_operations
 
     type gridType
         real(kind=dbPc) :: zDiff
-        real(kind=dbPc) :: tau_p
-        real(kind=dbPc) :: tau_t
         real(kind=dbPc), dimension(3) :: location
+        real(kind=dbPc), dimension(1) :: data
     end type gridType
 
-    type(gridType), dimension(mx, my, nz + 1) :: vectorGrid
-    type(gridType), dimension(mx, my, nz) :: scalarGrid
+    type(gridType), dimension(mx, my, nz + 1) :: vectorGrid ! data: 1 u, 2 tau_p, 3 tau_t
+    type(gridType), dimension(mx, my, nz) :: scalarGrid ! data:
     real(kind=dbPc) :: zDiffMax, refineRatio
 
     public :: generateGrid, fieldInitiation
@@ -565,8 +569,7 @@ contains
     subroutine fieldInitiation
         implicit none
 
-        vectorGrid%tau_p = 0.0
-        vectorGrid%tau_t = rho*uStar**2
+        vectorGrid%data = 0.0
     end subroutine fieldInitiation
 
 end module field_operations
@@ -714,7 +717,7 @@ contains
         real(kind=dbPc) :: eBar
         real(kind=dbPc) :: m1, m2
         real(kind=dbPc) :: E1, E2, Ed2, Eeff, E2Bar
-        real(kind=dbPc) :: tau_s
+        real(kind=dbPc) :: tau_s, tau_tw
         real(kind=dbPc) :: minDistance
         real(kind=dbPc) :: ejectVolume, rollVolume
         type(particleType), dimension(maxEjectNum) :: addParticle
@@ -922,7 +925,8 @@ contains
                 Ed2 = m2*9.8*d2
                 ! Shao et al. 2000
                 tau_s = rho*0.0123*(rhoP/rho*9.8*d2 + 3.0e-4/(rho*d2))
-                Eeff = Ed2*(1.0 - vectorGrid(closestIP, closestJP, 1)%tau_t/tau_s)
+                tau_tw = vectorGrid(closestIP, closestJP, 1)%data(3)
+                Eeff = Ed2*(1.0 - tau_tw/tau_s)
                 lambda = 2.0*log((1.0 - eBar**2)*E1/Ed2)
                 sigma = sqrt(lambda)*log(2.0)
                 mu = log((1.0 - eBar**2)*E1) - lambda*log(2.0)
@@ -1088,12 +1092,76 @@ contains
         particle = tempParticle(1:pNum)
         deallocate (tempParticle)
 
-        call MPI_BARRIER(comm3d, ierr)
-        call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_INTEGER, MPI_SUM, comm3d, ierr)
-        deallocate (allParticle)
-        allocate (allParticle(pNumTotal))
-
     end subroutine particleSplash
+
+    subroutine particleMove
+        implicit none
+
+        ! ufp, vfp, wfp
+        if (k > mz) then
+            ufp = hru(mz)
+        else if (k == 1) then
+            ufp = 0.0
+        else
+            alpha = (hhp - z(k - 1))/(z(k) - z(k - 1))
+            beta = 1.0 - alpha
+            ufp = hru(k - 1)*beta + hru(k)*alpha
+        end if
+        vfp = 0.0
+        wfp = 0.0
+        ! up, xp development
+        d1x = uup
+        d1y = vvp
+        d1z = wwp
+        d1u = ffd(d1x, ufp, ddp, nu, rho, rhos)/mmp
+        d1v = ffd(d1y, vfp, ddp, nu, rho, rhos)/mmp
+        d1w = ffd(d1z, wfp, ddp, nu, rho, rhos)/mmp - 9.8*(1.0 - rho/rhos)
+        d2x = uup + dt/2.0*d1u
+        d2y = vvp + dt/2.0*d1v
+        d2z = wwp + dt/2.0*d1w
+        d2u = ffd(d2x, ufp, ddp, nu, rho, rhos)/mmp
+        d2v = ffd(d2y, vfp, ddp, nu, rho, rhos)/mmp
+        d2w = ffd(d2z, wfp, ddp, nu, rho, rhos)/mmp - 9.8*(1.0 - rho/rhos)
+        d3x = uup + dt/2.0*d2u
+        d3y = vvp + dt/2.0*d2v
+        d3z = wwp + dt/2.0*d2w
+        d3u = ffd(d3x, ufp, ddp, nu, rho, rhos)/mmp
+        d3v = ffd(d3y, vfp, ddp, nu, rho, rhos)/mmp
+        d3w = ffd(d3z, wfp, ddp, nu, rho, rhos)/mmp - 9.8*(1.0 - rho/rhos)
+        d4x = uup + dt*d3u
+        d4y = vvp + dt*d3v
+        d4z = wwp + dt*d3w
+        d4u = ffd(d4x, ufp, ddp, nu, rho, rhos)/mmp
+        d4v = ffd(d4y, vfp, ddp, nu, rho, rhos)/mmp
+        d4w = ffd(d4z, wfp, ddp, nu, rho, rhos)/mmp - 9.8*(1.0 - rho/rhos)
+        xxp = xxp + (d1x + 2.0*d2x + 2.0*d3x + d4x)/6.0*dt
+        yyp = yyp + (d1y + 2.0*d2y + 2.0*d3y + d4y)/6.0*dt
+        hhp = hhp + (d1z + 2.0*d2z + 2.0*d3z + d4z)/6.0*dt
+        uup = uup + (d1u + 2.0*d2u + 2.0*d3u + d4u)/6.0*dt
+        vvp = vvp + (d1v + 2.0*d2v + 2.0*d3v + d4v)/6.0*dt
+        wwp = wwp + (d1w + 2.0*d2w + 2.0*d3w + d4w)/6.0*dt
+        ampd(kk) = (d1u + 2.0*d2u + 2.0*d3u + d4u)/6.0*mmp
+        ampu(kk) = ampu(kk) + ampd(kk)
+        rep = abs(upp - ufp)*ddp/nu
+        if (rep == 0.) then
+            ffd = 0.0
+        else
+            !if (rep<1.0) then
+            !  frep = 1.0
+            !else if (rep<1000.0) then
+            !  frep = 1.0 + 0.15*rep**0.687
+            !else
+            !  frep = 0.0183*rep
+            !end if
+            !cd = 24./rep*frep
+            cd = (sqrt(0.5) + sqrt(24.0/rep))**2
+            ffd = -pi/8.*cd*rho*ddp**2*abs(upp - ufp)*(upp - ufp)
+            !mp = rhos*pi*ddp**3/6.0
+            !ttp = rhos*ddp**2/18.0/rho/nu
+            !ffd = mp*(ufp-upp)/ttp*frep
+        end if
+    end subroutine particleMove
+
 end module particle_operations
 
 module output_operations
@@ -1172,7 +1240,8 @@ program main
     use output_operations
     implicit none
 
-    include "mpif.h"
+    include "C:\Program Files (x86)\Microsoft SDKs\MPI\Include\mpif.h"
+    !include "mpif.h"
     integer :: ierr
     integer :: last
 
