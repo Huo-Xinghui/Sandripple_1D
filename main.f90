@@ -160,6 +160,7 @@ contains
         currentNode%im = currentNode%in + 1
     end subroutine initiateParallel
 
+    ! need to check in the end
     subroutine createMpiStructure(mpiInteger, mpiDouble)
         implicit none
         integer, intent(in) :: mpiInteger, mpiDouble
@@ -540,13 +541,20 @@ module field_operations
 
     type gridType
         real(kind=dbPc) :: zDiff
-        ! for vectorGrid, it is the location of the bottom-south-west node of the grid
-        ! for scalarGrid, it is the location of the grid center
-        real(kind=dbPc), dimension(3) :: location
+        ! The location of the bottom-south-west node of the grid
+        real(kind=dbPc), dimension(3) :: vLocation
+        ! The location of the grid center
+        real(kind=dbPc), dimension(3) :: cLocation
         ! for vectorGrid, data(1)=x velocity, data(2)=particle shear stress tau_p, data(3)=total shear stress tau_t
-        ! for scalarGrid,
+        ! for scalarGrid, data(1)= grid volume, data(2)=particle volume fraction, data(3)=forcing term
         real(kind=dbPc), dimension(3) :: data
     end type gridType
+
+    ! ekalhxh
+    type profileType
+        real(kind=dbPc) :: zDiff
+        real(kind=dbPc), dimension(:), allocatable :: data
+    end type profileType
 
     type(gridType), dimension(mx, my, nz + 1) :: vectorGrid
     type(gridType), dimension(mx, my, nz) :: scalarGrid
@@ -641,6 +649,14 @@ contains
                 end do
             end do
         end do
+        do i = 1, mx
+            do j = 1, my
+                do k = 1, nz
+                    scalarGrid(i, j, k)%data(1) = xDiff*yDiff*scalarGrid(i, j, k)%zDiff
+                    scalarGrid(i, j, k)%data(2) = 0.0
+                end do
+            end do
+        end do
     end subroutine initiateField
 
 end module field_operations
@@ -662,7 +678,7 @@ module particle_operations
     type(particleType), allocatable, dimension(:) :: allParticle
     integer pNum, pNumTotal
 
-    public :: particleInitiation, calculateParticleCollisions !, calculateParticleMovement
+    public :: particleInitiation, calculateParticleCollisions, calculateParticleMovement
     public :: particle, allParticle, pNum, pNumTotal
 
 contains
@@ -729,10 +745,11 @@ contains
         currentP%indices(1) = ip
         currentP%indices(2) = jp
         currentP%indices(3) = kp
+        scalarGrid(ip, jp, kp)%data(2) = scalarGrid(ip, jp, kp)%data(2) + &
+                                         pi*currentP%diameter**3/6.0/scalarGrid(ip, jp, kp)%data(1)
     end subroutine determineParticleIndices
 
     subroutine calculateParticleCollisions
-        use parallel_operations
         use math_operations
         use field_operations
         use surface_operations
@@ -768,20 +785,20 @@ contains
         real(kind=dbPc) :: tau_s, tau_tw
         real(kind=dbPc) :: minDistance
         real(kind=dbPc) :: ejectVolume, rollVolume
-        real(kind=dbPc) :: distance12
+        real(kind=dbPc) :: distance12, contactDistance
         real(kind=dbPc) :: eta1, eta2, alpha1, alpha2, beta1, beta2
         real(kind=dbPc) :: relativeV12Normal, relativeV12Tangent
         real(kind=dbPc) :: resCoeffTMidAir
         real(kind=dbPc), dimension(4) :: adjacentSurfGridZ
         real(kind=dbPc), dimension(2) :: LocalLoc ! particle local location
         real(kind=dbPc), dimension(3) :: vertex1, vertex2, vertex3
-        real(kind=dbPc), dimension(3) :: vector12, vector13, vector21
+        real(kind=dbPc), dimension(3) :: vector12, vector13
         real(kind=dbPc), dimension(3) :: surfaceNormalVector
         real(kind=dbPc), dimension(3) :: particleProjection
         real(kind=dbPc), dimension(3) :: impactVelocity, reboundVelocity
         real(kind=dbPc), dimension(3) :: impactCoordinateX, impactCoordinateY, impactCoordinateZ
         real(kind=dbPc), dimension(3) :: particleVertexDistance
-        real(kind=dbPc), dimension(3) :: relativeV12, relativeV21
+        real(kind=dbPc), dimension(3) :: relativeV12
         real(kind=dbPc), dimension(npdf) :: initialBinVolumeChange
         type(particleType) :: currentParticle, currentParticle2
         type(particleType), dimension(maxEjectNum) :: addParticle
@@ -1159,53 +1176,48 @@ contains
             end if
         end do
         pNum = currentTotalNum
+        deallocate (particle)
 
-        allocate (globalN(mx, my, pNum/nx/ny*2))
         if (ifMidairCollision) then
+            allocate (globalN(mx, my, pNum/nx/ny*2))
             pNumInGrid = 0
             do n = 1, pNum
                 currentParticle = tempParticle(n)
-                i = tempParticle(n)%indices(1)
-                j = tempParticle(n)%indices(2)
+                i = currentParticle%indices(1)
+                j = currentParticle%indices(2)
                 pNumInGrid(i, j) = pNumInGrid(i, j) + 1
                 localN = pNumInGrid(i, j)
                 globalN(i, j, localN) = n
                 if (LocalN < 2) cycle
-                do n2 = 1, localN
+                do n2 = 1, localN - 1
                     globalN2 = globalN(i, j, n2)
                     currentParticle2 = tempParticle(globalN2)
-                    distance12 = distance3d(currentParticle%location, currentParticle2%location)
-                    if (distance12 < 0.5*(currentParticle%diameter + currentParticle2%diameter)) then
-                        vector12 = unitVector(currentParticle2%location - currentParticle%location)
-                        vector21 = -vector12
-                        relativeV12 = currentParticle%velocity - currentParticle2%velocity
-                        relativeV21 = -relativeV12
-                        relativeV12Normal = dotProduct(vector12, relativeV12)
-                        if (relativeV12Normal < 0.0) exit
-                        relativeV12Tangent = sqrt(vectorMagnitude(relativeV12)**2 - relativeV12Normal**2)
-                        eta1 = currentParticle%diameter**3/currentParticle2%diameter**3
-                        eta2 = 1.0/eta1
-                        alpha1 = (1.0 + resCoeffN)/(1.0 + eta1)
-                        alpha2 = (1.0 + resCoeffN)/(1.0 + eta2)
-                        resCoeffTMidAir = max(0.0, 1.0 - 0.4*(1.0 + resCoeffN)/(2.0/7.0)*relativeV12Normal/relativeV12Tangent)
-                        beta1 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta1)
-                        beta2 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta2)
-                        currentParticle%velocity = currentParticle%velocity - alpha1*relativeV12Normal*vector12 &
-                                                   - beta1*(vector12 - relativeV12Normal*vector12)
-                        currentParticle2%velocity = currentParticle2%velocity - alpha2*relativeV12Normal*vector21 &
-                                                    - beta2*(vector21 - relativeV12Normal*vector21)
-                        v1 = dotProduct(currentParticle%velocity, vector12)
-                        v2 = dotProduct(currentParticle2%velocity, vector12)
-                        if (v1 >= v2) then
-                            currentParticle2%location = currentParticle%location - &
-                                                        0.5*(currentParticle%diameter + currentParticle2%diameter)*vector12
-                        else
-                            currentParticle2%location = currentParticle%location + &
-                                                        0.5*(currentParticle%diameter + currentParticle2%diameter)*vector12
-                        end if
-                    end if
+                    vector12 = currentParticle2%location - currentParticle%location
+                    distance12 = vectorMagnitude(vector12)
+                    contactDistance = 0.5*(currentParticle%diameter + currentParticle2%diameter)
+                    if (distance12 >= contactDistance) cycle
+                    vector12 = unitVector(vector12)
+                    relativeV12 = currentParticle%velocity - currentParticle2%velocity
+                    relativeV12Normal = dotProduct(vector12, relativeV12)
+                    if (relativeV12Normal <= 0.0) cycle
+                    relativeV12Tangent = sqrt(vectorMagnitude(relativeV12)**2 - relativeV12Normal**2)
+                    eta1 = currentParticle%diameter**3/currentParticle2%diameter**3
+                    eta2 = 1.0/eta1
+                    alpha1 = (1.0 + resCoeffN)/(1.0 + eta1)
+                    alpha2 = (1.0 + resCoeffN)/(1.0 + eta2)
+                    resCoeffTMidAir = max(0.0, 1.0 - 0.4*(1.0 + resCoeffN)/(2.0/7.0)*relativeV12Normal/relativeV12Tangent)
+                    beta1 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta1)
+                    beta2 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta2)
+                    tempParticle(globalN2)%velocity = currentParticle2%velocity + alpha2*relativeV12Normal*vector12 &
+                                                      + beta2*(vector12 - relativeV12Normal*vector12)
+                    tempParticle(globalN2)%location = currentParticle2%location + 0.5*(contactDistance - distance12)*vector12
+                    exit
                 end do
+                tempParticle(n)%velocity = currentParticle%velocity - alpha1*relativeV12Normal*vector12 &
+                                           - beta1*(vector12 - relativeV12Normal*vector12)
+                tempParticle(n)%location = currentParticle%location - 0.5*(contactDistance - distance12)*vector12
             end do
+            deallocate (globalN)
         end if
 
         if (totalEjectNum > 0) then
@@ -1215,79 +1227,89 @@ contains
             print *, "The eject number in one time step", totalEjectNum, ">", maxEjectNum
             stop
         end if
-        deallocate (particle)
         allocate (particle(pNum))
         particle = tempParticle(1:pNum)
         deallocate (tempParticle)
 
     end subroutine calculateParticleCollisions
 
-    !subroutine calculateParticleMovement
-    !    implicit none
+    subroutine calculateParticleMovement
+        use field_operations
+        implicit none
+        integer :: n, ip, jp, kp, i
+        real(kind=dbPc) :: dp, mp
+        real(kind=dbPc) :: C_d, Re_p
+        real(kind=dbPc), dimension(3) :: up, uf, relativeU
+        real(kind=dbPc), dimension(3) :: bulkForce, totalForce
+        real(kind=dbPc), dimension(3) :: u1, u2, u3, u4
+        real(kind=dbPc), dimension(3) :: a1, a2, a3, a4
+        type(particleType) :: currentParticle
 
-    !    if (k > mz) then
-    !        ufp = hru(mz)
-    !    else if (k == 1) then
-    !        ufp = 0.0
-    !    else
-    !        alpha = (hhp - z(k - 1))/(z(k) - z(k - 1))
-    !        beta = 1.0 - alpha
-    !        ufp = hru(k - 1)*beta + hru(k)*alpha
-    !    end if
-    !    vfp = 0.0
-    !    wfp = 0.0
-    !    ! up, xp development
-    !    d1x = uup
-    !    d1y = vvp
-    !    d1z = wwp
-    !    d1u = ffd(d1x, ufp, ddp, nu, rho, rhos)/mmp
-    !    d1v = ffd(d1y, vfp, ddp, nu, rho, rhos)/mmp
-    !    d1w = ffd(d1z, wfp, ddp, nu, rho, rhos)/mmp - 9.8*(1.0 - rho/rhos)
-    !    d2x = uup + dt/2.0*d1u
-    !    d2y = vvp + dt/2.0*d1v
-    !    d2z = wwp + dt/2.0*d1w
-    !    d2u = ffd(d2x, ufp, ddp, nu, rho, rhos)/mmp
-    !    d2v = ffd(d2y, vfp, ddp, nu, rho, rhos)/mmp
-    !    d2w = ffd(d2z, wfp, ddp, nu, rho, rhos)/mmp - 9.8*(1.0 - rho/rhos)
-    !    d3x = uup + dt/2.0*d2u
-    !    d3y = vvp + dt/2.0*d2v
-    !    d3z = wwp + dt/2.0*d2w
-    !    d3u = ffd(d3x, ufp, ddp, nu, rho, rhos)/mmp
-    !    d3v = ffd(d3y, vfp, ddp, nu, rho, rhos)/mmp
-    !    d3w = ffd(d3z, wfp, ddp, nu, rho, rhos)/mmp - 9.8*(1.0 - rho/rhos)
-    !    d4x = uup + dt*d3u
-    !    d4y = vvp + dt*d3v
-    !    d4z = wwp + dt*d3w
-    !    d4u = ffd(d4x, ufp, ddp, nu, rho, rhos)/mmp
-    !    d4v = ffd(d4y, vfp, ddp, nu, rho, rhos)/mmp
-    !    d4w = ffd(d4z, wfp, ddp, nu, rho, rhos)/mmp - 9.8*(1.0 - rho/rhos)
-    !    xxp = xxp + (d1x + 2.0*d2x + 2.0*d3x + d4x)/6.0*dt
-    !    yyp = yyp + (d1y + 2.0*d2y + 2.0*d3y + d4y)/6.0*dt
-    !    hhp = hhp + (d1z + 2.0*d2z + 2.0*d3z + d4z)/6.0*dt
-    !    uup = uup + (d1u + 2.0*d2u + 2.0*d3u + d4u)/6.0*dt
-    !    vvp = vvp + (d1v + 2.0*d2v + 2.0*d3v + d4v)/6.0*dt
-    !    wwp = wwp + (d1w + 2.0*d2w + 2.0*d3w + d4w)/6.0*dt
-    !    ampd(kk) = (d1u + 2.0*d2u + 2.0*d3u + d4u)/6.0*mmp
-    !    ampu(kk) = ampu(kk) + ampd(kk)
-    !    rep = abs(upp - ufp)*ddp/nu
-    !    if (rep == 0.) then
-    !        ffd = 0.0
-    !    else
-    !        !if (rep<1.0) then
-    !        !  frep = 1.0
-    !        !else if (rep<1000.0) then
-    !        !  frep = 1.0 + 0.15*rep**0.687
-    !        !else
-    !        !  frep = 0.0183*rep
-    !        !end if
-    !        !cd = 24./rep*frep
-    !        cd = (sqrt(0.5) + sqrt(24.0/rep))**2
-    !        ffd = -pi/8.*cd*rho*ddp**2*abs(upp - ufp)*(upp - ufp)
-    !        !mp = rhos*pi*ddp**3/6.0
-    !        !ttp = rhos*ddp**2/18.0/rho/nu
-    !        !ffd = mp*(ufp-upp)/ttp*frep
-    !    end if
-    !end subroutine calculateParticleMovement
+        scalarGrid%data(3) = 0.0
+        do n = 1, pNum
+            currentParticle = particle(n)
+            up = currentParticle%velocity
+            dp = currentParticle%diameter
+            ip = currentParticle%indices(1)
+            jp = currentParticle%indices(2)
+            kp = currentParticle%indices(3)
+            uf(1) = vectorGrid(ip, jp, kp)%data(1)
+            uf(2) = 0.0
+            uf(3) = 0.0
+            mp = rhoP*(pi*dp**3)/6.0
+            bulkForce(1:2) = 0.0
+            bulkForce(3) = -9.8*(1.0 - rho/rhoP)*mp
+
+            ! use 4th order Runge-Kutta method to solve the ODE
+            u1 = up
+            totalForce = dragForce() + bulkForce
+            a1 = totalForce/mp
+            up = u1 + 0.5*dt*a1
+            u2 = up
+            totalForce = dragForce() + bulkForce
+            a2 = totalForce/mp
+            up = u1 + 0.5*dt*a2
+            u3 = up
+            totalForce = dragForce() + bulkForce
+            a3 = totalForce/mp
+            up = u1 + dt*a3
+            u4 = up
+            totalForce = dragForce() + bulkForce
+            a4 = totalForce/mp
+            currentParticle%location = currentParticle%location + (u1 + 2.0*u2 + 2.0*u3 + u4)/6.0*dt
+            currentParticle%velocity = currentParticle%velocity + (a1 + 2.0*a2 + 2.0*a3 + a4)/6.0*dt
+            call determineParticleIndices(currentParticle)
+            particle(n) = currentParticle
+            scalarGrid(ip, jp, kp)%data(3) = scalarGrid(ip, jp, kp)%data(3) + a1(1)
+        end do
+
+    contains
+
+        function dragForce() result(Fd)
+            implicit none
+            real(kind=dbPc), dimension(3) :: Fd
+
+            relativeU = uf - up
+            Re_p = abs(relativeU(1))*dp/nu
+            C_d = (sqrt(0.5) + sqrt(24.0/Re_p))**2
+            do i = 1, 3
+                Fd(i) = -pi/8.0*rho*dp**2*C_d*abs(relativeU(i))*relativeU(i)
+            end do
+        end function dragForce
+
+    end subroutine calculateParticleMovement
+
+    subroutine reallocateParticle
+        use parallel_operations
+        implicit none
+        integer :: n, ip
+        type(particleType) :: currentParticle
+
+        do n = 1, pNum
+            currentParticle = particle(n)
+        end do
+
+    end subroutine reallocateParticle
 
 end module particle_operations
 
@@ -1407,7 +1429,8 @@ program main
         if (ifCalculateParticle) then
             call determineParticleRollDirection
             call calculateParticleCollisions
-            !call calculateParticleMovement
+            call calculateParticleMovement
+            call reallocateParticle
             !        if (iteration < sstart) then
             !            Dkz = 0.0
             !            do i = 1, mkxNode
