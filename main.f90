@@ -107,11 +107,12 @@ module parallel_operations
     end type parallelType
 
     type(parallelType) :: currentNode
-    integer :: comm, ierr, coords, nbrLeft, nbrRight, MPI_I, MPI_D
-    integer :: MPI_SG_TYPE, MPI_G_TYPE
+    integer :: comm, ierr, coords, nbrLeft, nbrRight, MPI_I, MPI_D, MPI_S
+    integer :: MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE, MPI_P_TYPE
 
     public :: initiateParallel, createMpiStructure, freeMpiStructure
-    public :: comm, currentNode, MPI_I, MPI_D, MPI_SG_TYPE, MPI_G_TYPE
+    public :: comm, currentNode
+    public :: MPI_I, MPI_D, MPI_S, MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE, MPI_P_TYPE
 
 contains
 
@@ -161,18 +162,20 @@ contains
     end subroutine initiateParallel
 
     ! need to check in the end
-    subroutine createMpiStructure(mpiInteger, mpiDouble)
+    subroutine createMpiStructure(mpiInteger, mpiDouble, mpiStatusSize)
         implicit none
-        integer, intent(in) :: mpiInteger, mpiDouble
+        integer, intent(in) :: mpiInteger, mpiDouble, mpiStatusSize
         integer, allocatable, dimension(:):: blockLen
         integer, allocatable, dimension(:):: disp
         integer, allocatable, dimension(:):: oldType
 
+        ! create MPI data type for surfaceGridType
         allocate (blockLen(7))
         allocate (disp(7))
         allocate (oldType(7))
         MPI_I = mpiInteger
         MPI_D = mpiDouble
+        MPI_S = mpiStatusSize
         blockLen = [1, 1, 1, 1, 3, npdf, npdf]
         disp = [0, kind(0), 2*kind(0), 2*kind(0) + kind(0.0_dbPc), &
                 2*kind(0) + 2*kind(0.0_dbPc), 2*kind(0) + 5*kind(0.0_dbPc), &
@@ -184,14 +187,41 @@ contains
         deallocate (disp)
         deallocate (oldType)
 
-        allocate (blockLen(3))
-        allocate (disp(3))
-        allocate (oldType(3))
-        blockLen = [1, 3, 3]
-        disp = [0, kind(0.0_dbPc), 4*kind(0.0_dbPc)]
-        oldType = [MPI_D, MPI_D, MPI_D]
-        call MPI_TYPE_CREATE_STRUCT(3, blockLen, disp, oldType, MPI_G_TYPE, ierr)
+        ! create MPI data type for gridType
+        allocate (blockLen(5))
+        allocate (disp(5))
+        allocate (oldType(5))
+        blockLen = [1, 1, 1, 3, 3]
+        disp = [0, kind(0.0_dbPc), 2*kind(0.0_dbPc), 3*kind(0.0_dbPc), 6*kind(0.0_dbPc)]
+        oldType = [MPI_D, MPI_D, MPI_D, MPI_D, MPI_D]
+        call MPI_TYPE_CREATE_STRUCT(5, blockLen, disp, oldType, MPI_G_TYPE, ierr)
         call MPI_TYPE_COMMIT(MPI_G_TYPE, ierr)
+        deallocate (blockLen)
+        deallocate (disp)
+        deallocate (oldType)
+
+        ! create MPI data type for profileType
+        allocate (blockLen(7))
+        allocate (disp(7))
+        allocate (oldType(7))
+        blockLen = [1, 1, 1, 1, 1, 1, 1]
+        disp = [0, kind(0.0_dbPc), 2*kind(0.0_dbPc), 3*kind(0.0_dbPc), 4*kind(0.0_dbPc), 5*kind(0.0_dbPc), 6*kind(0.0_dbPc)]
+        oldType = [MPI_D, MPI_D, MPI_D, MPI_D, MPI_D, MPI_D, MPI_D]
+        call MPI_TYPE_CREATE_STRUCT(7, blockLen, disp, oldType, MPI_PF_TYPE, ierr)
+        call MPI_TYPE_COMMIT(MPI_PF_TYPE, ierr)
+        deallocate (blockLen)
+        deallocate (disp)
+        deallocate (oldType)
+
+        ! create MPI data type for particleType
+        allocate (blockLen(5))
+        allocate (disp(5))
+        allocate (oldType(5))
+        blockLen = [3, 1, 1, 3, 3]
+        disp = [0, 3*kind(0), 3*kind(0) + kind(0.0_dbPc), 3*kind(0) + 2*kind(0.0_dbPc), 3*kind(0) + 5*kind(0.0_dbPc)]
+        oldType = [MPI_I, MPI_D, MPI_D, MPI_D, MPI_D]
+        call MPI_TYPE_CREATE_STRUCT(5, blockLen, disp, oldType, MPI_P_TYPE, ierr)
+        call MPI_TYPE_COMMIT(MPI_P_TYPE, ierr)
         deallocate (blockLen)
         deallocate (disp)
         deallocate (oldType)
@@ -202,31 +232,27 @@ contains
 
         call MPI_TYPE_FREE(MPI_SG_TYPE, ierr)
         call MPI_TYPE_FREE(MPI_G_TYPE, ierr)
+        call MPI_TYPE_FREE(MPI_PF_TYPE, ierr)
+        call MPI_TYPE_FREE(MPI_P_TYPE, ierr)
     end subroutine freeMpiStructure
-!
-!    !subroutine parallelExchangeParticle
-!    !    implicit none
-!    !    integer :: pNumSend, pNumRecv
-!
-!    !end subroutine parallelExchangeParticle
-!
-!    !subroutine parallelGatherParticle
-!    !    !use particle_operations
-!    !    implicit none
-!    !    integer, dimension(nNodes) :: count, displacement
-!
-!    !    !call MPI_BARRIER(comm3d, ierr)
-!    !    !call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_INTEGER, MPI_SUM, comm3d, ierr)
-!    !    !allocate (allParticle(pNumTotal))
-!    !    !displs(1) = 0
-!    !    !call MPI_GATHER(nnp, 1, inttype, cnt, 1, inttype, 0, comm3d, ierr)
-!    !    !do i = 2, dims
-!    !    !    displs(i) = displs(i - 1) + cnt(i - 1)
-!    !    !end do
-!    !    !call MPI_GATHERV(xp, nnp, realtype, txp, cnt, displs, realtype, 0, comm3d, ierr)
-!
-!    !end subroutine parallelGatherParticle
-!
+
+    !subroutine parallelGatherParticle
+    !    !use particle_operations
+    !    implicit none
+    !    integer, dimension(nNodes) :: count, displacement
+
+    !    !call MPI_BARRIER(comm3d, ierr)
+    !    !call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_INTEGER, MPI_SUM, comm3d, ierr)
+    !    !allocate (allParticle(pNumTotal))
+    !    !displs(1) = 0
+    !    !call MPI_GATHER(nnp, 1, inttype, cnt, 1, inttype, 0, comm3d, ierr)
+    !    !do i = 2, dims
+    !    !    displs(i) = displs(i - 1) + cnt(i - 1)
+    !    !end do
+    !    !call MPI_GATHERV(xp, nnp, realtype, txp, cnt, displs, realtype, 0, comm3d, ierr)
+
+    !end subroutine parallelGatherParticle
+
 end module parallel_operations
 
 module vector_operations
@@ -541,27 +567,33 @@ module field_operations
 
     type gridType
         real(kind=dbPc) :: zDiff
+        real(kind=dbPc) :: volume
+        real(kind=dbPc) :: particleVolumeFraction
+        ! z location starts from the elevation of bed surface
         ! The location of the bottom-south-west node of the grid
         real(kind=dbPc), dimension(3) :: vLocation
         ! The location of the grid center
         real(kind=dbPc), dimension(3) :: cLocation
-        ! for vectorGrid, data(1)=x velocity, data(2)=particle shear stress tau_p, data(3)=total shear stress tau_t
-        ! for scalarGrid, data(1)= grid volume, data(2)=particle volume fraction, data(3)=forcing term
-        real(kind=dbPc), dimension(3) :: data
     end type gridType
 
     ! ekalhxh
     type profileType
         real(kind=dbPc) :: zDiff
-        real(kind=dbPc), dimension(:), allocatable :: data
+        ! z location starts from 0
+        real(kind=dbPc) :: vlocation
+        real(kind=dbPc) :: clocation
+        real(kind=dbPc) :: xVelocity
+        real(kind=dbPc) :: particleShearStress
+        real(kind=dbPc) :: fluidShearStress
+        real(kind=dbPc) :: forcingTerm
     end type profileType
 
-    type(gridType), dimension(mx, my, nz + 1) :: vectorGrid
-    type(gridType), dimension(mx, my, nz) :: scalarGrid
+    type(gridType), dimension(mx, my, nz + 1) :: grid
+    type(profileType), dimension(nz) :: profile
     real(kind=dbPc) :: zDiffMax, refineRatio
 
-    public :: generateGrid, initiateField
-    public :: vectorGrid, scalarGrid
+    public :: generateGrid, initiateFluidField, calculateFluidField
+    public :: grid, profile
 
 contains
 
@@ -573,91 +605,154 @@ contains
         integer :: i, j, k
         integer :: ierr
 
+        profile(1)%zDiff = zDiffMin
+        zDiffMax = zMax/nz
+        refineRatio = (zDiffMax/zDiffMin)**(1.0/(nzUni - 1))
+        do k = 2, nz
+            if (k <= nzUni) then
+                profile(k)%zDiff = profile(k - 1)%zDiff*refineRatio
+            else
+                profile(k)%zDiff = zDiffMax
+            end if
+            profile(k)%vlocation = profile(k - 1)%vlocation + profile(k - 1)%zDiff
+        end do
+        profile(nz)%zDiff = zMax - profile(nz)%vlocation
+
         do i = 1, mx
             do j = 1, my
-                vectorGrid(i, j, 1)%location = surfGrid(i, j)%location
-                vectorGrid(i, j, 1)%zDiff = zDiffMin
-                zDiffMax = (zMax - surfGrid(i, j)%location(3))/nz
-                refineRatio = (zDiffMax/zDiffMin)**(1.0/(nzUni - 1))
+                grid(i, j, 1)%vlocation(3) = surfGrid(i, j)%location(3)
                 do k = 2, nz
-                    vectorGrid(i, j, k)%location(1) = surfGrid(i, j)%location(1)
-                    vectorGrid(i, j, k)%location(2) = surfGrid(i, j)%location(2)
-                    vectorGrid(i, j, k)%location(3) = vectorGrid(i, j, k - 1)%location(3) + vectorGrid(i, j, k - 1)%zDiff
-                    if (k <= nzUni) then
-                        vectorGrid(i, j, k)%zDiff = vectorGrid(i, j, k - 1)%zDiff*refineRatio
-                    else
-                        vectorGrid(i, j, k)%zDiff = zDiffMax
-                    end if
+                    grid(i, j, k)%zDiff = profile(k)%zDiff
+                    grid(i, j, k)%vlocation(1) = surfGrid(i, j)%location(1)
+                    grid(i, j, k)%vlocation(2) = surfGrid(i, j)%location(2)
+                    grid(i, j, k)%vlocation(3) = grid(i, j, k - 1)%vlocation(3) + profile(k - 1)%zDiff
                 end do
-                vectorGrid(i, j, nz + 1)%location(1) = surfGrid(i, j)%location(1)
-                vectorGrid(i, j, nz + 1)%location(2) = surfGrid(i, j)%location(2)
-                vectorGrid(i, j, nz + 1)%location(3) = zMax
-                vectorGrid(i, j, nz)%zDiff = zMax - vectorGrid(i, j, nz)%location(3)
-                vectorGrid(i, j, nz + 1)%zDiff = vectorGrid(i, j, nz)%zDiff
+                grid(i, j, nz + 1)%zDiff = profile(nz)%zDiff
+                grid(i, j, nz + 1)%vlocation(1) = surfGrid(i, j)%location(1)
+                grid(i, j, nz + 1)%vlocation(2) = surfGrid(i, j)%location(2)
+                grid(i, j, nz + 1)%vlocation(3) = zMax + surfGrid(i, j)%location(3)
             end do
         end do
-        currentNode%sx = vectorGrid(currentNode%i1, ny, nz)%location(1)
-        currentNode%ex = vectorGrid(currentNode%im, ny, nz)%location(1)
+        currentNode%sx = grid(currentNode%i1, ny, nz)%vlocation(1)
+        currentNode%ex = grid(currentNode%im, ny, nz)%vlocation(1)
+
+        do k = 1, nz - 1
+            profile(k)%clocation = (profile(k + 1)%vlocation + profile(k)%vlocation)/2.0
+        end do
+        profile(nz)%clocation = zMax - profile(nz)%zDiff/2.0
 
         do k = 1, nz
             do j = 1, my - 1
                 do i = 1, mx - 1
-                    scalarGrid(i, j, k)%location(1) = (vectorGrid(i + 1, j, k)%location(1) - &
-                                                       vectorGrid(i, j, k)%location(1))/2.0 + &
-                                                      vectorGrid(i, j, k)%location(1)
-                    scalarGrid(i, j, k)%location(2) = (vectorGrid(i, j + 1, k)%location(2) - &
-                                                       vectorGrid(i, j, k)%location(2))/2.0 + &
-                                                      vectorGrid(i, j, k)%location(2)
-                    scalarGrid(i, j, k)%location(3) = (vectorGrid(i, j, k + 1)%location(3) - &
-                                                       vectorGrid(i, j, k)%location(3))/2.0 + &
-                                                      vectorGrid(i, j, k)%location(3)
-                    scalarGrid(i, j, k)%zDiff = vectorGrid(i, j, k)%zDiff
+                    grid(i, j, k)%clocation(1) = (grid(i + 1, j, k)%vlocation(1) + grid(i, j, k)%vlocation(1))/2.0
+                    grid(i, j, k)%clocation(2) = (grid(i, j + 1, k)%vlocation(2) + grid(i, j, k)%vlocation(2))/2.0
+                    grid(i, j, k)%clocation(3) = (grid(i, j, k + 1)%vlocation(3) + grid(i, j, k)%vlocation(3))/2.0
                 end do
-                scalarGrid(mx, j, k)%location(1) = scalarGrid(mx - 1, j, k)%location(1) + xDiff
-                scalarGrid(mx, j, k)%location(2) = scalarGrid(mx - 1, j, k)%location(2)
-                scalarGrid(mx, j, k)%location(3) = (vectorGrid(mx, j, k + 1)%location(3) - &
-                                                    vectorGrid(mx, j, k)%location(3))/2.0 + &
-                                                   vectorGrid(mx, j, k)%location(3)
-                scalarGrid(mx, j, k)%zDiff = vectorGrid(mx, j, k)%zDiff
+                grid(mx, j, k)%clocation(1) = grid(mx - 1, j, k)%clocation(1) + xDiff
+                grid(mx, j, k)%clocation(2) = grid(mx - 1, j, k)%clocation(2)
+                grid(mx, j, k)%clocation(3) = (grid(mx, j, k + 1)%vlocation(3) + grid(mx, j, k)%vlocation(3))/2.0
             end do
             do i = 1, mx
-                scalarGrid(i, my, k)%location(1) = scalarGrid(i, my - 1, k)%location(1)
-                scalarGrid(i, my, k)%location(2) = scalarGrid(i, my - 1, k)%location(2) + yDiff
-                scalarGrid(i, my, k)%location(3) = (vectorGrid(i, my, k + 1)%location(3) - &
-                                                    vectorGrid(i, my, k)%location(3))/2.0 + &
-                                                   vectorGrid(i, my, k)%location(3)
-                scalarGrid(i, my, k)%zDiff = vectorGrid(i, my, k)%zDiff
+                grid(i, my, k)%clocation(1) = grid(i, my - 1, k)%clocation(1)
+                grid(i, my, k)%clocation(2) = grid(i, my - 1, k)%clocation(2) + yDiff
+                grid(i, my, k)%clocation(3) = (grid(i, my, k + 1)%vlocation(3) + grid(i, my, k)%vlocation(3))/2.0
             end do
         end do
+
         call MPI_BARRIER(comm, ierr)
-        call MPI_BCAST(vectorGrid, mx*my*(nz + 1), MPI_G_TYPE, 0, comm, ierr)
-        call MPI_BCAST(scalarGrid, mx*my*nz, MPI_G_TYPE, 0, comm, ierr)
+        call MPI_BCAST(grid, mx*my*(nz + 1), MPI_G_TYPE, 0, comm, ierr)
+        call MPI_BCAST(grid, nz, MPI_PF_TYPE, 0, comm, ierr)
     end subroutine generateGrid
 
-    subroutine initiateField
+    subroutine initiateFluidField
         implicit none
         integer :: i, j, k
         real(kind=dbPc) :: velocityAltitude
 
         do i = 1, mx
             do j = 1, my
-                do k = 1, nz + 1
-                    velocityAltitude = scalarGrid(i, j, k)%location(3)
-                    vectorGrid(i, j, k)%data(1) = uStar/kapa*log(velocityAltitude/z0)
-                    vectorGrid(i, j, k)%data(2) = 0.0
-                    vectorGrid(i, j, k)%data(3) = rho*uStar**2
-                end do
-            end do
-        end do
-        do i = 1, mx
-            do j = 1, my
                 do k = 1, nz
-                    scalarGrid(i, j, k)%data(1) = xDiff*yDiff*scalarGrid(i, j, k)%zDiff
-                    scalarGrid(i, j, k)%data(2) = 0.0
+                    grid(i, j, k)%volume = xDiff*yDiff*grid(i, j, k)%zDiff
+                    grid(i, j, k)%particleVolumeFraction = 0.0
+
+                    velocityAltitude = profile(k)%clocation
+                    profile(k)%xVelocity = uStar/kapa*log(velocityAltitude/z0)
+                    profile(k)%particleShearStress = 0.0
+                    profile(k)%fluidShearStress = rho*uStar**2
+                    profile(k)%forcingTerm = 0.0
                 end do
             end do
         end do
-    end subroutine initiateField
+    end subroutine initiateFluidField
+
+    subroutine calculateFluidField
+        implicit none
+        integer :: k
+        real(kind=dbPc) :: ap, at, ab, b
+        real(kind=dbPc) :: dzP, dzT, dzB, uT, uB
+        real(kind=dbPc) :: area, nut, nutot, dudz, mixl
+        real(kind=dbPc), dimension(nz) :: u, F, dz, zc, phi, tau_p, tau_f
+        real(kind=dbPc), dimension(nz) :: p, q
+        real(kind=dbPc), dimension(mx, my, nz + 1) :: pfrac
+
+        ! Calculate the 1D fluid field using the thomas algorithm
+        F = profile%forcingTerm
+        u = profile%xVelocity
+        dz = profile%zDiff
+        zc = profile%clocation
+        pfrac = grid%particleVolumeFraction
+        area = xMax*yMax
+        phi(nz) = sum(pfrac(2:mx - 1, 2:my - 1, nz))/(nx*ny)
+        tau_p(nz) = F(nz)/area/(1.0 - phi(nz))
+        tau_f(nz) = rho*uStar**2 + tau_p(nz)
+        do k = nz - 1, 1, -1
+            phi(k) = sum(pfrac(2:mx - 1, 2:my - 1, k))/(nx*ny)
+            tau_p(k) = tau_p(k + 1) + F(k)/area/(1.0 - phi(k))
+            tau_f(k) = rho*uStar**2 + tau_p(k)
+        end do
+
+        uT = (u(1) + u(2))/2.0
+        uB = 0.0
+        mixl = kapa*zc(1)*(1.0 - exp(-1.0/26.0*zc(1)*uStar/nu))
+        dudz = (uT - uB)/dz(1)
+        nut = mixl**2*abs(dudz)
+        nutot = nu + nut
+        dzP = dz(1)
+        dzT = (dz(1) + dz(2))/2.0
+        ap = nutot/dzP/dzT + 1.0/dt
+        at = -nutot/dzP/dzT
+        b = F(1)/area/dz(1)/rho/(1.0 - phi(1)) + u(1)/dt - tau_f(1)/dz(1)
+        p(1) = -at/ap
+        q(1) = b/ap
+        do k = 2, nz - 1
+            uT = (u(k) + u(k + 1))/2.0
+            uB = (u(k) + u(k - 1))/2.0
+            mixl = kapa*zc(k)*(1.0 - exp(-1.0/26.0*zc(k)*uStar/nu))
+            dudz = (uT - uB)/dz(k)
+            nut = mixl**2*abs(dudz)
+            nutot = nu + nut
+            dzP = dz(k)
+            dzT = (dz(k) + dz(k + 1))/2.0
+            dzB = (dz(k) + dz(k - 1))/2.0
+            ap = nutot/dzP/dzT + nutot/dzP/dzB + 1.0/dt
+            at = -nutot/dzP/dzT
+            ab = -nutot/dzP/dzB
+            b = F(1)/area/dz(1)/rho/(1.0 - phi(1)) + u(1)/dt
+            p(k) = -at/(ab*p(k - 1) + ap)
+            q(k) = (b - ab*q(k - 1))/(ab*p(k - 1) + ap)
+        end do
+
+        u(nz) = q(nz - 1)
+        do k = nz - 1, 1, -1
+            u(k) = p(k)*u(k + 1) + q(k)
+        end do
+
+        do k = 1, nz
+            profile(k)%xVelocity = u(k)
+            profile(k)%particleShearStress = tau_p(k)
+            profile(k)%fluidShearStress = tau_f(k)
+        end do
+    end subroutine calculateFluidField
 
 end module field_operations
 
@@ -667,23 +762,24 @@ module particle_operations
     private
 
     type particleType
-        real(kind=dbPc), dimension(3) :: location
-        real(kind=dbPc), dimension(3) :: velocity
+        integer, dimension(3) :: indices
         real(kind=dbPc) :: diameter
         real(kind=dbPc) :: altitude
-        integer, dimension(3) :: indices
+        real(kind=dbPc), dimension(3) :: location
+        real(kind=dbPc), dimension(3) :: velocity
     end type particleType
+    public :: particleType
 
     type(particleType), allocatable, dimension(:) :: particle
     type(particleType), allocatable, dimension(:) :: allParticle
     integer pNum, pNumTotal
 
-    public :: particleInitiation, calculateParticleCollisions, calculateParticleMovement
+    public :: initiateParticle, calculateParticleCollisions, calculateParticleMovement, reallocateParticle
     public :: particle, allParticle, pNum, pNumTotal
 
 contains
 
-    subroutine particleInitiation
+    subroutine initiateParticle
         use parallel_operations
         use math_operations
         use surface_operations
@@ -703,17 +799,16 @@ contains
             call random_number(rand3)
             currentParticle%location(1) = currentNode%sx + (currentNode%ex - currentNode%sx)*rand1
             currentParticle%location(2) = yMax*rand2
-            currentParticle%location(3) = zMax*rand3
+            currentParticle%location(3) = zMax*rand3 + initSurfElevation
             currentParticle%velocity = 0.0
             currentParticle%diameter = valObeyCertainPDF(initDiameterDist)
             call determineParticleIndices(currentParticle)
             particle(n) = currentParticle
         end do
 
-    end subroutine particleInitiation
+    end subroutine initiateParticle
 
     subroutine determineParticleIndices(currentP)
-        use surface_operations
         use field_operations
         implicit none
 
@@ -721,36 +816,39 @@ contains
         real(kind=dbPc) :: currentZ
         type(particleType) :: currentP
 
-        ip = floor(mod(currentP%location(1), xMax)/xDiff) + 2
-        jp = floor(mod(currentP%location(2), yMax)/yDiff) + 2
-        if (ip == 1) then
-            ip = mx - 1
-        else if (ip <= 0) then
-            ip = nx + ip
+        ip = floor(currentP%location(1)/xDiff) + 2
+        jp = floor(currentP%location(2)/yDiff) + 2
+        if (ip > mx - 1) then
+            ip = ip - (mx - 1) + 1
+            currentP%location(1) = currentP%location(1) - xMax
+        else if (ip < 2) then
+            ip = mx - (2 - ip)
+            currentP%location(1) = currentP%location(1) + xMax
         end if
-        if (jp == 1) then
-            jp = my - 1
-        else if (jp <= 0) then
-            jp = ny + jp
+        if (jp > my - 1) then
+            jp = jp - (my - 1) + 1
+            currentP%location(2) = currentP%location(2) - yMax
+        else if (jp < 2) then
+            jp = my - (2 - jp)
+            currentP%location(2) = currentP%location(2) + yMax
         end if
-        currentZ = surfGrid(ip, jp)%location(3)
-        kp = 0
         do tempKp = 1, nz
-            currentZ = currentZ + scalarGrid(ip, jp, tempKp)%zDiff
+            kp = tempKp
+            currentZ = grid(ip, jp, tempKp + 1)%vLocation(3)
             if (currentP%location(3) < currentZ) then
-                kp = tempKp
                 exit
             end if
         end do
         currentP%indices(1) = ip
         currentP%indices(2) = jp
         currentP%indices(3) = kp
-        scalarGrid(ip, jp, kp)%data(2) = scalarGrid(ip, jp, kp)%data(2) + &
-                                         pi*currentP%diameter**3/6.0/scalarGrid(ip, jp, kp)%data(1)
+        grid(ip, jp, kp)%particleVolumeFraction = grid(ip, jp, kp)%particleVolumeFraction + &
+                                                  pi*currentP%diameter**3/6.0/grid(ip, jp, kp)%volume
     end subroutine determineParticleIndices
 
     subroutine calculateParticleCollisions
         use math_operations
+        use parallel_operations
         use field_operations
         use surface_operations
         use vector_operations
@@ -782,7 +880,7 @@ contains
         real(kind=dbPc) :: eBar
         real(kind=dbPc) :: m1, m2
         real(kind=dbPc) :: E1, E2, Ed2, Eeff, E2Bar
-        real(kind=dbPc) :: tau_s, tau_tw
+        real(kind=dbPc) :: tau_s, tau_fw
         real(kind=dbPc) :: minDistance
         real(kind=dbPc) :: ejectVolume, rollVolume
         real(kind=dbPc) :: distance12, contactDistance
@@ -1021,8 +1119,8 @@ contains
                 Ed2 = m2*9.8*d2
                 ! Shao et al. 2000
                 tau_s = rho*0.0123*(rhoP/rho*9.8*d2 + 3.0e-4/(rho*d2))
-                tau_tw = vectorGrid(closestIP, closestJP, 1)%data(3)
-                Eeff = Ed2*(1.0 - tau_tw/tau_s)
+                tau_fw = profile(1)%fluidShearStress
+                Eeff = Ed2*(1.0 - tau_fw/tau_s)
                 lambda = 2.0*log((1.0 - eBar**2)*E1/Ed2)
                 sigma = sqrt(lambda)*log(2.0)
                 mu = log((1.0 - eBar**2)*E1) - lambda*log(2.0)
@@ -1179,7 +1277,7 @@ contains
         deallocate (particle)
 
         if (ifMidairCollision) then
-            allocate (globalN(mx, my, pNum/nx/ny*2))
+            allocate (globalN(mx, my, pNum/currentNode%nx/ny*2))
             pNumInGrid = 0
             do n = 1, pNum
                 currentParticle = tempParticle(n)
@@ -1239,13 +1337,14 @@ contains
         integer :: n, ip, jp, kp, i
         real(kind=dbPc) :: dp, mp
         real(kind=dbPc) :: C_d, Re_p
+        real(kind=dbPc) :: fDrag
         real(kind=dbPc), dimension(3) :: up, uf, relativeU
         real(kind=dbPc), dimension(3) :: bulkForce, totalForce
         real(kind=dbPc), dimension(3) :: u1, u2, u3, u4
         real(kind=dbPc), dimension(3) :: a1, a2, a3, a4
         type(particleType) :: currentParticle
 
-        scalarGrid%data(3) = 0.0
+        profile%forcingTerm = 0.0
         do n = 1, pNum
             currentParticle = particle(n)
             up = currentParticle%velocity
@@ -1253,7 +1352,7 @@ contains
             ip = currentParticle%indices(1)
             jp = currentParticle%indices(2)
             kp = currentParticle%indices(3)
-            uf(1) = vectorGrid(ip, jp, kp)%data(1)
+            uf(1) = profile(kp)%xVelocity
             uf(2) = 0.0
             uf(3) = 0.0
             mp = rhoP*(pi*dp**3)/6.0
@@ -1262,7 +1361,9 @@ contains
 
             ! use 4th order Runge-Kutta method to solve the ODE
             u1 = up
-            totalForce = dragForce() + bulkForce
+            totalForce = dragForce()
+            fDrag = -totalForce(1)
+            totalForce = totalForce + bulkForce
             a1 = totalForce/mp
             up = u1 + 0.5*dt*a1
             u2 = up
@@ -1280,7 +1381,7 @@ contains
             currentParticle%velocity = currentParticle%velocity + (a1 + 2.0*a2 + 2.0*a3 + a4)/6.0*dt
             call determineParticleIndices(currentParticle)
             particle(n) = currentParticle
-            scalarGrid(ip, jp, kp)%data(3) = scalarGrid(ip, jp, kp)%data(3) + a1(1)
+            profile(kp)%forcingTerm = profile(kp)%forcingTerm + fDrag
         end do
 
     contains
@@ -1301,14 +1402,62 @@ contains
 
     subroutine reallocateParticle
         use parallel_operations
+        use field_operations
         implicit none
-        integer :: n, ip
+        integer :: n, ip, jp, kp, currentN, ierr
+        integer :: sendRightNum, recvLeftNum
+        integer :: status(MPI_S)
+        real(kind=dbPc) :: ceiling
         type(particleType) :: currentParticle
+        type(particleType), dimension(1000) :: tempSendRight
+        type(particleType), allocatable, dimension(:) :: tempParticle
+        type(particleType), allocatable, dimension(:) :: sendRight, recvLeft
 
+        allocate (tempParticle(int(pNum + 1000)))
+        sendRightNum = 0
         do n = 1, pNum
             currentParticle = particle(n)
+            ip = currentParticle%indices(1)
+            jp = currentParticle%indices(2)
+            kp = currentParticle%indices(3)
+            if (ip > currentNode%in) then
+                sendRightNum = sendRightNum + 1
+                tempSendRight(sendRightNum) = currentParticle
+            else if (kp < nz .or. currentParticle%location(3) <= ceiling) then
+                currentN = currentN + 1
+                tempParticle(currentN) = currentParticle
+            end if
         end do
+        if (currentN == pNum) then
+            deallocate (tempParticle)
+            return
+        end if
 
+        if (sendRightNum > 0) then
+            allocate (sendRight(sendRightNum))
+            sendRight = tempSendRight(1:sendRightNum)
+            call MPI_SENDRECV(sendRightNum, 1, MPI_I, currentNode%neighbor(2), 10, &
+                              recvLeftNum, 1, MPI_I, currentNode%neighbor(1), 10, comm, status, ierr)
+            allocate (recvLeft(recvLeftNum))
+            call MPI_SENDRECV(sendRight, sendRightNum, MPI_P_TYPE, currentNode%neighbor(2), 20, &
+                              recvLeft, recvLeftNum, MPI_P_TYPE, currentNode%neighbor(1), 20, &
+                              comm, status, ierr)
+            deallocate (sendRight)
+
+            do n = 1, recvLeftNum
+                call determineParticleIndices(recvLeft(n))
+            end do
+
+            tempParticle(currentN + 1:currentN + recvLeftNum) = recvLeft
+            deallocate (recvLeft)
+            currentN = currentN + recvLeftNum
+        end if
+
+        pNum = currentN
+        deallocate (particle)
+        allocate (particle(pNum))
+        particle = tempParticle(1:pNum)
+        deallocate (tempParticle)
     end subroutine reallocateParticle
 
 end module particle_operations
@@ -1391,7 +1540,7 @@ program main
     implicit none
     include "mpif.h"
 
-    integer :: ierr, comm3d, mpiInteger, mpiDouble
+    integer :: ierr, comm3d, mpiInteger, mpiDouble, mpiStatusSize
     integer :: iteration
     real(kind=dbPc) :: time
 
@@ -1406,7 +1555,8 @@ program main
     call random_seed()
     mpiInteger = MPI_INTEGER
     mpiDouble = MPI_DOUBLE
-    call createMpiStructure(mpiInteger, mpiDouble)
+    mpiStatusSize = MPI_STATUS_SIZE
+    call createMpiStructure(mpiInteger, mpiDouble, mpiStatusSize)
     ! generate surfGrid and initial bed
     call generateSurfaceGrid
     ! initiate surface
@@ -1414,9 +1564,9 @@ program main
     ! generate grid
     call generateGrid
     ! initiate fluid field
-    call initiateField
+    call initiateFluidField
     ! initiate particle
-    call particleInitiation
+    call initiateParticle
     ! create output file
     call generateOutPutFile
     iteration = 1
@@ -1431,24 +1581,7 @@ program main
             call calculateParticleCollisions
             call calculateParticleMovement
             call reallocateParticle
-            !        if (iteration < sstart) then
-            !            Dkz = 0.0
-            !            do i = 1, mkxNode
-            !                do j = 1, mky
-            !                    bedCellTkness(i, j) = bedCellTknessInit
-            !                    if (irsf == 0) then
-            !                        do k = 1, npdf
-            !                            bedPDist(i, j, k) = prob(k)
-            !                        end do
-            !                        bedPD(i, j) = dpa
-            !                    else
-            !                        bedPDist(i, j, 2) = 0.5*(0.5*sin(initOmg*kx(i)) + 0.5)
-            !                        bedPDist(i, j, 1) = 1.0 - bedPDist(i, j, 2)
-            !                        bedPD(i, j) = bedPDist(i, j, 1)*(dpa - dpStddDev) + bedPDist(i, j, 2)*(dpa + dpStddDev)
-            !                    end if
-            !                end do
-            !            end do
-            !        end if
+            call calculateFluidField
         end if
         !    ! calculate fluid field
         !    call fluidField
