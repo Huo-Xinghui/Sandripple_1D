@@ -1,3 +1,13 @@
+! This is a Fortran 90 code for simulating the sandripple formation in a 1D wind field
+! version 2.0
+! Author: Xianghui Huo
+! Date: 2024-07-21
+
+! *****************************************
+
+! The module contains the public parameters
+
+! *****************************************
 module public_parameter
     ! constants
     implicit none
@@ -9,6 +19,7 @@ module public_parameter
     real(kind=dbPc), parameter :: xMax = 1.0 ! x size
     real(kind=dbPc), parameter :: yMax = 0.2 ! y size
     real(kind=dbPc), parameter :: zMax = 0.3 ! z size
+    real(kind=dbPc), parameter :: area = xMax*yMax ! computational area
     integer, parameter :: nx = 500 ! x grid num
     integer, parameter :: ny = 100 ! y grid num
     integer, parameter :: nz = 150 ! z grid num
@@ -31,6 +42,8 @@ module public_parameter
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.4 ! von Kaman's constant
     real(kind=dbPc), parameter :: zDiffMin = nu/uStar ! smallest z grid size
+    real(kind=dbPc), parameter :: zDiffMax = zMax/nz ! largest z grid size
+    real(kind=dbPc), parameter :: refineRatio = (zDiffMax/zDiffMin)**(1.0/(nzUni - 1)) ! refine ratio of z grid size
 
     ! particle
 
@@ -51,12 +64,13 @@ module public_parameter
     real(kind=dbPc), parameter :: binStart = dpa - 3.0*dpStddDev
     real(kind=dbPc), parameter :: binEnd = dpa + 3.0*dpStddDev
     real(kind=dbPc), parameter :: repostAngle = 30.0 ! repose angle
+    real(kind=dbPc), parameter :: tanRepostAngle = tan(repostAngle*pi/180.0)
     real(kind=dbPc), parameter :: resCoeffN = 0.9 ! normal restitution coefficient
     real(kind=dbPc), parameter :: resCoeffT = 0.0 ! tangential restitution coefficient
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: nkl = 1.0 ! one particle stands for x particles
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
-    integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
+    integer, parameter :: maxEjectNum = 100000 ! max eject particle num in one time step
 
     ! bed surface
 
@@ -67,6 +81,7 @@ module public_parameter
     real(kind=dbPc), parameter :: wavl = 2.0*pi/initOmg ! wavelength of prerippled surface
     real(kind=dbPc), parameter :: z0 = dpa/30.0 ! roughness height
     real(kind=dbPc), parameter :: blockHeight = 6.0*dpa ! bin height
+    real(kind=dbPc), parameter :: initBlock = xDiff*yDiff*blockHeight ! initial block volume
 
     ! output after every x steps
 
@@ -83,9 +98,15 @@ module public_parameter
 
 end module public_parameter
 
+! **************************************
+
+! The module contains the MPI operations
+
+! **************************************
 module parallel_operations
     use public_parameter
     implicit none
+    include "mpif.h"
     private
 
     type parallelType
@@ -98,21 +119,26 @@ module parallel_operations
     end type parallelType
 
     type(parallelType) :: currentNode
-    integer :: comm, ierr, coords, nbrLeft, nbrRight, MPI_I, MPI_D, MPI_S
+    integer :: comm, ierr
+    integer :: MPI_I, MPI_D, MPI_S
     integer :: MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE, MPI_P_TYPE
 
-    public :: initiateParallel, createMpiStructure, freeMpiStructure
     public :: comm, currentNode
+    public :: initializeParallel, handleError, createMpiStructure, freeMpiStructure
     public :: MPI_I, MPI_D, MPI_S, MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE, MPI_P_TYPE
 
 contains
 
-    subroutine initiateParallel(comm3d)
+    ! *********************************************************************
+    ! Create the MPI Cartesian topology and find the neighbors of each node
+    ! *********************************************************************
+    subroutine initializeParallel
         implicit none
-        integer, intent(in) :: comm3d
+        integer :: coords(1)
+        integer :: nbrLeft, nbrRight
 
         ! create MPI Cartesian topology
-        comm = comm3d
+        call MPI_CART_CREATE(MPI_COMM_WORLD, 1, nNodes, .true., .true., comm, ierr)
         call MPI_COMM_RANK(comm, currentNode%ID, ierr)
         call MPI_CART_GET(comm, 1, nNodes, .true., coords, ierr)
         ! find neighbors
@@ -150,12 +176,30 @@ contains
         currentNode%i0 = currentNode%i1 - 1
         currentNode%in = (currentNode%ID + 1)*currentNode%nx + 1
         currentNode%im = currentNode%in + 1
-    end subroutine initiateParallel
+    end subroutine initializeParallel
 
-    ! need to check in the end
-    subroutine createMpiStructure(mpiInteger, mpiDouble, mpiStatusSize)
+    ! *********************
+    ! Handle the MPI errors
+    ! *********************
+    subroutine handleError(ir)
         implicit none
-        integer, intent(in) :: mpiInteger, mpiDouble, mpiStatusSize
+        integer, intent(in) :: ir
+        character(len=MPI_MAX_ERROR_STRING) :: errorString
+        integer :: resultLen
+
+        if (ir /= 0) then
+            print *, 'Error code: ', ir
+            call MPI_ERROR_STRING(ir, errorString, resultLen, ierr)
+            print *, 'Error message: ', trim(errorString)
+            stop
+        end if
+    end subroutine handleError
+
+    ! ******************************************************************************************
+    ! Create the MPI data types for the surfaceGridType, gridType, profileType, and particleType
+    ! ******************************************************************************************
+    subroutine createMpiStructure
+        implicit none
         integer, allocatable, dimension(:):: blockLen
         integer, allocatable, dimension(:):: disp
         integer, allocatable, dimension(:):: oldType
@@ -164,15 +208,16 @@ contains
         allocate (blockLen(7))
         allocate (disp(7))
         allocate (oldType(7))
-        MPI_I = mpiInteger
-        MPI_D = mpiDouble
-        MPI_S = mpiStatusSize
+        MPI_I = MPI_INTEGER
+        MPI_D = MPI_DOUBLE
+        MPI_S = MPI_STATUS_SIZE
         blockLen = [1, 1, 1, 1, 3, npdf, npdf]
         disp = [0, kind(0), 2*kind(0), 2*kind(0) + kind(0.0_dbPc), &
                 2*kind(0) + 2*kind(0.0_dbPc), 2*kind(0) + 5*kind(0.0_dbPc), &
                 2*kind(0) + 5*kind(0.0_dbPc) + npdf*kind(0.0_dbPc)]
         oldType = [MPI_I, MPI_I, MPI_D, MPI_D, MPI_D, MPI_D, MPI_D]
         call MPI_TYPE_CREATE_STRUCT(7, blockLen, disp, oldType, MPI_SG_TYPE, ierr)
+        call handleError(ierr)
         call MPI_TYPE_COMMIT(MPI_SG_TYPE, ierr)
         deallocate (blockLen)
         deallocate (disp)
@@ -186,6 +231,7 @@ contains
         disp = [0, kind(0.0_dbPc), 2*kind(0.0_dbPc), 3*kind(0.0_dbPc), 6*kind(0.0_dbPc)]
         oldType = [MPI_D, MPI_D, MPI_D, MPI_D, MPI_D]
         call MPI_TYPE_CREATE_STRUCT(5, blockLen, disp, oldType, MPI_G_TYPE, ierr)
+        call handleError(ierr)
         call MPI_TYPE_COMMIT(MPI_G_TYPE, ierr)
         deallocate (blockLen)
         deallocate (disp)
@@ -199,6 +245,7 @@ contains
         disp = [0, kind(0.0_dbPc), 2*kind(0.0_dbPc), 3*kind(0.0_dbPc), 4*kind(0.0_dbPc), 5*kind(0.0_dbPc), 6*kind(0.0_dbPc)]
         oldType = [MPI_D, MPI_D, MPI_D, MPI_D, MPI_D, MPI_D, MPI_D]
         call MPI_TYPE_CREATE_STRUCT(7, blockLen, disp, oldType, MPI_PF_TYPE, ierr)
+        call handleError(ierr)
         call MPI_TYPE_COMMIT(MPI_PF_TYPE, ierr)
         deallocate (blockLen)
         deallocate (disp)
@@ -212,12 +259,16 @@ contains
         disp = [0, 3*kind(0), 3*kind(0) + kind(0.0_dbPc), 3*kind(0) + 2*kind(0.0_dbPc), 3*kind(0) + 5*kind(0.0_dbPc)]
         oldType = [MPI_I, MPI_D, MPI_D, MPI_D, MPI_D]
         call MPI_TYPE_CREATE_STRUCT(5, blockLen, disp, oldType, MPI_P_TYPE, ierr)
+        call handleError(ierr)
         call MPI_TYPE_COMMIT(MPI_P_TYPE, ierr)
         deallocate (blockLen)
         deallocate (disp)
         deallocate (oldType)
     end subroutine createMpiStructure
 
+    ! ***********************
+    ! Free the MPI data types
+    ! ***********************
     subroutine freeMpiStructure
         implicit none
 
@@ -229,6 +280,11 @@ contains
 
 end module parallel_operations
 
+! *****************************************
+
+! The module contains the vector operations
+
+! *****************************************
 module vector_operations
     use public_parameter
     implicit none
@@ -253,7 +309,9 @@ module vector_operations
 
 contains
 
+    ! ************************************************************
     ! Compute the dot product of two arbitrary-dimensional vectors
+    ! ************************************************************
     pure function dotProductNd(a, b)
         real(kind=dbPc), dimension(:), intent(in) :: a, b
         real(kind=dbPc) :: dotProductNd
@@ -264,7 +322,9 @@ contains
         end do
     end function dotProductNd
 
+    ! *******************************************
     ! Compute the cross product of two 3D vectors
+    ! *******************************************
     pure function crossProduct3d(a, b)
         real(kind=dbPc), dimension(3), intent(in) :: a, b
         real(kind=dbPc), dimension(3) :: crossProduct3d
@@ -273,7 +333,9 @@ contains
         crossProduct3d(3) = a(1)*b(2) - a(2)*b(1)
     end function crossProduct3d
 
+    ! ********************************************************
     ! Compute the magnitude of an arbitrary-dimensional vector
+    ! ********************************************************
     pure function vectorMagnitudeNd(v)
         real(kind=dbPc), dimension(:), intent(in) :: v
         real(kind=dbPc) :: vectorMagnitudeNd
@@ -285,7 +347,9 @@ contains
         vectorMagnitudeNd = sqrt(vectorMagnitudeNd)
     end function vectorMagnitudeNd
 
+    ! **********************************************************
     ! Compute the unit vector of an arbitrary-dimensional vector
+    ! **********************************************************
     pure function unitVectorNd(v)
         real(kind=dbPc), dimension(:), intent(in) :: v
         real(kind=dbPc), dimension(size(v)) :: unitVectorNd
@@ -301,7 +365,9 @@ contains
         end if
     end function unitVectorNd
 
+    ! ******************************************
     ! Compute the distance between two 2D points
+    ! ******************************************
     pure function distance2d(p1, p2)
         real(kind=dbPc), dimension(2), intent(in) :: p1, p2
         real(kind=dbPc) :: distance2d
@@ -309,7 +375,9 @@ contains
         distance2d = sqrt((p1(1) - p2(1))**2 + (p1(2) - p2(2))**2)
     end function distance2d
 
+    ! ******************************************
     ! Compute the distance between two 3D points
+    ! ******************************************
     pure function distance3d(p1, p2)
         real(kind=dbPc), dimension(3), intent(in) :: p1, p2
         real(kind=dbPc) :: distance3d
@@ -319,6 +387,11 @@ contains
 
 end module vector_operations
 
+! ***************************************
+
+! The module contains the math operations
+
+! ***************************************
 module math_operations
     use public_parameter
     implicit none
@@ -327,13 +400,13 @@ module math_operations
 
 contains
 
+    ! ********************************************************
+    ! Generate a random number obeying a certain PDF histogram
+    ! ********************************************************
     function valObeyCertainPDF(histogram)
         implicit none
-
-        ! generate a random number obeying a certain PDF
         real(kind=dbPc) :: valObeyCertainPDF
         real(kind=dbPc), dimension(npdf), intent(in) :: histogram
-
         integer :: i
         real(kind=dbPc) :: rand
         real(kind=dbPc) :: cumulativeProb
@@ -347,12 +420,18 @@ contains
                 exit
             end if
         end do
+        if (cumulativeProb < rand) then
+            !valObeyCertainPDF = binEnd
+            print *, 'Error: cumulativeProb', cumulativeProb, '< random number', rand
+            stop
+        end if
     end function valObeyCertainPDF
 
+    ! ***************************************************
+    ! Inverse error function (erfinv) for normal dist PDF
+    ! ***************************************************
     function erfinv(x)
         implicit none
-
-        ! Inverse error function
         real(kind=dbPc) :: erfinv
         real(kind=dbPc), intent(in) :: x
         real(kind=dbPc) :: t, w, y
@@ -363,10 +442,14 @@ contains
         erfinv = sign(sqrt(y), x)
     end function erfinv
 
+    ! **************************************************************
+    ! Generate a normal distribution histogram for particle diameter
+    ! **************************************************************
     subroutine generateNormalDistHistogram(histogram)
         implicit none
         integer :: i
         real(kind=dbPc), dimension(npdf) :: histogram
+        real(kind=dbPc) :: total
 
         ! Initialize the histogram array to zero
         histogram = 0.0
@@ -376,11 +459,17 @@ contains
             histogram(i) = exp(-0.5*((binStart + (i - 0.5)*binWidth - dpa)/dpStddDev)**2)/(sqrt(2.0*pi)*dpStddDev)
             histogram(i) = histogram(i)*binWidth
         end do
-        histogram = histogram/sum(histogram)
+        total = sum(histogram)
+        histogram = histogram/total
     end subroutine generateNormalDistHistogram
 
 end module math_operations
 
+! ******************************************
+
+! The module contains the surface operations
+
+! ******************************************
 module surface_operations
     use public_parameter
     implicit none
@@ -400,53 +489,70 @@ module surface_operations
 
     type(surfaceGridType), dimension(mx, my) :: surfGrid
     real(kind=dbPc), dimension(npdf) :: initDiameterDist
+    real(kind=dbPc), dimension(mx, my) :: avgD, dz, dzTotal
+    real(kind=dbPc), dimension(mx, my, 3) :: loc
+    real(kind=dbPc), dimension(mx, my, npdf) :: hist
+    real(kind=dbPc), dimension(mx, my, npdf) :: dBin
 
-    public :: generateSurfaceGrid, initiateSurface, determineParticleRollDirection, &
+    public :: generateSurfaceGrid, initializeSurface, determineParticleRollDirection, &
               updateSurfaceGrid, outputSurface
     public :: surfGrid, initDiameterDist
 
 contains
 
+    ! *************************************
+    ! Generate the grid for the bed surface
+    ! *************************************
     subroutine generateSurfaceGrid
         use parallel_operations
         implicit none
-        integer :: i, j, ierr
-
-        ! In fact the location of surfGrid(i, j) here is the location of the south-west node of the grid
-        surfGrid(1, :)%location(1) = -xDiff
-        surfGrid(:, 1)%location(2) = -yDiff
-        surfGrid%location(3) = initSurfElevation
-
-        do j = 2, my
-            do i = 2, mx
-                surfGrid(i, j)%location(1) = surfGrid(i - 1, j)%location(1) + xDiff
-                surfGrid(i, j)%location(2) = surfGrid(i, j - 1)%location(2) + yDiff
-            end do
-        end do
-        call MPI_BARRIER(comm, ierr)
-        call MPI_BCAST(surfGrid, mx*my, MPI_SG_TYPE, 0, comm, ierr)
-    end subroutine generateSurfaceGrid
-
-    subroutine initiateSurface
-        use math_operations
-        implicit none
         integer :: i, j
 
-        if (whichDiameterDist == 0) then
+        loc(1, :, 1) = -xDiff
+        loc(:, 1, 2) = -yDiff
+        loc(:, :, 3) = initSurfElevation
+        do j = 2, my
+            do i = 2, mx
+                loc(i, j, 1) = loc(i - 1, j, 1) + xDiff
+                loc(i, j, 2) = loc(i, j - 1, 2) + yDiff
+            end do
+        end do
+
+        ! In fact the location of surfGrid(i, j) here is the location of the south-west node of the grid
+        do j = 1, my
+            do i = 1, mx
+                surfGrid(i, j)%location(1) = loc(i, j, 1)
+                surfGrid(i, j)%location(2) = loc(i, j, 2)
+                surfGrid(i, j)%location(3) = loc(i, j, 3)
+            end do
+        end do
+    end subroutine generateSurfaceGrid
+
+    ! ************************
+    ! Initialize the bed surface
+    ! ************************
+    subroutine initializeSurface
+        use math_operations
+        implicit none
+        integer :: i, j, n
+
+        ! Initialize the diameter distribution
+        select case (whichDiameterDist)
+        case (0)
             if (npdf >= 3) then
                 call generateNormalDistHistogram(initDiameterDist)
             else
                 print *, 'Bin number (npdf) must >= 3 for normal distribution'
                 stop
             end if
-        else if (whichDiameterDist == 1) then
+        case (1)
             if (npdf == 1) then
                 initDiameterDist(1) = 1.0
             else
                 print *, 'Bin number (npdf) must = 1 for uniform particle diameter'
                 stop
             end if
-        else
+        case (2)
             if (npdf == 2) then
                 initDiameterDist(1) = prob1
                 initDiameterDist(2) = 1.0 - initDiameterDist(1)
@@ -454,24 +560,34 @@ contains
                 print *, 'Bin number (npdf) must = 2 for Bernoulli distribution'
                 stop
             end if
-        end if
+        end select
+
+        ! Initialize the bed surface
         do j = 1, my
             do i = 1, mx
                 if (ifPreformedSurface) then
-                    surfGrid(i, j)%location(3) = initAmp*sin(initOmg*surfGrid(i, j)%location(1)) + initSurfElevation
+                    loc(i, j, 3) = initAmp*sin(initOmg*loc(i, j, 1)) + initSurfElevation
+                    surfGrid(i, j)%location(3) = loc(i, j, 3)
                 end if
-                surfGrid(i, j)%averageDiameter = dpa
-                surfGrid(i, j)%diameterDistribution = initDiameterDist
+                avgD(i, j) = dpa
+                surfGrid(i, j)%averageDiameter = avgD(i, j)
+                do n = 1, npdf
+                    hist(i, j, n) = initDiameterDist(n)
+                    surfGrid(i, j)%diameterDistribution(n) = hist(i, j, n)
+                end do
             end do
         end do
-    end subroutine initiateSurface
+    end subroutine initializeSurface
 
+    ! *******************************************
+    ! Determine the direction of particle rolling
+    ! *******************************************
     subroutine determineParticleRollDirection
         implicit none
         integer :: i, j, k
         real(kind=dbPc) :: centerZ, westZ, eastZ, northZ, southZ
         real(kind=dbPc), dimension(4) :: slopes
-        real(kind=dbPc) :: tanRepostAngle, maxSlope
+        real(kind=dbPc) :: maxSlope
 
         ! Determine the direction of particle rolling
         ! avalanchTo and avalanchFrom are defined as follows:
@@ -489,9 +605,14 @@ contains
         !         ^
         !         | 4
 
-        tanRepostAngle = tan(repostAngle/180.0*pi)
-        do j = 2, ny
-            do i = 2, nx
+        do j = 1, my
+            do i = 1, mx
+                surfGrid(i, j)%avalanchTo = 0
+                surfGrid(i, j)%avalanchFrom = 0
+            end do
+        end do
+        do j = 2, my - 1
+            do i = 2, mx - 1
                 centerZ = surfGrid(i, j)%location(3)
                 westZ = surfGrid(i - 1, j)%location(3)
                 eastZ = surfGrid(i + 1, j)%location(3)
@@ -503,7 +624,6 @@ contains
                 slopes(3) = (centerZ - northZ)/yDiff
                 slopes(4) = (centerZ - southZ)/yDiff
 
-                surfGrid(i, j)%avalanchTo = 0
                 maxSlope = tanRepostAngle
                 do k = 1, 4
                     if (slopes(k) > maxSlope) then
@@ -517,7 +637,6 @@ contains
                 slopes(3) = (northZ - centerZ)/yDiff
                 slopes(4) = (southZ - centerZ)/yDiff
 
-                surfGrid(i, j)%avalanchFrom = 0
                 maxSlope = tanRepostAngle
                 do k = 1, 4
                     if (slopes(k) > maxSlope) then
@@ -529,66 +648,80 @@ contains
         end do
     end subroutine determineParticleRollDirection
 
+    ! ******************************************
+    ! Update the bed surface after particle move
+    ! ******************************************
     subroutine updateSurfaceGrid
         use parallel_operations
         implicit none
         integer :: i, j, n, ierr
-        real(kind=dbPc) :: currentBlock, initBlock, patchBlock
+        real(kind=dbPc) :: currentBlock, patchBlock
         real(kind=dbPc), dimension(npdf) :: patchBin
-        real(kind=dbPc), dimension(mx, my) :: dz, dzTotal, currentZ
-        real(kind=dbPc), dimension(mx, my, npdf) :: dBin, dBinTotal, currentBin
+        real(kind=dbPc), dimension(mx, my, npdf) :: dBinTotal, bin
 
-        initBlock = xDiff*yDiff*blockHeight
-        surfGrid%zChange = surfGrid%zChange/xDiff/yDiff/por
-        dz = surfGrid%zChange
-        currentZ = surfGrid%location(3)
-        do n = 1, npdf
-            dBin(:, :, n) = surfGrid%binVolumeChange(n)
-            currentBin(:, :, n) = surfGrid%diameterDistribution(n)*initBlock
+        surfGrid%zChange = surfGrid%zChange/(xDiff*yDiff*por)
+        do j = 1, my
+            do i = 1, mx
+                dz(i, j) = surfGrid(i, j)%zChange
+                do n = 1, npdf
+                    dBin(i, j, n) = surfGrid(i, j)%binVolumeChange(n)
+                    bin(i, j, n) = hist(i, j, n)*initBlock
+                end do
+            end do
         end do
+        call MPI_BARRIER(comm, ierr)
         call MPI_ALLREDUCE(dz, dzTotal, mx*my, MPI_D, MPI_SUM, comm, ierr)
         call MPI_ALLREDUCE(dBin, dBinTotal, mx*my*npdf, MPI_D, MPI_SUM, comm, ierr)
         do j = 2, my - 1
             do i = 2, mx - 1
-                currentZ(i, j) = currentZ(i, j) + dzTotal(i, j)
-                currentBin(i, j, :) = currentBin(i, j, :) + dBinTotal(i, j, :)
+                loc(i, j, 3) = loc(i, j, 3) + dzTotal(i, j)
+                bin(i, j, :) = bin(i, j, :) + dBinTotal(i, j, :)
             end do
         end do
         do i = 1, mx
-            currentZ(i, 1) = currentZ(i, my - 1)
-            currentZ(i, my) = currentZ(i, 2)
-            currentBin(i, 1, :) = currentBin(i, my - 1, :)
-            currentBin(i, my, :) = currentBin(i, 2, :)
+            loc(i, 1, 3) = loc(i, my - 1, 3)
+            loc(i, my, 3) = loc(i, 2, 3)
+            bin(i, 1, :) = bin(i, my - 1, :)
+            bin(i, my, :) = bin(i, 2, :)
         end do
         do j = 1, my
-            currentZ(1, j) = currentZ(mx - 1, j)
-            currentZ(mx, j) = currentZ(2, j)
-            currentBin(1, j, :) = currentBin(mx - 1, j, :)
-            currentBin(mx, j, :) = currentBin(2, j, :)
+            loc(1, j, 3) = loc(mx - 1, j, 3)
+            loc(mx, j, 3) = loc(2, j, 3)
+            bin(1, j, :) = bin(mx - 1, j, :)
+            bin(mx, j, :) = bin(2, j, :)
         end do
 
         do j = 1, my
             do i = 1, mx
                 if (whichDiameterDist > 1) then
-                    currentBlock = sum(currentBin(i, j, :))
+                    currentBlock = sum(bin(i, j, :))
                     patchBlock = initBlock - currentBlock
-                    surfGrid(i, j)%averageDiameter = 0.0
+                    avgD(i, j) = 0.0
                     do n = 1, npdf
                         patchBin(n) = patchBlock*initDiameterDist(n)
-                        currentBin(i, j, n) = (currentBin(i, j, n) + patchBin(n))/initBlock
-                        surfGrid(i, j)%averageDiameter = surfGrid(i, j)%averageDiameter + &
-                                                         currentBin(i, j, n)*(binStart + (n - 0.5)*binWidth)
-                        surfGrid(i, j)%diameterDistribution(n) = currentBin(i, j, n)
+                        bin(i, j, n) = (bin(i, j, n) + patchBin(n))/initBlock
                     end do
                 end if
-                surfGrid(i, j)%location(3) = currentZ(i, j)
             end do
         end do
 
-        call MPI_BARRIER(comm, ierr)
-        call MPI_BCAST(surfGrid, mx*my, MPI_SG_TYPE, 0, comm, ierr)
+        do j = 1, my
+            do i = 1, mx
+                surfGrid(i, j)%location(3) = loc(i, j, 3)
+                do n = 1, npdf
+                    hist(i, j, n) = bin(i, j, n)/sum(bin(i, j, :))
+                    surfGrid(i, j)%diameterDistribution(n) = hist(i, j, n)
+                    avgD(i, j) = avgD(i, j) + hist(i, j, n)*(binStart + (n - 0.5)*binWidth)
+                end do
+                surfGrid(i, j)%averageDiameter = avgD(i, j)
+            end do
+        end do
+
     end subroutine updateSurfaceGrid
 
+    ! **********************
+    ! Output the bed surface
+    ! **********************
     subroutine outputSurface(iter, t)
         use parallel_operations
         implicit none
@@ -596,7 +729,6 @@ contains
         real(kind=dbPc), intent(in) :: t
         character(len=3) :: ctemp
         integer :: i, j, nameNum
-        real(kind=dbPc) :: x, y, z, dz, d
 
         nameNum = iter/intervalCreateFile
         write (ctemp, '(i3)') nameNum
@@ -611,12 +743,7 @@ contains
                 write (14, *) 'zone', ' T = "', t, '"'
                 do j = 1, my
                     do i = 1, mx
-                        x = surfGrid(i, j)%location(1)
-                        y = surfGrid(i, j)%location(2)
-                        z = surfGrid(i, j)%location(3)
-                        dz = surfGrid(i, j)%zChange
-                        d = surfGrid(i, j)%averageDiameter
-                        write (14, "(5E15.7)") x, y, z, dz, d
+                        write (14, "(5E15.7)") loc(i, j, 1), loc(i, j, 2), loc(i, j, 3), dzTotal(i, j), avgD(i, j)
                     end do
                 end do
                 close (14)
@@ -626,6 +753,11 @@ contains
 
 end module surface_operations
 
+! **********************************************
+
+! The module contains the fluid field operations
+
+! **********************************************
 module field_operations
     use public_parameter
     implicit none
@@ -642,7 +774,6 @@ module field_operations
         real(kind=dbPc), dimension(3) :: cLocation
     end type gridType
 
-    ! ekalhxh
     type profileType
         real(kind=dbPc) :: zDiff
         ! z location starts from 0
@@ -656,164 +787,213 @@ module field_operations
 
     type(gridType), dimension(mx, my, nz + 1) :: grid
     type(profileType), dimension(nz) :: profile
-    real(kind=dbPc) :: zDiffMax, refineRatio
+    real(kind=dbPc), dimension(nz) :: zd, zc, zcReal, u, tau_p, tau_f, F, phi
+    real(kind=dbPc), dimension(mx) :: xc, xv
+    real(kind=dbPc), dimension(my) :: yc, yv
+    real(kind=dbPc), dimension(nz + 1) :: zv, zvReal
+    real(kind=dbPc), dimension(mx, my, nz) :: pfrac
 
-    public :: generateGrid, initiateFluidField, calculateFluidField, &
+    public :: generateGrid, initializeFluidField, calculateFluidField, &
               updateFieldGrid, outputField
     public :: grid, profile
 
 contains
 
+    ! ***********************
+    ! Generate the fluid grid
+    ! ***********************
     subroutine generateGrid
         use parallel_operations
         use surface_operations
         implicit none
 
         integer :: i, j, k
-        integer :: ierr
         real(kind=dbPc) :: bedElevation
 
-        profile(1)%zDiff = zDiffMin
-        profile(1)%vlocation = 0.0
-        zDiffMax = zMax/nz
-        refineRatio = (zDiffMax/zDiffMin)**(1.0/(nzUni - 1))
+        zd(1) = zDiffMin
+        zv(1) = 0.0
         do k = 2, nz
             if (k <= nzUni) then
-                profile(k)%zDiff = profile(k - 1)%zDiff*refineRatio
+                zd(k) = zd(k - 1)*refineRatio
             else
-                profile(k)%zDiff = zDiffMax
+                zd(k) = zDiffMax
             end if
-            profile(k)%vlocation = profile(k - 1)%vlocation + profile(k - 1)%zDiff
+            zv(k) = zv(k - 1) + zd(k - 1)
+            zc(k) = zv(k) + zd(k)*0.5
         end do
-        profile(nz)%zDiff = zMax - profile(nz)%vlocation
+        zd(nz) = zMax - zv(nz)
+        zc(nz) = zMax - zd(nz)*0.5
 
         do i = 1, mx
             do j = 1, my
                 bedElevation = surfGrid(i, j)%location(3)
-                grid(i, j, 1)%vlocation(3) = bedElevation
-                do k = 2, nz
-                    grid(i, j, k)%zDiff = profile(k)%zDiff
-                    grid(i, j, k)%vlocation(1) = surfGrid(i, j)%location(1)
-                    grid(i, j, k)%vlocation(2) = surfGrid(i, j)%location(2)
-                    grid(i, j, k)%vlocation(3) = bedElevation + profile(k)%vlocation
+                do k = 1, nz
+                    zvReal(k) = bedElevation + zv(k)
+                    zcReal(k) = bedElevation + zc(k)
                 end do
-                grid(i, j, nz + 1)%zDiff = profile(nz)%zDiff
-                grid(i, j, nz + 1)%vlocation(1) = surfGrid(i, j)%location(1)
-                grid(i, j, nz + 1)%vlocation(2) = surfGrid(i, j)%location(2)
-                grid(i, j, nz + 1)%vlocation(3) = bedElevation + zMax
+                zvReal(nz + 1) = bedElevation + zMax
             end do
         end do
-        currentNode%sx = grid(currentNode%i1, ny, nz)%vlocation(1)
-        currentNode%ex = grid(currentNode%im, ny, nz)%vlocation(1)
 
-        do k = 1, nz - 1
-            profile(k)%clocation = (profile(k + 1)%vlocation + profile(k)%vlocation)/2.0
+        do i = 1, mx
+            xv(i) = surfGrid(i, 1)%location(1)
+            xc(i) = xv(i) + xDiff*0.5
         end do
-        profile(nz)%clocation = zMax - profile(nz)%zDiff/2.0
+        currentNode%sx = xv(currentNode%i1)
+        currentNode%ex = xv(currentNode%im) + xDiff
+        do j = 1, my
+            yv(j) = surfGrid(1, j)%location(2)
+            yc(j) = yv(j) + yDiff*0.5
+        end do
 
         do k = 1, nz
-            do j = 1, my - 1
-                do i = 1, mx - 1
-                    grid(i, j, k)%clocation(1) = (grid(i + 1, j, k)%vlocation(1) + grid(i, j, k)%vlocation(1))/2.0
-                    grid(i, j, k)%clocation(2) = (grid(i, j + 1, k)%vlocation(2) + grid(i, j, k)%vlocation(2))/2.0
-                    grid(i, j, k)%clocation(3) = (grid(i, j, k + 1)%vlocation(3) + grid(i, j, k)%vlocation(3))/2.0
+            do j = 1, my
+                do i = 1, mx
+                    profile(k)%zDiff = zd(k)
+                    profile(k)%vlocation = zv(k)
+                    profile(k)%clocation = zc(k)
+                    grid(i, j, k)%zDiff = zd(k)
+                    grid(i, j, k)%vLocation(1) = xv(i)
+                    grid(i, j, k)%vLocation(2) = yv(j)
+                    grid(i, j, k)%vLocation(3) = zvReal(k)
+                    grid(i, j, k)%clocation(1) = xc(i)
+                    grid(i, j, k)%clocation(2) = yc(j)
+                    grid(i, j, k)%clocation(3) = zcReal(k)
                 end do
-                grid(mx, j, k)%clocation(1) = grid(mx - 1, j, k)%clocation(1) + xDiff
-                grid(mx, j, k)%clocation(2) = grid(mx - 1, j, k)%clocation(2)
-                grid(mx, j, k)%clocation(3) = (grid(mx, j, k + 1)%vlocation(3) + grid(mx, j, k)%vlocation(3))/2.0
-            end do
-            do i = 1, mx
-                grid(i, my, k)%clocation(1) = grid(i, my - 1, k)%clocation(1)
-                grid(i, my, k)%clocation(2) = grid(i, my - 1, k)%clocation(2) + yDiff
-                grid(i, my, k)%clocation(3) = (grid(i, my, k + 1)%vlocation(3) + grid(i, my, k)%vlocation(3))/2.0
             end do
         end do
-
-        call MPI_BARRIER(comm, ierr)
-        call MPI_BCAST(grid, mx*my*(nz + 1), MPI_G_TYPE, 0, comm, ierr)
-        call MPI_BCAST(profile, nz, MPI_PF_TYPE, 0, comm, ierr)
+        do j = 1, my
+            do i = 1, mx
+                grid(i, j, nz + 1)%zDiff = zd(nz)
+                grid(i, j, nz + 1)%vLocation(1) = xv(i)
+                grid(i, j, nz + 1)%vLocation(2) = yv(j)
+                grid(i, j, nz + 1)%vLocation(3) = zvReal(nz + 1)
+                grid(i, j, nz + 1)%clocation(1) = xc(i)
+                grid(i, j, nz + 1)%clocation(2) = yc(j)
+                grid(i, j, nz + 1)%clocation(3) = zvReal(nz + 1) + zd(nz)*0.5
+            end do
+        end do
     end subroutine generateGrid
 
-    subroutine initiateFluidField
+    ! **************************
+    ! Initialize the fluid field
+    ! **************************
+    subroutine initializeFluidField
         implicit none
         integer :: i, j, k
-        real(kind=dbPc) :: velocityAltitude
 
         do i = 1, mx
             do j = 1, my
                 do k = 1, nz
-                    grid(i, j, k)%volume = xDiff*yDiff*grid(i, j, k)%zDiff
-                    grid(i, j, k)%particleVolumeFraction = 0.0
-
-                    velocityAltitude = profile(k)%clocation
-                    profile(k)%xVelocity = uStar/kapa*log(velocityAltitude/z0)
-                    profile(k)%particleShearStress = 0.0
-                    profile(k)%fluidShearStress = rho*uStar**2
-                    profile(k)%forcingTerm = 0.0
+                    pfrac(i, j, k) = 0.0
+                    grid(i, j, k)%volume = xDiff*yDiff*zd(k)
+                    grid(i, j, k)%particleVolumeFraction = pfrac(i, j, k)
                 end do
             end do
         end do
-    end subroutine initiateFluidField
+        do i = 1, mx
+            do j = 1, my
+                grid(i, j, nz + 1)%volume = xDiff*yDiff*zd(nz)
+                grid(i, j, nz + 1)%particleVolumeFraction = 0.0
+            end do
+        end do
+        do k = 1, nz
+            u(k) = uStar/kapa*log(xc(k)/z0)
+            tau_p(k) = 0.0
+            tau_f(k) = rho*uStar**2
+            F(k) = 0.0
+            profile(k)%xVelocity = u(k)
+            profile(k)%particleShearStress = tau_p(k)
+            profile(k)%fluidShearStress = tau_f(k)
+            profile(k)%forcingTerm = F(k)
+        end do
+    end subroutine initializeFluidField
 
+    ! ****************************************************
+    ! Update the 1D fluid field using the Thomas algorithm
+    ! ****************************************************
     subroutine calculateFluidField
         use parallel_operations
         implicit none
-        integer :: k, ierr
+        integer :: i, j, k, ierr
         real(kind=dbPc) :: ap, at, ab, b
         real(kind=dbPc) :: dzP, dzT, dzB, uT, uB
-        real(kind=dbPc) :: area, nut, nutot, dudz, mixl
-        real(kind=dbPc), dimension(nz) :: u, F, dz, zc, phi, tau_p, tau_f
+        real(kind=dbPc) :: nut, nutot, dudz, mixl
+        real(kind=dbPc) :: wtt, wtb, wbb, wbt
         real(kind=dbPc), dimension(nz) :: p, q
-        real(kind=dbPc), dimension(mx, my, nz + 1) :: pfrac
 
-        ! Calculate the 1D fluid field using the thomas algorithm
-        F = profile%forcingTerm
-        u = profile%xVelocity
-        dz = profile%zDiff
-        zc = profile%clocation
-        pfrac = grid%particleVolumeFraction
-        area = xMax*yMax
+        do k = 1, nz
+            F(k) = profile(k)%forcingTerm
+        end do
+        do j = 1, my
+            do i = 1, mx
+                do k = 1, nz
+                    pfrac(i, j, k) = grid(i, j, k)%particleVolumeFraction
+                end do
+            end do
+        end do
+
+        ! Calculate the shear stress
         phi(nz) = sum(pfrac(2:mx - 1, 2:my - 1, nz))/(nx*ny)
-        tau_p(nz) = F(nz)/area/(1.0 - phi(nz))
+        tau_p(nz) = F(nz)/(area*(1.0 - phi(nz)))
         tau_f(nz) = rho*uStar**2 + tau_p(nz)
         do k = nz - 1, 1, -1
             phi(k) = sum(pfrac(2:mx - 1, 2:my - 1, k))/(nx*ny)
-            tau_p(k) = tau_p(k + 1) + F(k)/area/(1.0 - phi(k))
+            tau_p(k) = tau_p(k + 1) + F(k)/(area*(1.0 - phi(k)))
             tau_f(k) = rho*uStar**2 + tau_p(k)
         end do
 
-        uT = (u(1) + u(2))/2.0
+        ! Calculate the velocity profile
+        ! Forward elimination
+        dzP = zd(1)
+        dzT = (zd(1) + zd(2))/2.0
+        wtt = 0.5*zd(1)/dzT
+        wtb = 0.5*zd(2)/dzT
+        uT = u(2)*wtt + u(1)*wtb
         uB = 0.0
         mixl = kapa*zc(1)*(1.0 - exp(-1.0/26.0*zc(1)*uStar/nu))
-        dudz = (uT - uB)/dz(1)
+        dudz = (uT - uB)/dzP
         nut = mixl**2*abs(dudz)
         nutot = nu + nut
-        dzP = dz(1)
-        dzT = (dz(1) + dz(2))/2.0
-        ap = nutot/dzP/dzT + 1.0/dt
-        at = -nutot/dzP/dzT
-        b = F(1)/area/dz(1)/rho/(1.0 - phi(1)) + u(1)/dt - tau_f(1)/dz(1)
+        ap = nutot/(dzP*dzT) + 1.0/dt
+        at = -nutot/(dzP*dzT)
+        b = F(1)/(area*dzP*rho*(1.0 - phi(1))) + u(1)/dt - tau_f(1)/dzP
         p(1) = -at/ap
         q(1) = b/ap
         do k = 2, nz - 1
-            uT = (u(k) + u(k + 1))/2.0
-            uB = (u(k) + u(k - 1))/2.0
+            dzP = zd(k)
+            dzT = (zd(k) + zd(k + 1))/2.0
+            dzB = (zd(k) + zd(k - 1))/2.0
+            wtt = 0.5*zd(k)/dzT
+            wtb = 0.5*zd(k + 1)/dzT
+            wbb = 0.5*zd(k)/dzB
+            wbt = 0.5*zd(k - 1)/dzB
+            uT = u(k + 1)*wtt + u(k)*wtb
+            uB = u(k - 1)*wbb + u(k)*wbt
             mixl = kapa*zc(k)*(1.0 - exp(-1.0/26.0*zc(k)*uStar/nu))
-            dudz = (uT - uB)/dz(k)
+            dudz = (uT - uB)/dzP
             nut = mixl**2*abs(dudz)
             nutot = nu + nut
-            dzP = dz(k)
-            dzT = (dz(k) + dz(k + 1))/2.0
-            dzB = (dz(k) + dz(k - 1))/2.0
-            ap = nutot/dzP/dzT + nutot/dzP/dzB + 1.0/dt
-            at = -nutot/dzP/dzT
-            ab = -nutot/dzP/dzB
-            b = F(1)/area/dz(1)/rho/(1.0 - phi(1)) + u(1)/dt
-            p(k) = -at/(ab*p(k - 1) + ap)
-            q(k) = (b - ab*q(k - 1))/(ab*p(k - 1) + ap)
+            ap = nutot/(dzP*dzT) + nutot/(dzP*dzB) + 1.0/dt
+            at = -nutot/(dzP*dzT)
+            ab = -nutot/(dzP*dzB)
+            b = F(k)/(area*dzP*rho*(1.0 - phi(k))) + u(k)/dt
+            p(k) = -at/(ap + ab*p(k - 1))
+            q(k) = (b - ab*q(k - 1))/(ap + ab*p(k - 1))
         end do
+        dzP = zd(nz)
+        dzB = (zd(nz) + zd(nz - 1))/2.0
+        wbb = 0.5*zd(nz)/dzB
+        wbt = 0.5*zd(nz - 1)/dzB
+        mixl = kapa*zc(nz)*(1.0 - exp(-1.0/26.0*zc(nz)*uStar/nu))
+        nutot = nu
+        ap = nutot/(dzP*dzB) + 1.0/dt
+        ab = -nutot/(dzP*dzB)
+        b = F(nz)/(area*dzP*rho*(1.0 - phi(nz))) + u(nz)/dt + rho*uStar**2/dzP
+        q(nz) = (b - ab*q(nz - 1))/(ap + ab*p(nz - 1))
 
-        u(nz) = q(nz - 1)
+        ! Backward substitution
+        u(nz) = q(nz)
         do k = nz - 1, 1, -1
             u(k) = p(k)*u(k + 1) + q(k)
         end do
@@ -828,6 +1008,9 @@ contains
         call MPI_BCAST(profile, nz, MPI_PF_TYPE, 0, comm, ierr)
     end subroutine calculateFluidField
 
+    ! ***************************************************
+    ! Update the field grid after the bed surface changes
+    ! ***************************************************
     subroutine updateFieldGrid
         use surface_operations
         implicit none
@@ -838,15 +1021,21 @@ contains
             do j = 1, my
                 bedElevation = surfGrid(i, j)%location(3)
                 do k = 1, nz
-                    grid(i, j, k)%vlocation(3) = bedElevation + profile(k)%vlocation
-                    grid(i, j, k)%cLocation(3) = bedElevation + profile(k)%cLocation
+                    zvReal(k) = bedElevation + zv(k)
+                    zcReal(k) = bedElevation + zc(k)
+                    grid(i, j, k)%vLocation(3) = zvReal(k)
+                    grid(i, j, k)%clocation(3) = zcReal(k)
                 end do
-                grid(i, j, nz + 1)%vlocation(3) = bedElevation + zMax
-                grid(i, j, nz + 1)%cLocation(3) = bedElevation + zMax
+                zvReal(nz + 1) = bedElevation + zMax
+                grid(i, j, nz + 1)%vLocation(3) = zvReal(nz + 1)
+                grid(i, j, nz + 1)%clocation(3) = zvReal(nz + 1) + zd(nz)*0.5
             end do
         end do
     end subroutine updateFieldGrid
 
+    ! **********************
+    ! Output the fluid field
+    ! **********************
     subroutine outputField(iter, t)
         use parallel_operations
         implicit none
@@ -855,24 +1044,20 @@ contains
         character(len=3) :: ctemp
         integer :: i, j, k
         integer :: nameNum
-        real(kind=dbPc) :: x, y, z, u, tauP, tauF, F, phiP
 
+        ! Output the profile data
         if (mod(iter, intervalProfile) == 0) then
             if (currentNode%ID == 0) then
                 open (unit=12, position='append', file='./Field/Profile.plt')
                 write (12, *) 'zone', ' T = "', t, '"'
                 do k = 1, nz
-                    z = profile(k)%clocation
-                    u = profile(k)%xVelocity
-                    tauP = profile(k)%particleShearStress
-                    tauF = profile(k)%fluidShearStress
-                    F = profile(k)%forcingTerm
-                    write (12, "(5E15.7)") z, u, tauP, tauF, F
+                    write (12, "(6E15.7)") zc(k), u(k), tau_p(k), tau_f(k), F(k), phi(k)
                 end do
                 close (12)
             end if
         end if
 
+        ! Output the field data
         nameNum = iter/intervalCreateFile
         write (ctemp, '(i3)') nameNum
         if (mod(iter, intervalCreateFile) == 0) then
@@ -887,11 +1072,7 @@ contains
                 do k = 1, nz
                     do j = 1, my
                         do i = 1, mx
-                            x = grid(i, j, k)%cLocation(1)
-                            y = grid(i, j, k)%cLocation(2)
-                            z = grid(i, j, k)%cLocation(3)
-                            phiP = grid(i, j, k)%particleVolumeFraction
-                            write (13, "(4E15.7)") x, y, z, phiP
+                            write (13, "(4E15.7)") xc(i), yc(j), zvReal(k), pfrac(i, j, k)
                         end do
                     end do
                 end do
@@ -902,6 +1083,11 @@ contains
 
 end module field_operations
 
+! *******************************************
+
+! The module contains the particle operations
+
+! *******************************************
 module particle_operations
     use public_parameter
     implicit none
@@ -921,19 +1107,20 @@ module particle_operations
     type(particleType), allocatable, dimension(:) :: particle
     integer pNum
 
-    public :: initiateParticle, calculateParticleCollisions, calculateParticleMovement, &
+    public :: initializeParticle, calculateParColl, calculateParticleMovement, &
               reallocateParticle, outputParticle
     public :: particle, pNum
 
 contains
 
-    subroutine initiateParticle
+    ! ************************
+    ! Initialize the particles
+    ! ************************
+    subroutine initializeParticle
         use parallel_operations
         use math_operations
         use surface_operations
-        use field_operations
         implicit none
-
         integer :: n
         real(kind=dbPc) :: rand1, rand2, rand3
         type(particleType) :: currentParticle
@@ -950,13 +1137,16 @@ contains
             currentParticle%location(3) = zMax*rand3 + initSurfElevation
             currentParticle%velocity = 0.0
             currentParticle%diameter = valObeyCertainPDF(initDiameterDist)
-            call determineParticleIndices(currentParticle)
+            call determineParIJK(currentParticle)
             particle(n) = currentParticle
         end do
 
-    end subroutine initiateParticle
+    end subroutine initializeParticle
 
-    subroutine determineParticleIndices(currentP)
+    ! *************************************
+    ! Determine the indices of the particle
+    ! *************************************
+    subroutine determineParIJK(currentP)
         use field_operations
         implicit none
 
@@ -969,14 +1159,14 @@ contains
         if (ip > mx - 1) then
             ip = ip - (mx - 1) + 1
             currentP%location(1) = currentP%location(1) - xMax
-        else if (ip < 2) then
+        elseif (ip < 2) then
             ip = mx - (2 - ip)
             currentP%location(1) = currentP%location(1) + xMax
         end if
         if (jp > my - 1) then
             jp = jp - (my - 1) + 1
             currentP%location(2) = currentP%location(2) - yMax
-        else if (jp < 2) then
+        elseif (jp < 2) then
             jp = my - (2 - jp)
             currentP%location(2) = currentP%location(2) + yMax
         end if
@@ -990,9 +1180,12 @@ contains
         currentP%indices(1) = ip
         currentP%indices(2) = jp
         currentP%indices(3) = kp
-    end subroutine determineParticleIndices
+    end subroutine determineParIJK
 
-    subroutine calculateParticleCollisions
+    ! *******************************************************
+    ! Calculate particle-bed and particle-particle collisions
+    ! *******************************************************
+    subroutine calculateParColl
         use math_operations
         use parallel_operations
         use field_operations
@@ -1002,10 +1195,9 @@ contains
 
         integer :: n, nadd, n2
         integer :: totalEjectNum
-        integer :: i, j, k, kpdf
+        integer :: i, j, k
         integer :: ip, jp
         integer :: whichTriangle
-        integer :: iterateNum
         integer :: ejectNum
         integer :: currentTotalNum
         integer :: whichVertex
@@ -1016,54 +1208,52 @@ contains
         integer, dimension(mx, my) :: pNumInGrid
         integer, allocatable, dimension(:, :, :) :: globalN
         real(kind=dbPc) :: estimateAltitude
-        real(kind=dbPc) :: eta, alpha, beta, gama, sigma, lambda, mu
-        real(kind=dbPc) :: d1, d2, averageD1D2, nonDimD1, nonDimD2
+        real(kind=dbPc) :: sigma, lambda, mu
+        real(kind=dbPc) :: d1, d2
         real(kind=dbPc) :: v1, v2
-        real(kind=dbPc) :: theta1, theta2, theta2Min, theta2Max, theta2Mid
-        real(kind=dbPc) :: pT2T1, pMax
+        real(kind=dbPc) :: theta2
         real(kind=dbPc) :: rand1, rand2, rand3
-        real(kind=dbPc) :: pointX, pointY
         real(kind=dbPc) :: eBar
         real(kind=dbPc) :: m1, m2
         real(kind=dbPc) :: E1, E2, Ed2, Eeff, E2Bar
         real(kind=dbPc) :: tau_s, tau_fw
-        real(kind=dbPc) :: minDistance
         real(kind=dbPc) :: ejectVolume, rollVolume
         real(kind=dbPc) :: distance12, contactDistance
         real(kind=dbPc) :: eta1, eta2, alpha1, alpha2, beta1, beta2
         real(kind=dbPc) :: relativeV12Normal, relativeV12Tangent
         real(kind=dbPc) :: resCoeffTMidAir
         real(kind=dbPc), dimension(4) :: adjacentSurfGridZ
-        real(kind=dbPc), dimension(2) :: LocalLoc ! particle local location
         real(kind=dbPc), dimension(3) :: vertex1, vertex2, vertex3
-        real(kind=dbPc), dimension(3) :: vector12, vector13
+        real(kind=dbPc), dimension(3) :: vector12
         real(kind=dbPc), dimension(3) :: surfaceNormalVector
         real(kind=dbPc), dimension(3) :: particleProjection
         real(kind=dbPc), dimension(3) :: impactVelocity, reboundVelocity
         real(kind=dbPc), dimension(3) :: impactCoordinateX, impactCoordinateY, impactCoordinateZ
-        real(kind=dbPc), dimension(3) :: particleVertexDistance
         real(kind=dbPc), dimension(3) :: relativeV12
-        real(kind=dbPc), dimension(npdf) :: initialBinVolumeChange
         type(particleType) :: currentParticle, currentParticle2
         type(particleType), dimension(maxEjectNum) :: addParticle
         type(particleType), allocatable, dimension(:) :: tempParticle
 
+        ! initialization
         allocate (tempParticle(pNum + maxEjectNum))
-        surfGrid%zChange = 0.0
-        initialBinVolumeChange = 0.0_dbPc
-        do ip = 1, mx
-            do jp = 1, my
-                do kpdf = 1, pNum
-                    surfGrid(ip, jp)%binVolumeChange(kpdf) = initialBinVolumeChange(kpdf)
+        do i = 1, mx
+            do j = 1, my
+                surfGrid(i, j)%zChange = 0.0_dbPc
+                do k = 1, npdf
+                    surfGrid(i, j)%binVolumeChange(k) = 0.0_dbPc
                 end do
             end do
         end do
         currentTotalNum = 0
         totalEjectNum = 0
+
+        ! particle-bed collision
         do n = 1, pNum
             currentParticle = particle(n)
             ip = currentParticle%indices(1)
             jp = currentParticle%indices(2)
+
+            ! Estimate the altitude of the particle
             adjacentSurfGridZ(1) = surfGrid(ip, jp)%location(3)
             adjacentSurfGridZ(2) = surfGrid(ip + 1, jp)%location(3)
             adjacentSurfGridZ(3) = surfGrid(ip, jp + 1)%location(3)
@@ -1075,60 +1265,11 @@ contains
                 cycle
             end if
 
-            LocalLoc(1) = currentParticle%location(1) - surfGrid(ip, jp)%location(1)
-            LocalLoc(2) = currentParticle%location(2) - surfGrid(ip, jp)%location(2)
-            if (mod(ip + jp, 2) == 0) then
-                ! ip+jp = Even num
-                !   3 ------- 2
-                !     |    /|
-                !     |  /  |
-                !     |/    |
-                !   1 ------- 3
-                ! Left triangle: whichTriangle=1
-                ! Right triangle: whichTriangle=2
-                ! Current surfGrid%location is at point 1, it is the local origin
-                vertex1 = surfGrid(ip, jp)%location
-                vertex2 = surfGrid(ip + 1, jp + 1)%location
-                if (LocalLoc(1)/LocalLoc(2) <= xDiff/yDiff) then
-                    whichTriangle = 1
-                    vertex3 = surfGrid(ip, jp + 1)%location
-                    vector12 = vertex2 - vertex1
-                    vector13 = vertex3 - vertex1
-                    surfaceNormalVector = unitVector(crossProduct(vector12, vector13))
-                else
-                    whichTriangle = 2
-                    vertex3 = surfGrid(ip + 1, jp)%location
-                    vector12 = vertex2 - vertex1
-                    vector13 = vertex3 - vertex1
-                    surfaceNormalVector = unitVector(crossProduct(vector13, vector12))
-                end if
-            else
-                ! ip+jp = Odd num
-                !   2 ------- 3
-                !     |\    |
-                !     |  \  |
-                !     |    \|
-                !   3 ------- 1
-                ! Left triangle: whichTriangle=3
-                ! Right triangle: whichTriangle=4
-                ! Current surfGrid%location is at point 3, it is the local origin
-                vertex1 = surfGrid(ip + 1, jp)%location
-                vertex2 = surfGrid(ip, jp + 1)%location
-                if (LocalLoc(1)/(yDiff - LocalLoc(2)) <= xDiff/yDiff) then
-                    whichTriangle = 3
-                    vertex3 = surfGrid(ip, jp)%location
-                    vector12 = vertex2 - vertex1
-                    vector13 = vertex3 - vertex1
-                    surfaceNormalVector = unitVector(crossProduct(vector12, vector13))
-                else
-                    whichTriangle = 4
-                    vertex3 = surfGrid(ip + 1, jp + 1)%location
-                    vector12 = vertex2 - vertex1
-                    vector13 = vertex3 - vertex1
-                    surfaceNormalVector = unitVector(crossProduct(vector13, vector12))
-                end if
-            end if
+            ! Determine which triangle the particle will collide with
+            call determineSurfTri(currentParticle, ip, jp, whichTriangle, vertex1, vertex2, vertex3, &
+                                  surfaceNormalVector)
 
+            ! Calculate the altitude of the particle
             particleProjection(1) = currentParticle%location(1)
             particleProjection(2) = currentParticle%location(2)
             particleProjection(3) = vertex3(3) + &
@@ -1137,179 +1278,39 @@ contains
                                     (-surfaceNormalVector(3))
             currentParticle%altitude = currentParticle%location(3) - particleProjection(3)
 
-            particleVertexDistance(1) = distance3d(particleProjection, vertex1)
-            particleVertexDistance(2) = distance3d(particleProjection, vertex2)
-            particleVertexDistance(3) = distance3d(particleProjection, vertex3)
-            minDistance = particleVertexDistance(1)
-            whichVertex = 1
-            do k = 2, 3
-                if (particleVertexDistance(k) < minDistance) then
-                    minDistance = particleVertexDistance(k)
-                    whichVertex = k
-                end if
-            end do
-            select case (whichTriangle)
-                !   3 ------- 2
-                !     |    /|
-                !     |  /  |
-                !     |/    |
-                !   1 ------- 3
-                ! Left triangle: whichTriangle=1
-                ! Right triangle: whichTriangle=2
-            case (1)
-                select case (whichVertex)
-                case (1)
-                    closestIP = ip
-                    closestJP = jp
-                case (2)
-                    closestIP = ip + 1
-                    closestJP = jp + 1
-                case (3)
-                    closestIP = ip
-                    closestJP = jp + 1
-                end select
-            case (2)
-                select case (whichVertex)
-                case (1)
-                    closestIP = ip
-                    closestJP = jp
-                case (2)
-                    closestIP = ip + 1
-                    closestJP = jp + 1
-                case (3)
-                    closestIP = ip + 1
-                    closestJP = jp
-                end select
-                !   2 ------- 3
-                !     |\    |
-                !     |  \  |
-                !     |    \|
-                !   3 ------- 1
-                ! Left triangle: whichTriangle=3
-                ! Right triangle: whichTriangle=4
-            case (3)
-                select case (whichVertex)
-                case (1)
-                    closestIP = ip + 1
-                    closestJP = jp
-                case (2)
-                    closestIP = ip
-                    closestJP = jp + 1
-                case (3)
-                    closestIP = ip
-                    closestJP = jp
-                end select
-            case (4)
-                select case (whichVertex)
-                case (1)
-                    closestIP = ip + 1
-                    closestJP = jp
-                case (2)
-                    closestIP = ip
-                    closestJP = jp + 1
-                case (3)
-                    closestIP = ip + 1
-                    closestJP = jp + 1
-                end select
-            end select
-            if (closestIP >= mx) then
-                closestIP = closestIP - mx + 2
-            end if
-            if (closestJP >= my) then
-                closestJP = closestJP - my + 2
-            end if
-
+            ! Process the impact event
             impactCoordinateZ = surfaceNormalVector
             impactVelocity(3) = dotProduct(currentParticle%velocity, impactCoordinateZ)
             if (currentParticle%altitude < 0.5*currentParticle%diameter .and. impactVelocity(3) < 0.0) then
+                ! Change to local coordinate system
                 impactCoordinateY = unitVector(crossProduct(impactCoordinateZ, currentParticle%velocity))
                 impactCoordinateX = unitVector(crossProduct(impactCoordinateY, impactCoordinateZ))
                 impactVelocity(1) = dotProduct(currentParticle%velocity, impactCoordinateX)
                 impactVelocity(2) = dotProduct(currentParticle%velocity, impactCoordinateY)
 
-                ! Splash function of Lammel et al. 2017
+                ! Find the closest vertex to the particle
+                call findClosestVertex(particleProjection, ip, jp, vertex1, vertex2, vertex3, &
+                                       whichTriangle, whichVertex, closestIP, closestJP)
+
+                ! Particle and bed information
                 d1 = currentParticle%diameter
                 d2 = surfGrid(closestIP, closestJP)%averageDiameter
-                averageD1D2 = (d1 + d2)/2.0
-                nonDimD1 = d1/averageD1D2
-                nonDimD2 = d2/averageD1D2
-                eta = resCoeffN*nonDimD1**3/(nonDimD1**3 + resCoeffN*nonDimD2**3)
-                alpha = (1.0 + resCoeffN)/(1.0 + eta) - 1.0
-                beta = 1.0 - (2.0/7.0)*(1.0 - resCoeffT)/(1.0 + eta)
-                theta1 = atan(abs(impactVelocity(3)/impactVelocity(1)))
-                eBar = beta - (beta**2 - alpha**2)*nonDimD2*theta1/(2.0*beta)
-
-                gama = 4.0/9.0/nonDimD2*(beta/(alpha + beta))**2
-                theta2Min = -theta1
-                theta2Max = 2.0*sqrt(theta1/gama) - theta1
-                theta2Max = min(theta2Max, pi)
-                theta2Mid = (theta2Max + theta2Min)/2.0
-                pMax = gama*(theta1 + theta2Mid)/theta1*log(2.0*theta1/gama/(theta1 + theta2Mid)**2)*1.2
-                iterateNum = 0
-                do
-                    iterateNum = iterateNum + 1
-                    call random_number(rand1)
-                    call random_number(rand2)
-                    pointX = (theta2Max - theta2Min)*rand1 + theta2Min
-                    pointY = rand2*min(pMax, 1.0)
-                    pointY = max(pointY, 0.0)
-                    pT2T1 = gama*(theta1 + pointX)/theta1*log(2.0*theta1/gama/(theta1 + pointX)**2)
-                    if (pointY <= pT2T1 .or. iterateNum > 10000) then
-                        theta2 = pointX
-                        exit
-                    end if
-                end do
-
                 m1 = rhoP*(pi*d1**3)/6.0
                 m2 = rhoP*(pi*d2**3)/6.0
                 v1 = vectorMagnitude(impactVelocity)
-                E1 = (m1*v1**2)/2.0
-                Ed2 = m2*9.8*d2
-                ! Shao et al. 2000
-                tau_s = rho*0.0123*(rhoP/rho*9.8*d2 + 3.0e-4/(rho*d2))
-                tau_fw = profile(1)%fluidShearStress
-                Eeff = Ed2*(1.0 - tau_fw/tau_s)
-                lambda = 2.0*log((1.0 - eBar**2)*E1/Ed2)
-                sigma = sqrt(lambda)*log(2.0)
-                mu = log((1.0 - eBar**2)*E1) - lambda*log(2.0)
-                E2Bar = Ed2*((1.0 - eBar**2)*E1/Ed2)**(1.0 - (2.0 - log(2.0))*log(2.0))
-                ejectNum = nint(0.06*((1.0 - eBar**2)*E1/(2.0*E2Bar))*erfc((log(Eeff) - mu)/(sqrt(2.0)*sigma)))
 
+                ! Calculate rebound
+                call calculateReboundPara(impactVelocity, d1, d2, eBar, theta2)
                 v2 = v1*eBar
-                E2 = (m2*v2**2)/2.0
-                ! whether rebound
-                if (theta2 <= 0.0 .or. E2 < Ed2 .or. eBar < 0.0) then
-                    select case (surfGrid(closestIP, closestJP)%avalanchTo)
-                    case (1)
-                        changedIP = closestIP + 1
-                        changedJP = closestJP
-                    case (2)
-                        changedIP = closestIP - 1
-                        changedJP = closestJP
-                    case (3)
-                        changedIP = closestIP
-                        changedJP = closestJP + 1
-                    case (4)
-                        changedIP = closestIP
-                        changedJP = closestJP - 1
-                    case default
-                        changedIP = closestIP
-                        changedJP = closestJP
-                    end select
-                    if (changedIP >= mx) then
-                        changedIP = changedIP - mx + 2
-                    else if (changedIP <= 1) then
-                        changedIP = changedIP + mx - 2
-                    end if
-                    if (changedJP >= my) then
-                        changedJP = changedJP - my + 2
-                    else if (changedJP <= 1) then
-                        changedJP = changedJP + my - 2
-                    end if
-
+                reboundVelocity(1) = v2*cos(theta2)
+                reboundVelocity(2) = 0.0
+                reboundVelocity(3) = v2*sin(theta2)
+                E2 = (m2*reboundVelocity(3)**2)*0.5
+                Ed2 = m2*9.8*d2
+                if (theta2 <= 0.0 .or. E2 < Ed2 .or. eBar < 0.0) then ! no rebound
+                    call findChangedGridNode(1, closestIP, closestJP, changedIP, changedJP)
                     surfGrid(changedIP, changedJP)%zChange = surfGrid(changedIP, changedJP)%zChange &
                                                              + (pi*d1**3)/6.0
-
                     if (whichDiameterDist /= 1) then
                         whichBin = floor((currentParticle%diameter - binStart)/binWidth) + 1
                         whichBin = max(whichBin, 1)
@@ -1317,115 +1318,98 @@ contains
                         surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) = &
                             surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) + (pi*d1**3)/6.0
                     end if
-                else
+                else ! rebound
                     currentTotalNum = currentTotalNum + 1
                     currentParticle%altitude = 0.5*d1
                     currentParticle%location(3) = particleProjection(3) + 0.5*d1
-                    reboundVelocity(1) = v2*cos(theta2)
-                    reboundVelocity(2) = 0.0
-                    reboundVelocity(3) = v2*sin(theta2)
                     currentParticle%velocity(1) = dotProduct(reboundVelocity, impactCoordinateX)
                     currentParticle%velocity(2) = dotProduct(reboundVelocity, impactCoordinateY)
                     currentParticle%velocity(3) = dotProduct(reboundVelocity, impactCoordinateZ)
-                    call determineParticleIndices(currentParticle)
+                    call determineParIJK(currentParticle)
                     tempParticle(currentTotalNum) = currentParticle
                 end if
 
-                ejectVolume = 0.0
-                do nadd = 1, ejectNum
-                    call random_number(rand1)
-                    ! E2 = random number obeying log normal distribution with mean mu and standard deviation sigma
-                    E2 = exp(mu + sigma*sqrt(2.0)*erfinv(2.0*rand1 - 1.0))
-                    d2 = valObeyCertainPDF(surfGrid(closestIP, closestJP)%diameterDistribution)
-                    m2 = rhoP*(pi*d2**3)/6.0
-                    rand3 = -1.0
-                    do while (rand3 < 0.0)
+                ! Calculate eject
+                ! Calculate eject number according to Lammel et al. 2017
+                tau_s = rho*0.0123*(rhoP/rho*9.8*d2 + 3.0e-4/(rho*d2)) ! Shao and Lu 2000
+                tau_fw = profile(1)%fluidShearStress
+                Eeff = Ed2*(1.0 - tau_fw/tau_s)
+                E1 = (m1*v1**2)/2.0
+                lambda = 2.0*log((1.0 - eBar**2)*E1/Ed2)
+                sigma = sqrt(lambda)*log(2.0)
+                mu = log((1.0 - eBar**2)*E1) - lambda*log(2.0)
+                E2Bar = Ed2*((1.0 - eBar**2)*E1/Ed2)**(1.0 - (2.0 - log(2.0))*log(2.0))
+                ejectNum = floor(0.06*((1.0 - eBar**2)*E1/(2.0*E2Bar))*erfc((log(Eeff) - mu)/(sqrt(2.0)*sigma)))
+                ! process eject particles and surface grid change
+                if (ejectNum > 0) then
+                    ejectVolume = 0.0
+                    do nadd = 1, ejectNum
                         call random_number(rand1)
-                        call random_number(rand2)
-                        rand3 = 1.0 - rand1 - rand2
+                        ! E2 = random number obeying log normal distribution with mean mu and standard deviation sigma
+                        E2 = exp(mu + sigma*sqrt(2.0)*erfinv(2.0*rand1 - 1.0))
+                        v2 = sqrt(2.0*E2/m2)
+                        d2 = valObeyCertainPDF(surfGrid(closestIP, closestJP)%diameterDistribution)
+                        m2 = rhoP*(pi*d2**3)/6.0
+                        rand3 = -1.0
+                        do while (rand3 < 0.0)
+                            call random_number(rand1)
+                            call random_number(rand2)
+                            rand3 = 1.0 - rand1 - rand2
+                        end do
+                        totalEjectNum = totalEjectNum + 1
+                        addParticle(totalEjectNum)%indices(1) = ip
+                        addParticle(totalEjectNum)%indices(2) = jp
+                        addParticle(totalEjectNum)%indices(3) = 1
+                        addParticle(totalEjectNum)%diameter = d2
+                        addParticle(totalEjectNum)%altitude = v2*dt
+                        addParticle(totalEjectNum)%location(1) = rand1*vertex1(1) + rand2*vertex2(1) + rand3*vertex3(1)
+                        addParticle(totalEjectNum)%location(2) = rand1*vertex1(2) + rand2*vertex2(2) + rand3*vertex3(2)
+                        addParticle(totalEjectNum)%location(3) = rand1*vertex1(3) + rand2*vertex2(3) + rand3*vertex3(3) + v2*dt
+                        addParticle(totalEjectNum)%velocity(1) = 0.0
+                        addParticle(totalEjectNum)%velocity(2) = 0.0
+                        addParticle(totalEjectNum)%velocity(3) = v2
+                        ejectVolume = ejectVolume + (pi*d2**3)/6.0
+                        if (whichDiameterDist /= 1) then
+                            whichBin = floor((d2 - binStart)/binWidth) + 1
+                            whichBin = max(whichBin, 1)
+                            whichBin = min(whichBin, npdf)
+                            surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) = &
+                                surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) - (pi*d2**3)/6.0
+                        end if
                     end do
-                    totalEjectNum = totalEjectNum + 1
-                    addParticle(totalEjectNum)%location(1) = rand1*vertex1(1) + rand2*vertex2(1) + rand3*vertex3(1)
-                    addParticle(totalEjectNum)%location(2) = rand1*vertex1(2) + rand2*vertex2(2) + rand3*vertex3(2)
-                    addParticle(totalEjectNum)%location(3) = rand1*vertex1(3) + rand2*vertex2(3) + rand3*vertex3(3) + 0.5*d2
-                    addParticle(totalEjectNum)%altitude = 0.5*d2
-                    addParticle(totalEjectNum)%velocity(1) = 0.0
-                    addParticle(totalEjectNum)%velocity(2) = 0.0
-                    addParticle(totalEjectNum)%velocity(3) = sqrt(2.0*E2/m2)
-                    addParticle(totalEjectNum)%diameter = d2
-                    addParticle(totalEjectNum)%indices(1) = ip
-                    addParticle(totalEjectNum)%indices(2) = jp
-                    addParticle(totalEjectNum)%indices(3) = 1
-
-                    ejectVolume = ejectVolume + (pi*d2**3)/6.0
-
-                    if (whichDiameterDist /= 1) then
-                        whichBin = floor((d2 - binStart)/binWidth) + 1
-                        whichBin = max(whichBin, 1)
-                        whichBin = min(whichBin, npdf)
-                        surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) = &
-                            surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) - (pi*d2**3)/6.0
-                    end if
-                end do
-                surfGrid(closestIP, closestJP)%zChange = surfGrid(closestIP, closestJP)%zChange &
-                                                         - ejectVolume
-
-                select case (surfGrid(closestIP, closestJP)%avalanchFrom)
-                case (1)
-                    changedIP = closestIP + 1
-                    changedJP = closestJP
-                case (2)
-                    changedIP = closestIP - 1
-                    changedJP = closestJP
-                case (3)
-                    changedIP = closestIP
-                    changedJP = closestJP + 1
-                case (4)
-                    changedIP = closestIP
-                    changedJP = closestJP - 1
-                case default
-                    changedIP = closestIP
-                    changedJP = closestJP
-                end select
-                if (changedIP >= mx) then
-                    changedIP = changedIP - mx + 2
-                else if (changedIP <= 1) then
-                    changedIP = changedIP + mx - 2
+                    surfGrid(closestIP, closestJP)%zChange = surfGrid(closestIP, closestJP)%zChange &
+                                                             - ejectVolume
+                    ! Process particle roll due to avalanche
+                    call findChangedGridNode(2, closestIP, closestJP, changedIP, changedJP)
+                    rollVolume = 0.0
+                    do while (rollVolume < ejectVolume)
+                        d2 = valObeyCertainPDF(surfGrid(changedIP, changedJP)%diameterDistribution)
+                        rollVolume = rollVolume + (pi*d2**3)/6.0
+                        if (whichDiameterDist /= 1) then
+                            whichBin = floor((d2 - binStart)/binWidth) + 1
+                            whichBin = max(whichBin, 1)
+                            whichBin = min(whichBin, npdf)
+                            surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) = &
+                                surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) - (pi*d2**3)/6.0
+                            surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) = &
+                                surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) + (pi*d2**3)/6.0
+                        end if
+                    end do
+                    surfGrid(changedIP, changedJP)%zChange = surfGrid(changedIP, changedJP)%zChange &
+                                                             - rollVolume
+                    surfGrid(closestIP, closestJP)%zChange = surfGrid(closestIP, closestJP)%zChange &
+                                                             + rollVolume
                 end if
-                if (changedJP >= my) then
-                    changedJP = changedJP - my + 2
-                else if (changedJP <= 1) then
-                    changedJP = changedJP + my - 2
-                end if
-
-                rollVolume = 0.0
-                do while (rollVolume < ejectVolume .and. ejectNum > 0)
-                    d2 = valObeyCertainPDF(surfGrid(changedIP, changedJP)%diameterDistribution)
-                    rollVolume = rollVolume + (pi*d2**3)/6.0
-                    if (whichDiameterDist /= 1) then
-                        whichBin = floor((d2 - binStart)/binWidth) + 1
-                        whichBin = max(whichBin, 1)
-                        whichBin = min(whichBin, npdf)
-                        surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) = &
-                            surfGrid(changedIP, changedJP)%binVolumeChange(whichBin) - (pi*d2**3)/6.0
-                        surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) = &
-                            surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) + (pi*d2**3)/6.0
-                    end if
-                end do
-                surfGrid(changedIP, changedJP)%zChange = surfGrid(changedIP, changedJP)%zChange &
-                                                         - rollVolume
-                surfGrid(closestIP, closestJP)%zChange = surfGrid(closestIP, closestJP)%zChange &
-                                                         + rollVolume
             else
                 currentTotalNum = currentTotalNum + 1
                 tempParticle(currentTotalNum) = currentParticle
             end if
         end do
         pNum = currentTotalNum
-        deallocate (particle)
 
+        ! Calculate particle-particle collision
         if (ifMidairCollision) then
-            allocate (globalN(mx, my, pNum/currentNode%nx/ny*2))
+            allocate (globalN(mx, my, pNum/(currentNode%nx*ny)*2))
             pNumInGrid = 0
             do n = 1, pNum
                 currentParticle = tempParticle(n)
@@ -1466,19 +1450,282 @@ contains
             deallocate (globalN)
         end if
 
-        if (totalEjectNum > 0) then
-            pNum = pNum + totalEjectNum
-            tempParticle(currentTotalNum + 1:pNum) = addParticle(1:totalEjectNum)
-        else if (totalEjectNum > maxEjectNum) then
+        ! Reallocate the particle array
+        if (totalEjectNum > maxEjectNum) then
             print *, "The eject number in one time step", totalEjectNum, ">", maxEjectNum
             stop
         end if
+        if (totalEjectNum > 0) then
+            pNum = pNum + totalEjectNum
+            tempParticle(currentTotalNum + 1:pNum) = addParticle(1:totalEjectNum)
+        end if
+        deallocate (particle)
         allocate (particle(pNum))
         particle = tempParticle(1:pNum)
         deallocate (tempParticle)
 
-    end subroutine calculateParticleCollisions
+    end subroutine calculateParColl
 
+    ! ***************************************************************
+    ! Determine which surface triangle the particle will collide with
+    ! ***************************************************************
+    subroutine determineSurfTri(currentP, i, j, whichTri, v1, v2, v3, nVec)
+        use surface_operations
+        use vector_operations
+        implicit none
+        type(particleType), intent(in) :: currentP
+        integer, intent(in) :: i, j
+        integer, intent(out) :: whichTri
+        real(kind=dbPc), dimension(3), intent(out) :: v1, v2, v3, nVec
+        real(kind=dbPc), dimension(2) :: LocalLoc ! particle local location
+        real(kind=dbPc), dimension(3) :: vector12, vector13
+
+        LocalLoc(1) = currentP%location(1) - surfGrid(i, j)%location(1)
+        LocalLoc(2) = currentP%location(2) - surfGrid(i, j)%location(2)
+        if (mod(i + j, 2) == 0) then
+            ! ip+jp = Even num
+            !   3 ------- 2
+            !     |    /|
+            !     |  /  |
+            !     |/    |
+            !   1 ------- 3
+            ! Left triangle: whichTriangle=1
+            ! Right triangle: whichTriangle=2
+            ! Current surfGrid%location is at point 1, it is the local origin
+            v1 = surfGrid(i, j)%location
+            v2 = surfGrid(i + 1, j + 1)%location
+            if (LocalLoc(1)/LocalLoc(2) <= xDiff/yDiff) then
+                whichTri = 1
+                v3 = surfGrid(i, j + 1)%location
+                vector12 = v2 - v1
+                vector13 = v3 - v1
+                nVec = unitVector(crossProduct(vector12, vector13))
+            else
+                whichTri = 2
+                v3 = surfGrid(i + 1, j)%location
+                vector12 = v2 - v1
+                vector13 = v3 - v1
+                nVec = unitVector(crossProduct(vector13, vector12))
+            end if
+        else
+            ! ip+jp = Odd num
+            !   2 ------- 3
+            !     |\    |
+            !     |  \  |
+            !     |    \|
+            !   3 ------- 1
+            ! Left triangle: whichTriangle=3
+            ! Right triangle: whichTriangle=4
+            ! Current surfGrid%location is at point 3, it is the local origin
+            v1 = surfGrid(i + 1, j)%location
+            v2 = surfGrid(i, j + 1)%location
+            if (LocalLoc(1)/(yDiff - LocalLoc(2)) <= xDiff/yDiff) then
+                whichTri = 3
+                v3 = surfGrid(i, j)%location
+                vector12 = v2 - v1
+                vector13 = v3 - v1
+                nVec = unitVector(crossProduct(vector12, vector13))
+            else
+                whichTri = 4
+                v3 = surfGrid(i + 1, j + 1)%location
+                vector12 = v2 - v1
+                vector13 = v3 - v1
+                nVec = unitVector(crossProduct(vector13, vector12))
+            end if
+        end if
+    end subroutine determineSurfTri
+
+    ! ***************************************
+    ! Find the closest vertex to the particle
+    ! ***************************************
+    subroutine findClosestVertex(particleP, i, j, v1, v2, v3, whichTri, whichV, closestI, closestJ)
+        use vector_operations
+        implicit none
+        real(kind=dbPc), dimension(3), intent(in) :: particleP
+        real(kind=dbPc), dimension(3), intent(in) :: v1, v2, v3
+        integer, intent(in) :: i, j, whichTri
+        integer, intent(out) :: whichV, closestI, closestJ
+        integer :: k
+        real(kind=dbPc), dimension(3) :: particleVertexDistance
+        real(kind=dbPc) :: minDistance
+
+        particleVertexDistance(1) = distance3d(particleP, v1)
+        particleVertexDistance(2) = distance3d(particleP, v2)
+        particleVertexDistance(3) = distance3d(particleP, v3)
+        minDistance = particleVertexDistance(1)
+        whichV = 1
+        do k = 2, 3
+            if (particleVertexDistance(k) < minDistance) then
+                minDistance = particleVertexDistance(k)
+                whichV = k
+            end if
+        end do
+        select case (whichTri)
+            !   3 ------- 2
+            !     |    /|
+            !     |  /  |
+            !     |/    |
+            !   1 ------- 3
+            ! Left triangle: whichTriangle=1
+            ! Right triangle: whichTriangle=2
+        case (1)
+            select case (whichV)
+            case (1)
+                closestI = i
+                closestJ = j
+            case (2)
+                closestI = i + 1
+                closestJ = j + 1
+            case (3)
+                closestI = i
+                closestJ = j + 1
+            end select
+        case (2)
+            select case (whichV)
+            case (1)
+                closestI = i
+                closestJ = j
+            case (2)
+                closestI = i + 1
+                closestJ = j + 1
+            case (3)
+                closestI = i + 1
+                closestJ = j
+            end select
+            !   2 ------- 3
+            !     |\    |
+            !     |  \  |
+            !     |    \|
+            !   3 ------- 1
+            ! Left triangle: whichTriangle=3
+            ! Right triangle: whichTriangle=4
+        case (3)
+            select case (whichV)
+            case (1)
+                closestI = i + 1
+                closestJ = j
+            case (2)
+                closestI = i
+                closestJ = j + 1
+            case (3)
+                closestI = i
+                closestJ = j
+            end select
+        case (4)
+            select case (whichV)
+            case (1)
+                closestI = i + 1
+                closestJ = j
+            case (2)
+                closestI = i
+                closestJ = j + 1
+            case (3)
+                closestI = i + 1
+                closestJ = j + 1
+            end select
+        end select
+        if (closestI >= mx) then
+            closestI = closestI - mx + 2
+        end if
+        if (closestJ >= my) then
+            closestJ = closestJ - my + 2
+        end if
+    end subroutine findClosestVertex
+
+    ! **********************************************************
+    ! Calculate the rebound parameters of particle-bed collision
+    ! **********************************************************
+    subroutine calculateReboundPara(impactV, d1, d2, eBar, theta2)
+        use vector_operations
+        implicit none
+        real(kind=dbPc), intent(in) :: d1, d2
+        real(kind=dbPc), dimension(3), intent(in) :: impactV
+        real(kind=dbPc), intent(out) :: eBar, theta2
+        integer :: iterateNum
+        real(kind=dbPc) :: theta1, theta2Min, theta2Max, theta2Mid
+        real(kind=dbPc) :: pT2T1, pMax
+        real(kind=dbPc) :: rand1, rand2
+        real(kind=dbPc) :: pointX, pointY
+        real(kind=dbPc) :: nonDimD1, nonDimD2
+        real(kind=dbPc) :: eta, alpha, beta, gama
+
+        ! Splash function of Lammel et al. 2017
+        nonDimD1 = 2.0*d1/(d1 + d2)
+        nonDimD2 = 2.0*d2/(d1 + d2)
+        eta = resCoeffN*nonDimD1**3/(nonDimD1**3 + resCoeffN*nonDimD2**3)
+        alpha = (1.0 + resCoeffN)/(1.0 + eta) - 1.0
+        beta = 1.0 - (2.0/7.0)*(1.0 - resCoeffT)/(1.0 + eta)
+        theta1 = atan(abs(impactV(3)/impactV(1)))
+        eBar = beta - (beta**2 - alpha**2)*nonDimD2*theta1/(2.0*beta)
+
+        gama = 4.0/9.0/nonDimD2*(beta/(alpha + beta))**2
+        theta2Min = -theta1
+        theta2Max = 2.0*sqrt(theta1/gama) - theta1
+        theta2Max = min(theta2Max, pi)
+        theta2Mid = (theta2Max + theta2Min)/2.0
+        pMax = gama*(theta1 + theta2Mid)/theta1*log(2.0*theta1/gama/(theta1 + theta2Mid)**2)*1.2
+        iterateNum = 0
+        do
+            iterateNum = iterateNum + 1
+            call random_number(rand1)
+            call random_number(rand2)
+            pointX = (theta2Max - theta2Min)*rand1 + theta2Min
+            pointY = rand2*min(pMax, 1.0)
+            pointY = max(pointY, 0.0)
+            pT2T1 = gama*(theta1 + pointX)/theta1*log(2.0*theta1/gama/(theta1 + pointX)**2)
+            if (pointY <= pT2T1 .or. iterateNum > 10000) then
+                theta2 = pointX
+                exit
+            end if
+        end do
+    end subroutine calculateReboundPara
+
+    ! *******************************************
+    ! Find the changed grid node due to avalanche
+    ! *******************************************
+    subroutine findChangedGridNode(tag, i, j, ci, cj)
+        use surface_operations
+        implicit none
+        integer, intent(in) :: i, j, tag
+        integer, intent(out) :: ci, cj
+        integer :: direction
+
+        if (tag == 1) then
+            direction = surfGrid(i, j)%avalanchTo
+        else
+            direction = surfGrid(i, j)%avalanchFrom
+        end if
+
+        select case (direction)
+        case (1)
+            ci = i + 1
+            cj = j
+        case (2)
+            ci = i - 1
+            cj = j
+        case (3)
+            ci = i
+            cj = j + 1
+        case (4)
+            ci = i
+            cj = j - 1
+        case default
+            ci = i
+            cj = j
+        end select
+        if (ci >= mx) then
+            ci = ci - mx + 2
+        elseif (ci <= 1) then
+            ci = ci + mx - 2
+        end if
+        if (cj >= my) then
+            cj = cj - my + 2
+        elseif (cj <= 1) then
+            cj = cj + my - 2
+        end if
+    end subroutine findChangedGridNode
+
+    ! ekalhxh
     subroutine calculateParticleMovement
         use field_operations
         implicit none
@@ -1528,7 +1775,7 @@ contains
             a4 = totalForce/mp
             currentParticle%location = currentParticle%location + (u1 + 2.0*u2 + 2.0*u3 + u4)/6.0*dt
             currentParticle%velocity = currentParticle%velocity + (a1 + 2.0*a2 + 2.0*a3 + a4)/6.0*dt
-            call determineParticleIndices(currentParticle)
+            call determineParIJK(currentParticle)
             particle(n) = currentParticle
             profile(kp)%forcingTerm = profile(kp)%forcingTerm + fDrag
             grid(ip, jp, kp)%particleVolumeFraction = grid(ip, jp, kp)%particleVolumeFraction + &
@@ -1574,7 +1821,7 @@ contains
             if (ip > currentNode%in) then
                 sendRightNum = sendRightNum + 1
                 tempSendRight(sendRightNum) = currentParticle
-            else if (kp < nz .or. currentParticle%location(3) <= ceiling) then
+            elseif (kp < nz .or. currentParticle%location(3) <= ceiling) then
                 currentN = currentN + 1
                 tempParticle(currentN) = currentParticle
             end if
@@ -1596,7 +1843,7 @@ contains
             deallocate (sendRight)
 
             do n = 1, recvLeftNum
-                call determineParticleIndices(recvLeft(n))
+                call determineParIJK(recvLeft(n))
             end do
 
             tempParticle(currentN + 1:currentN + recvLeftNum) = recvLeft
@@ -1702,7 +1949,7 @@ contains
         close (11)
 
         open (unit=12, file='./Field/Profile.plt')
-        write (12, *) 'variables = "z", "u", "tau_p", "tau_f", "F_p"'
+        write (12, *) 'variables = "z", "u", "tau_p", "tau_f", "F_p", "phi_p"'
         close (12)
 
         open (unit=13, file='./Field/FieldData_0.plt')
@@ -1726,7 +1973,7 @@ program main
     implicit none
     include "mpif.h"
 
-    integer :: ierr, comm3d, mpiInteger, mpiDouble, mpiStatusSize
+    integer :: ierr
     integer :: iteration
     real(kind=dbPc) :: time
 
@@ -1736,23 +1983,19 @@ program main
         stop
     end if
     call MPI_INIT(ierr)
-    call MPI_CART_CREATE(MPI_COMM_WORLD, 1, nNodes, .true., .true., comm3d, ierr)
-    call initiateParallel(comm3d)
+    call initializeParallel
     call random_seed()
-    mpiInteger = MPI_INTEGER
-    mpiDouble = MPI_DOUBLE
-    mpiStatusSize = MPI_STATUS_SIZE
-    call createMpiStructure(mpiInteger, mpiDouble, mpiStatusSize)
+    call createMpiStructure
     ! generate surfGrid and initial bed
     call generateSurfaceGrid
-    ! initiate surface
-    call initiateSurface
+    ! initialize surface
+    call initializeSurface
     ! generate grid
     call generateGrid
-    ! initiate fluid field
-    call initiateFluidField
-    ! initiate particle
-    call initiateParticle
+    ! initialize fluid field
+    call initializeFluidField
+    ! initialize particle
+    call initializeParticle
     ! create output file
     call generateOutPutFile
     iteration = 1
@@ -1764,7 +2007,7 @@ program main
         iteration = iteration + 1
         if (ifCalculateParticle) then
             call determineParticleRollDirection
-            call calculateParticleCollisions
+            call calculateParColl
             call calculateParticleMovement
             call reallocateParticle
             call calculateFluidField
