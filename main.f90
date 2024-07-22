@@ -56,6 +56,9 @@ module public_parameter
     integer, parameter :: whichDiameterDist = 1
     integer, parameter :: npdf = 1 ! bin num of particle distribution
     integer, parameter :: pNumInit = 10 ! initial particle num
+    integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
+    integer, parameter :: maxSendRecvNum = 1000 ! max particle num to send or receive in one time step
+    integer, parameter :: maxParticleNum = 10000000 ! max particle num
     real(kind=dbPc), parameter :: dpa = 2.5e-4 ! average particle diameter
     real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
@@ -70,7 +73,6 @@ module public_parameter
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: nkl = 1.0 ! one particle stands for x particles
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
-    integer, parameter :: maxEjectNum = 100000 ! max eject particle num in one time step
 
     ! bed surface
 
@@ -139,8 +141,9 @@ contains
 
         ! create MPI Cartesian topology
         call MPI_CART_CREATE(MPI_COMM_WORLD, 1, nNodes, .true., .true., comm, ierr)
+        call handleError(ierr)
         call MPI_COMM_RANK(comm, currentNode%ID, ierr)
-        call MPI_CART_GET(comm, 1, nNodes, .true., coords, ierr)
+        call handleError(ierr)
         ! find neighbors
         !
         !       |           |
@@ -156,6 +159,7 @@ contains
         !       |           |
         !
         call MPI_CART_SHIFT(comm, 0, 1, nbrLeft, nbrRight, ierr)
+        call handleError(ierr)
         currentNode%neighbor(1) = nbrLeft
         currentNode%neighbor(2) = nbrRight
         call MPI_BARRIER(comm, ierr)
@@ -671,7 +675,9 @@ contains
         end do
         call MPI_BARRIER(comm, ierr)
         call MPI_ALLREDUCE(dz, dzTotal, mx*my, MPI_D, MPI_SUM, comm, ierr)
+        call handleError(ierr)
         call MPI_ALLREDUCE(dBin, dBinTotal, mx*my*npdf, MPI_D, MPI_SUM, comm, ierr)
+        call handleError(ierr)
         do j = 2, my - 1
             do i = 2, mx - 1
                 loc(i, j, 3) = loc(i, j, 3) + dzTotal(i, j)
@@ -1006,6 +1012,7 @@ contains
 
         call MPI_BARRIER(comm, ierr)
         call MPI_BCAST(profile, nz, MPI_PF_TYPE, 0, comm, ierr)
+        call handleError(ierr)
     end subroutine calculateFluidField
 
     ! ***************************************************
@@ -1725,11 +1732,13 @@ contains
         end if
     end subroutine findChangedGridNode
 
-    ! ekalhxh
+    ! ***********************************
+    ! Calculate the movement of particles
+    ! ***********************************
     subroutine calculateParticleMovement
         use field_operations
         implicit none
-        integer :: n, ip, jp, kp, i
+        integer :: n, ip, jp, kp, i, j, k
         real(kind=dbPc) :: dp, mp
         real(kind=dbPc) :: C_d, Re_p
         real(kind=dbPc) :: fDrag
@@ -1739,8 +1748,14 @@ contains
         real(kind=dbPc), dimension(3) :: a1, a2, a3, a4
         type(particleType) :: currentParticle
 
-        profile%forcingTerm = 0.0
-        grid%particleVolumeFraction = 0.0
+        do k = 1, nz
+            profile(k)%forcingTerm = 0.0
+            do j = 1, my
+                do i = 1, mx
+                    grid(i, j, k)%particleVolumeFraction = 0.0
+                end do
+            end do
+        end do
         do n = 1, pNum
             currentParticle = particle(n)
             up = currentParticle%velocity
@@ -1752,8 +1767,9 @@ contains
             uf(2) = 0.0
             uf(3) = 0.0
             mp = rhoP*(pi*dp**3)/6.0
-            bulkForce(1:2) = 0.0
-            bulkForce(3) = -9.8*(1.0 - rho/rhoP)*mp
+            bulkForce(1) = 0.0
+            bulkForce(2) = 0.0
+            bulkForce(3) = -9.8*mp*(1.0 - rho/rhoP)
 
             ! use 4th order Runge-Kutta method to solve the ODE
             u1 = up
@@ -1784,6 +1800,9 @@ contains
 
     contains
 
+        ! ***********************************************
+        ! Calculate the drag force acting on the particle
+        ! ***********************************************
         function dragForce() result(Fd)
             implicit none
             real(kind=dbPc), dimension(3) :: Fd
@@ -1792,12 +1811,14 @@ contains
             Re_p = abs(relativeU(1))*dp/nu
             C_d = (sqrt(0.5) + sqrt(24.0/Re_p))**2
             do i = 1, 3
-                Fd(i) = -pi/8.0*rho*dp**2*C_d*abs(relativeU(i))*relativeU(i)
+                Fd(i) = pi/8.0*rho*dp**2*C_d*abs(relativeU(i))*relativeU(i)
             end do
         end function dragForce
-
     end subroutine calculateParticleMovement
 
+    ! ********************************************
+    ! Exchange particles between neighboring nodes
+    ! ********************************************
     subroutine reallocateParticle
         use parallel_operations
         use field_operations
@@ -1807,11 +1828,11 @@ contains
         integer :: status(MPI_S)
         real(kind=dbPc) :: ceiling
         type(particleType) :: currentParticle
-        type(particleType), dimension(1000) :: tempSendRight
+        type(particleType), dimension(maxSendRecvNum) :: tempSendRight
         type(particleType), allocatable, dimension(:) :: tempParticle
         type(particleType), allocatable, dimension(:) :: sendRight, recvLeft
 
-        allocate (tempParticle(int(pNum + 1000)))
+        allocate (tempParticle(int(pNum + maxSendRecvNum)))
         sendRightNum = 0
         do n = 1, pNum
             currentParticle = particle(n)
@@ -1826,30 +1847,26 @@ contains
                 tempParticle(currentN) = currentParticle
             end if
         end do
-        if (currentN == pNum) then
-            deallocate (tempParticle)
-            return
-        end if
 
-        if (sendRightNum > 0) then
-            allocate (sendRight(sendRightNum))
-            sendRight = tempSendRight(1:sendRightNum)
-            call MPI_SENDRECV(sendRightNum, 1, MPI_I, currentNode%neighbor(2), 10, &
-                              recvLeftNum, 1, MPI_I, currentNode%neighbor(1), 10, comm, status, ierr)
-            allocate (recvLeft(recvLeftNum))
-            call MPI_SENDRECV(sendRight, sendRightNum, MPI_P_TYPE, currentNode%neighbor(2), 20, &
-                              recvLeft, recvLeftNum, MPI_P_TYPE, currentNode%neighbor(1), 20, &
-                              comm, status, ierr)
-            deallocate (sendRight)
+        allocate (sendRight(sendRightNum))
+        sendRight(1:sendRightNum) = tempSendRight(1:sendRightNum)
+        call MPI_SENDRECV(sendRightNum, 1, MPI_I, currentNode%neighbor(2), 10, &
+                          recvLeftNum, 1, MPI_I, currentNode%neighbor(1), 10, comm, status, ierr)
+        call handleError(ierr)
+        allocate (recvLeft(recvLeftNum))
+        call MPI_SENDRECV(sendRight, sendRightNum, MPI_P_TYPE, currentNode%neighbor(2), 20, &
+                          recvLeft, recvLeftNum, MPI_P_TYPE, currentNode%neighbor(1), 20, &
+                          comm, status, ierr)
+        call handleError(ierr)
+        deallocate (sendRight)
 
-            do n = 1, recvLeftNum
-                call determineParIJK(recvLeft(n))
-            end do
+        do n = 1, recvLeftNum
+            call determineParIJK(recvLeft(n))
+        end do
 
-            tempParticle(currentN + 1:currentN + recvLeftNum) = recvLeft
-            deallocate (recvLeft)
-            currentN = currentN + recvLeftNum
-        end if
+        tempParticle(currentN + 1:currentN + recvLeftNum) = recvLeft(1:recvLeftNum)
+        deallocate (recvLeft)
+        currentN = currentN + recvLeftNum
 
         pNum = currentN
         deallocate (particle)
@@ -1858,6 +1875,9 @@ contains
         deallocate (tempParticle)
     end subroutine reallocateParticle
 
+    ! *****************************
+    ! Output particle data to files
+    ! *****************************
     subroutine outputParticle(iter, t)
         use parallel_operations
         use vector_operations
@@ -1875,6 +1895,7 @@ contains
 
         if (mod(iter, intervalMonitor) == 0) then
             call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_I, MPI_SUM, comm, ierr)
+            call handleError(ierr)
             if (currentNode%ID == 0) then
                 open (unit=10, position='append', file='./Particle/ParticleNum.plt')
                 write (10, "(F5.2, I5)") t, pNumTotal
@@ -1891,13 +1912,16 @@ contains
         end if
         if (mod(iter, intervalParticle) == 0) then
             call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_I, MPI_SUM, comm, ierr)
+            call handleError(ierr)
             allocate (allParticle(pNumTotal))
             displs(1) = 0
             call MPI_GATHER(pNum, 1, MPI_I, pNumNode, 1, MPI_I, 0, comm, ierr)
+            call handleError(ierr)
             do n = 2, nNodes
                 displs(n) = displs(n - 1) + pNumNode(n - 1)
             end do
             call MPI_GATHERV(particle, pNum, MPI_P_TYPE, allParticle, pNumNode, displs, MPI_P_TYPE, 0, comm, ierr)
+            call handleError(ierr)
             if (currentNode%ID == 0) then
                 open (unit=11, position='append', file='./Particle/ParticleData_'//trim(adjustl(ctemp))//'.plt')
                 write (11, *) 'zone', ' T = "', t, '"'
@@ -1915,6 +1939,70 @@ contains
         end if
     end subroutine outputParticle
 
+    !subroutine outputParticle1(iter, t)
+    !    use parallel_operations
+    !    use vector_operations
+    !    use mpi
+    !    implicit none
+    !    integer, intent(in) :: iter
+    !    real(kind=dbPc), intent(in) :: t
+    !    character(len=3) :: ctemp
+    !    integer :: ierr, nameNum, n
+    !    integer :: pNumTotal
+    !    real(kind=dbPc) :: h, vMag, d
+    !    real(kind=dbPc), dimension(3) :: loc
+    !    real(kind=dbPc), dimension(3) :: vel
+    !    integer, dimension(nNodes) :: displs, pNumNode
+    !    type(particleType), allocatable, dimension(:) :: allParticle
+    !    integer(kind=MPI_OFFSET_KIND) :: offset
+    !    MPI_File :: fh
+
+    !    if (mod(iter, intervalMonitor) == 0) then
+    !        call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_I, MPI_SUM, comm, ierr)
+    !        call handleError(ierr)
+    !        if (currentNode%ID == 0) then
+    !            call MPI_FILE_OPEN(comm, './Particle/ParticleNum.plt', &
+    !                               MPI_MODE_WRONLY + MPI_MODE_CREATE, MPI_INFO_NULL, fh, ierr)
+    !            call handleError(ierr)
+    !            offset = 0 ! Assuming appending at the end, calculate or maintain offset as needed
+    !            call MPI_FILE_WRITE_AT_ALL(fh, offset, t//pNumTotal, 1, MPI_REAL, MPI_STATUS_IGNORE, ierr)
+    !            call MPI_FILE_CLOSE(fh, ierr)
+    !        end if
+    !    end if
+
+    !    nameNum = iter/intervalCreateFile
+    !    write (ctemp, '(i3)') nameNum
+    !    if (mod(iter, intervalCreateFile) == 0) then
+    !        call MPI_FILE_OPEN(MPI_COMM_WORLD, 'ParticleData_'//trim(adjustl(ctemp))//'.plt', &
+    !                           MPI_MODE_WRONLY + MPI_MODE_CREATE, MPI_INFO_NULL, fh, ierr)
+    !        if (currentNode%ID == 0) then
+    !            call MPI_FILE_WRITE_AT_ALL(fh, offset, &
+    !                                       'variables = "x", "y", "z", "h", "u", "v", "w", "velocity_mag", "d"', &
+    !                                       1, MPI_CHARACTER, MPI_STATUS_IGNORE, ierr)
+    !        end if
+    !        call MPI_FILE_CLOSE(fh, ierr)
+    !    end if
+
+    !    if (mod(iter, intervalParticle) == 0) then
+    !        call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_INTEGER, MPI_SUM, comm, ierr)
+    !        allocate (allParticle(pNumTotal))
+    !        displs(1) = 0
+    !        call MPI_GATHER(pNum, 1, MPI_INTEGER, pNumNode, 1, MPI_INTEGER, 0, comm, ierr)
+    !        do n = 2, nNodes
+    !            displs(n) = displs(n - 1) + pNumNode(n - 1)
+    !        end do
+    !        call MPI_GATHERV(particle, pNum, MPI_P_TYPE, allParticle, pNumNode, displs, MPI_P_TYPE, 0, comm, ierr)
+    !        if (currentNode%ID == 0) then
+    !            call MPI_FILE_OPEN(MPI_COMM_WORLD, 'ParticleData_'//trim(adjustl(ctemp))//'.plt', &
+    !                               MPI_MODE_WRONLY + MPI_MODE_CREATE, MPI_INFO_NULL, fh, ierr)
+    !            call MPI_FILE_WRITE_AT_ALL(fh, offset, 'zone T = "'//t//'"', 1, &
+    !                                       MPI_CHARACTER, MPI_STATUS_IGNORE, ierr)
+    !            ! Assuming data is prepared for writing, use MPI_FILE_WRITE_AT_ALL or similar
+    !            call MPI_FILE_CLOSE(fh, ierr)
+    !        end if
+    !        deallocate (allParticle)
+    !    end if
+    !end subroutine outputParticle1
 end module particle_operations
 
 module output_operations
@@ -1929,36 +2017,47 @@ module output_operations
 contains
 
     subroutine generateOutPutFile
+        use parallel_operations
         implicit none
         character(len=32) :: bashCmd
         external :: system
 
-        bashCmd = 'mkdir Particle'
-        call system(trim(adjustl(bashCmd)))
-        bashCmd = 'mkdir Field'
-        call system(trim(adjustl(bashCmd)))
-        bashCmd = 'mkdir Surface'
-        call system(trim(adjustl(bashCmd)))
+        if (currentNode%ID == 0) then
 
-        open (unit=10, file='./Particle/ParticleNum.plt')
-        write (10, *) 'variables = "t", "Number"'
-        close (10)
+            bashCmd = 'rm -rf Particle'
+            call system(trim(adjustl(bashCmd)))
+            bashCmd = 'rm -rf Field'
+            call system(trim(adjustl(bashCmd)))
+            bashCmd = 'rm -rf Surface'
+            call system(trim(adjustl(bashCmd)))
 
-        open (unit=11, file='./Particle/ParticleData_0.plt')
-        write (11, "(A80)") 'variables = "x", "y", "z", "h", "u", "v", "w", "velocity_mag", "d"'
-        close (11)
+            bashCmd = 'mkdir Particle'
+            call system(trim(adjustl(bashCmd)))
+            bashCmd = 'mkdir Field'
+            call system(trim(adjustl(bashCmd)))
+            bashCmd = 'mkdir Surface'
+            call system(trim(adjustl(bashCmd)))
 
-        open (unit=12, file='./Field/Profile.plt')
-        write (12, *) 'variables = "z", "u", "tau_p", "tau_f", "F_p", "phi_p"'
-        close (12)
+            open (unit=10, file='./Particle/ParticleNum.plt')
+            write (10, *) 'variables = "t", "Number"'
+            close (10)
 
-        open (unit=13, file='./Field/FieldData_0.plt')
-        write (13, *) 'variables = "x", "y", "z", "Phi_p"'
-        close (13)
+            open (unit=11, file='./Particle/ParticleData_0.plt')
+            write (11, "(A80)") 'variables = "x", "y", "z", "h", "u", "v", "w", "velocity_mag", "d"'
+            close (11)
 
-        open (unit=14, file='./Surface/SurfaceData_0.plt')
-        write (14, *) 'variables = "x", "y", "z", "dz", "d"'
-        close (14)
+            open (unit=12, file='./Field/Profile.plt')
+            write (12, *) 'variables = "z", "u", "tau_p", "tau_f", "F_p", "phi_p"'
+            close (12)
+
+            open (unit=13, file='./Field/FieldData_0.plt')
+            write (13, *) 'variables = "x", "y", "z", "Phi_p"'
+            close (13)
+
+            open (unit=14, file='./Surface/SurfaceData_0.plt')
+            write (14, *) 'variables = "x", "y", "z", "dz", "d"'
+            close (14)
+        end if
     end subroutine generateOutPutFile
 
 end module output_operations
@@ -2000,6 +2099,9 @@ program main
     call generateOutPutFile
     iteration = 1
     time = 0.0
+    print *, currentNode%ID, currentNode%neighbor(1), currentNode%neighbor(2), &
+        currentNode%i1, currentNode%in, currentNode%nx
+    stop
 
     ! start iteration loop
     do while (time < Endtime)
