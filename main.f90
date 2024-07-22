@@ -22,11 +22,11 @@ module public_parameter
     real(kind=dbPc), parameter :: area = xMax*yMax ! computational area
     integer, parameter :: nx = 500 ! x grid num
     integer, parameter :: ny = 100 ! y grid num
-    integer, parameter :: nz = 150 ! z grid num
-    integer, parameter :: nzUni = 100 ! z grid number above which zDiff becomes uniform
+    integer, parameter :: nz = 80 ! z grid num
+    integer, parameter :: nzUni = 20 ! z grid number above which zDiff becomes uniform
     real(kind=dbPc), parameter :: xDiff = xMax/nx
-    real(kind=dbPc), parameter :: yDiff = yMax/nx
-    integer, parameter :: nNodes = 5 ! num of subdomain
+    real(kind=dbPc), parameter :: yDiff = yMax/ny
+    integer, parameter :: nNodes = 2 ! num of subdomain
     integer, parameter :: mx = nx + 2 ! x grid num +2
     integer, parameter :: my = ny + 2 ! y grid num +2
 
@@ -42,8 +42,6 @@ module public_parameter
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.4 ! von Kaman's constant
     real(kind=dbPc), parameter :: zDiffMin = nu/uStar ! smallest z grid size
-    real(kind=dbPc), parameter :: zDiffMax = zMax/nz ! largest z grid size
-    real(kind=dbPc), parameter :: refineRatio = (zDiffMax/zDiffMin)**(1.0/(nzUni - 1)) ! refine ratio of z grid size
 
     ! particle
 
@@ -122,12 +120,12 @@ module parallel_operations
 
     type(parallelType) :: currentNode
     integer :: comm, ierr
-    integer :: MPI_I, MPI_D, MPI_S
-    integer :: MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE, MPI_P_TYPE
+    integer :: MPI_I, MPI_D
+    integer :: MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE
 
     public :: comm, currentNode
     public :: initializeParallel, handleError, createMpiStructure, freeMpiStructure
-    public :: MPI_I, MPI_D, MPI_S, MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE, MPI_P_TYPE
+    public :: MPI_I, MPI_D, MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE
 
 contains
 
@@ -136,7 +134,6 @@ contains
     ! *********************************************************************
     subroutine initializeParallel
         implicit none
-        integer :: coords(1)
         integer :: nbrLeft, nbrRight
 
         ! create MPI Cartesian topology
@@ -214,7 +211,6 @@ contains
         allocate (oldType(7))
         MPI_I = MPI_INTEGER
         MPI_D = MPI_DOUBLE
-        MPI_S = MPI_STATUS_SIZE
         blockLen = [1, 1, 1, 1, 3, npdf, npdf]
         disp = [0, kind(0), 2*kind(0), 2*kind(0) + kind(0.0_dbPc), &
                 2*kind(0) + 2*kind(0.0_dbPc), 2*kind(0) + 5*kind(0.0_dbPc), &
@@ -254,20 +250,6 @@ contains
         deallocate (blockLen)
         deallocate (disp)
         deallocate (oldType)
-
-        ! create MPI data type for particleType
-        allocate (blockLen(5))
-        allocate (disp(5))
-        allocate (oldType(5))
-        blockLen = [3, 1, 1, 3, 3]
-        disp = [0, 3*kind(0), 3*kind(0) + kind(0.0_dbPc), 3*kind(0) + 2*kind(0.0_dbPc), 3*kind(0) + 5*kind(0.0_dbPc)]
-        oldType = [MPI_I, MPI_D, MPI_D, MPI_D, MPI_D]
-        call MPI_TYPE_CREATE_STRUCT(5, blockLen, disp, oldType, MPI_P_TYPE, ierr)
-        call handleError(ierr)
-        call MPI_TYPE_COMMIT(MPI_P_TYPE, ierr)
-        deallocate (blockLen)
-        deallocate (disp)
-        deallocate (oldType)
     end subroutine createMpiStructure
 
     ! ***********************
@@ -279,7 +261,6 @@ contains
         call MPI_TYPE_FREE(MPI_SG_TYPE, ierr)
         call MPI_TYPE_FREE(MPI_G_TYPE, ierr)
         call MPI_TYPE_FREE(MPI_PF_TYPE, ierr)
-        call MPI_TYPE_FREE(MPI_P_TYPE, ierr)
     end subroutine freeMpiStructure
 
 end module parallel_operations
@@ -813,22 +794,32 @@ contains
         use surface_operations
         implicit none
 
-        integer :: i, j, k
+        integer :: i, j, k, n
+        real(kind=dbPc) :: zDiffMax, refineRatio
         real(kind=dbPc) :: bedElevation
 
-        zd(1) = zDiffMin
-        zv(1) = 0.0
-        do k = 2, nz
-            if (k <= nzUni) then
-                zd(k) = zd(k - 1)*refineRatio
-            else
-                zd(k) = zDiffMax
-            end if
-            zv(k) = zv(k - 1) + zd(k - 1)
-            zc(k) = zv(k) + zd(k)*0.5
+        zv(nz) = 0.0
+        zd(nz) = 0.0
+        n = 0
+        do while (zMax - zv(nz) > zd(nz)*2.0)
+            zDiffMax = zMax/(nz - n)
+            refineRatio = (zDiffMax/zDiffMin)**(1.0/(nzUni - 1))
+            zd(1) = zDiffMin
+            zv(1) = 0.0
+            do k = 2, nz
+                if (k <= nzUni) then
+                    zd(k) = zd(k - 1)*refineRatio
+                else
+                    zd(k) = zDiffMax
+                end if
+                zv(k) = zv(k - 1) + zd(k - 1)
+                zc(k) = zv(k) + zd(k)*0.5
+            end do
+            n = n + 1
         end do
         zd(nz) = zMax - zv(nz)
         zc(nz) = zMax - zd(nz)*0.5
+        zv(nz + 1) = zMax
 
         do i = 1, mx
             do j = 1, my
@@ -904,7 +895,7 @@ contains
             end do
         end do
         do k = 1, nz
-            u(k) = uStar/kapa*log(xc(k)/z0)
+            u(k) = uStar/kapa*log(zc(k)/z0)
             tau_p(k) = 0.0
             tau_f(k) = rho*uStar**2
             F(k) = 0.0
@@ -1109,7 +1100,6 @@ module particle_operations
         real(kind=dbPc), dimension(3) :: location
         real(kind=dbPc), dimension(3) :: velocity
     end type particleType
-    public :: particleType
 
     type(particleType), allocatable, dimension(:) :: particle
     integer pNum
@@ -1139,9 +1129,9 @@ contains
             call random_number(rand1)
             call random_number(rand2)
             call random_number(rand3)
-            currentParticle%location(1) = currentNode%sx + (currentNode%ex - currentNode%sx)*rand1
+            currentParticle%location(1) = xMax*rand1
             currentParticle%location(2) = yMax*rand2
-            currentParticle%location(3) = zMax*rand3 + initSurfElevation
+            currentParticle%location(3) = zMax*rand3*0.1 + initSurfElevation
             currentParticle%velocity = 0.0
             currentParticle%diameter = valObeyCertainPDF(initDiameterDist)
             call determineParIJK(currentParticle)
@@ -1268,6 +1258,7 @@ contains
             estimateAltitude = currentParticle%location(3) - maxval(adjacentSurfGridZ)
             if (estimateAltitude > 0.5*currentParticle%diameter) then
                 currentTotalNum = currentTotalNum + 1
+                currentParticle%altitude = estimateAltitude
                 tempParticle(currentTotalNum) = currentParticle
                 cycle
             end if
@@ -1821,19 +1812,21 @@ contains
     ! ********************************************
     subroutine reallocateParticle
         use parallel_operations
-        use field_operations
         implicit none
         integer :: n, ip, jp, kp, currentN, ierr
         integer :: sendRightNum, recvLeftNum
-        integer :: status(MPI_S)
-        real(kind=dbPc) :: ceiling
+        integer :: status(MPI_STATUS_SIZE)
+        integer, allocatable, dimension(:) :: sendArryInt
+        integer, allocatable, dimension(:) :: recvArryInt
+        real(kind=dbPc), allocatable, dimension(:) :: sendArryDouble
+        real(kind=dbPc), allocatable, dimension(:) :: recvArryDouble
         type(particleType) :: currentParticle
         type(particleType), dimension(maxSendRecvNum) :: tempSendRight
-        type(particleType), allocatable, dimension(:) :: tempParticle
-        type(particleType), allocatable, dimension(:) :: sendRight, recvLeft
+        type(particleType), allocatable, dimension(:) :: tempP
 
-        allocate (tempParticle(int(pNum + maxSendRecvNum)))
+        allocate (tempP(pNum))
         sendRightNum = 0
+        currentN = 0
         do n = 1, pNum
             currentParticle = particle(n)
             ip = currentParticle%indices(1)
@@ -1842,37 +1835,74 @@ contains
             if (ip > currentNode%in) then
                 sendRightNum = sendRightNum + 1
                 tempSendRight(sendRightNum) = currentParticle
-            elseif (kp < nz .or. currentParticle%location(3) <= ceiling) then
+            elseif (currentParticle%altitude <= zMax) then
                 currentN = currentN + 1
-                tempParticle(currentN) = currentParticle
+                tempP(currentN) = currentParticle
             end if
         end do
 
-        allocate (sendRight(sendRightNum))
-        sendRight(1:sendRightNum) = tempSendRight(1:sendRightNum)
         call MPI_SENDRECV(sendRightNum, 1, MPI_I, currentNode%neighbor(2), 10, &
                           recvLeftNum, 1, MPI_I, currentNode%neighbor(1), 10, comm, status, ierr)
-        call handleError(ierr)
-        allocate (recvLeft(recvLeftNum))
-        call MPI_SENDRECV(sendRight, sendRightNum, MPI_P_TYPE, currentNode%neighbor(2), 20, &
-                          recvLeft, recvLeftNum, MPI_P_TYPE, currentNode%neighbor(1), 20, &
-                          comm, status, ierr)
-        call handleError(ierr)
-        deallocate (sendRight)
+        if (sendRightNum > 0) then
+            allocate (sendArryInt(3*sendRightNum))
+            allocate (sendArryDouble(8*sendRightNum))
+            do n = 1, sendRightNum
+                currentParticle = tempSendRight(n)
+                sendArryInt(n) = currentParticle%indices(1)
+                sendArryInt(n + sendRightNum) = currentParticle%indices(2)
+                sendArryInt(n + 2*sendRightNum) = currentParticle%indices(3)
+                sendArryDouble(n) = currentParticle%location(1)
+                sendArryDouble(n + sendRightNum) = currentParticle%location(2)
+                sendArryDouble(n + 2*sendRightNum) = currentParticle%location(3)
+                sendArryDouble(n + 3*sendRightNum) = currentParticle%velocity(1)
+                sendArryDouble(n + 4*sendRightNum) = currentParticle%velocity(2)
+                sendArryDouble(n + 5*sendRightNum) = currentParticle%velocity(3)
+                sendArryDouble(n + 6*sendRightNum) = currentParticle%altitude
+                sendArryDouble(n + 7*sendRightNum) = currentParticle%diameter
+            end do
+            call MPI_SEND(sendArryInt, sendRightNum*3, MPI_I, currentNode%neighbor(2), 20, comm, ierr)
+            call MPI_SEND(sendArryDouble, sendRightNum*8, MPI_D, currentNode%neighbor(2), 20, comm, ierr)
+            deallocate (sendArryInt)
+            deallocate (sendArryDouble)
+        end if
+        call MPI_BARRIER(comm, ierr)
+        if (recvLeftNum > 0) then
+            pNum = currentN + recvLeftNum
+            deallocate (particle)
+            allocate (particle(pNum))
+            particle(1:currentN) = tempP(1:currentN)
+            deallocate (tempP)
 
-        do n = 1, recvLeftNum
-            call determineParIJK(recvLeft(n))
-        end do
-
-        tempParticle(currentN + 1:currentN + recvLeftNum) = recvLeft(1:recvLeftNum)
-        deallocate (recvLeft)
-        currentN = currentN + recvLeftNum
-
-        pNum = currentN
-        deallocate (particle)
-        allocate (particle(pNum))
-        particle = tempParticle(1:pNum)
-        deallocate (tempParticle)
+            allocate (recvArryInt(3*recvLeftNum))
+            allocate (recvArryDouble(8*recvLeftNum))
+            call MPI_RECV(recvArryInt, recvLeftNum*3, MPI_I, currentNode%neighbor(1), 20, comm, status, ierr)
+            call MPI_RECV(recvArryDouble, recvLeftNum*8, MPI_D, currentNode%neighbor(1), 20, comm, status, ierr)
+            do n = 1, recvLeftNum
+                currentN = currentN + 1
+                currentParticle = particle(currentN)
+                currentParticle%indices(1) = recvArryInt(n)
+                currentParticle%indices(2) = recvArryInt(n + recvLeftNum)
+                currentParticle%indices(3) = recvArryInt(n + 2*recvLeftNum)
+                currentParticle%location(1) = recvArryDouble(n)
+                currentParticle%location(2) = recvArryDouble(n + recvLeftNum)
+                currentParticle%location(3) = recvArryDouble(n + 2*recvLeftNum)
+                currentParticle%velocity(1) = recvArryDouble(n + 3*recvLeftNum)
+                currentParticle%velocity(2) = recvArryDouble(n + 4*recvLeftNum)
+                currentParticle%velocity(3) = recvArryDouble(n + 5*recvLeftNum)
+                currentParticle%altitude = recvArryDouble(n + 6*recvLeftNum)
+                currentParticle%diameter = recvArryDouble(n + 7*recvLeftNum)
+                call determineParIJK(currentParticle)
+                particle(currentN) = currentParticle
+            end do
+            deallocate (recvArryInt)
+            deallocate (recvArryDouble)
+        else
+            pNum = currentN
+            deallocate (particle)
+            allocate (particle(pNum))
+            particle = tempP(1:pNum)
+            deallocate (tempP)
+        end if
     end subroutine reallocateParticle
 
     ! *****************************
@@ -1910,33 +1940,33 @@ contains
             write (11, "(A80)") 'variables = "x", "y", "z", "h", "u", "v", "w", "velocity_mag", "d"'
             close (11)
         end if
-        if (mod(iter, intervalParticle) == 0) then
-            call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_I, MPI_SUM, comm, ierr)
-            call handleError(ierr)
-            allocate (allParticle(pNumTotal))
-            displs(1) = 0
-            call MPI_GATHER(pNum, 1, MPI_I, pNumNode, 1, MPI_I, 0, comm, ierr)
-            call handleError(ierr)
-            do n = 2, nNodes
-                displs(n) = displs(n - 1) + pNumNode(n - 1)
-            end do
-            call MPI_GATHERV(particle, pNum, MPI_P_TYPE, allParticle, pNumNode, displs, MPI_P_TYPE, 0, comm, ierr)
-            call handleError(ierr)
-            if (currentNode%ID == 0) then
-                open (unit=11, position='append', file='./Particle/ParticleData_'//trim(adjustl(ctemp))//'.plt')
-                write (11, *) 'zone', ' T = "', t, '"'
-                do n = 1, pNumTotal
-                    loc = allParticle(n)%location
-                    h = allParticle(n)%altitude
-                    vel = allParticle(n)%velocity
-                    vMag = vectorMagnitude(vel)
-                    d = allParticle(n)%diameter
-                    write (11, "(5E15.7)") loc(1), loc(2), loc(3), h, vel(1), vel(2), vel(3), vMag, d
-                end do
-                close (11)
-            end if
-            deallocate (allParticle)
-        end if
+        !if (mod(iter, intervalParticle) == 0) then
+        !    call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_I, MPI_SUM, comm, ierr)
+        !    call handleError(ierr)
+        !    allocate (allParticle(pNumTotal))
+        !    displs(1) = 0
+        !    call MPI_GATHER(pNum, 1, MPI_I, pNumNode, 1, MPI_I, 0, comm, ierr)
+        !    call handleError(ierr)
+        !    do n = 2, nNodes
+        !        displs(n) = displs(n - 1) + pNumNode(n - 1)
+        !    end do
+        !    call MPI_GATHERV(particle, pNum, MPI_P_TYPE, allParticle, pNumNode, displs, MPI_P_TYPE, 0, comm, ierr)
+        !    call handleError(ierr)
+        !    if (currentNode%ID == 0) then
+        !        open (unit=11, position='append', file='./Particle/ParticleData_'//trim(adjustl(ctemp))//'.plt')
+        !        write (11, *) 'zone', ' T = "', t, '"'
+        !        do n = 1, pNumTotal
+        !            loc = allParticle(n)%location
+        !            h = allParticle(n)%altitude
+        !            vel = allParticle(n)%velocity
+        !            vMag = vectorMagnitude(vel)
+        !            d = allParticle(n)%diameter
+        !            write (11, "(5E15.7)") loc(1), loc(2), loc(3), h, vel(1), vel(2), vel(3), vMag, d
+        !        end do
+        !        close (11)
+        !    end if
+        !    deallocate (allParticle)
+        !end if
     end subroutine outputParticle
 
     !subroutine outputParticle1(iter, t)
@@ -2021,9 +2051,9 @@ contains
         implicit none
         character(len=32) :: bashCmd
         external :: system
+        integer :: ierr
 
         if (currentNode%ID == 0) then
-
             bashCmd = 'rm -rf Particle'
             call system(trim(adjustl(bashCmd)))
             bashCmd = 'rm -rf Field'
@@ -2058,6 +2088,7 @@ contains
             write (14, *) 'variables = "x", "y", "z", "dz", "d"'
             close (14)
         end if
+        call MPI_BARRIER(comm, ierr)
     end subroutine generateOutPutFile
 
 end module output_operations
@@ -2099,9 +2130,6 @@ program main
     call generateOutPutFile
     iteration = 1
     time = 0.0
-    print *, currentNode%ID, currentNode%neighbor(1), currentNode%neighbor(2), &
-        currentNode%i1, currentNode%in, currentNode%nx
-    stop
 
     ! start iteration loop
     do while (time < Endtime)
@@ -2112,6 +2140,10 @@ program main
             call calculateParColl
             call calculateParticleMovement
             call reallocateParticle
+            ! **********************************Check1***********************************
+            print *, currentNode%ID
+            stop
+            ! **************************************************************************
             call calculateFluidField
             call updateSurfaceGrid
             call updateFieldGrid
