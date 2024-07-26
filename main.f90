@@ -33,7 +33,7 @@ module public_parameter
     ! time
 
     real(kind=dbPc), parameter :: dt = 1.0e-4 ! time step
-    real(kind=dbPc), parameter :: EndTime = 600.0 ! the time program ends
+    real(kind=dbPc), parameter :: EndTime = 1.0 ! the time program ends
 
     ! fluid
 
@@ -53,10 +53,9 @@ module public_parameter
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
     integer, parameter :: whichDiameterDist = 0
     integer, parameter :: npdf = 11 ! bin num of particle distribution
-    integer, parameter :: pNumInit = 10 ! initial particle num
-    integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
-    integer, parameter :: maxSendRecvNum = 1000 ! max particle num to send or receive in one time step
-    integer, parameter :: maxParticleNum = 10000000 ! max particle num
+    integer, parameter :: pNumInit = 1000 ! initial particle num
+    integer, parameter :: maxEjectNum = 1000000 ! max eject particle num in one time step
+    integer, parameter :: maxSendRecvNum = 1000000 ! max particle num to send or receive in one time step
     real(kind=dbPc), parameter :: dpa = 2.5e-4 ! average particle diameter
     real(kind=dbPc), parameter :: dpStddDev = 8.0e-5 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
@@ -85,16 +84,17 @@ module public_parameter
 
     ! output after every x steps
 
-    integer, parameter :: intervalField = 1
-    integer, parameter :: intervalProfile = 1
-    integer, parameter :: intervalMonitor = 1
-    integer, parameter :: intervalParticle = 1
-    integer, parameter :: intervalSurface = 1
-    integer, parameter :: intervalStatistic = 1
+    integer, parameter :: shortInterval = 100
+    integer, parameter :: longInterval = 1000
+    integer, parameter :: intervalField = longInterval
+    integer, parameter :: intervalProfile = shortInterval
+    integer, parameter :: intervalMonitor = shortInterval
+    integer, parameter :: intervalParticle = shortInterval
+    integer, parameter :: intervalSurface = longInterval
 
     ! file
 
-    integer, parameter :: intervalCreateFile = 1e6 ! iter num contained in a file
+    integer, parameter :: intervalCreateFile = 5*longInterval ! iter num contained in a file
 
 end module public_parameter
 
@@ -693,10 +693,9 @@ contains
 
         do j = 1, my
             do i = 1, mx
-                if (whichDiameterDist > 1) then
+                if (whichDiameterDist /= 1) then
                     currentBlock = sum(bin(i, j, :))
                     patchBlock = initBlock - currentBlock
-                    avgD(i, j) = 0.0
                     do n = 1, npdf
                         patchBin(n) = patchBlock*initDiameterDist(n)
                         bin(i, j, n) = (bin(i, j, n) + patchBin(n))/initBlock
@@ -708,6 +707,7 @@ contains
         do i = 1, mx
             do j = 1, my
                 surfGrid(i, j)%location(3) = loc(i, j, 3)
+                avgD(i, j) = 0.0
                 do n = 1, npdf
                     hist(i, j, n) = bin(i, j, n)/sum(bin(i, j, :))
                     surfGrid(i, j)%diameterDistribution(n) = hist(i, j, n)
@@ -733,16 +733,16 @@ contains
         integer :: i, j, nameNum
         integer :: ierr
 
-        nameNum = iter/intervalCreateFile
-        write (ctemp, '(i3)') nameNum
-        if (mod(iter, intervalCreateFile) == 0) then
-            open (unit=14, file='./Surface/SurfaceData_'//trim(adjustl(ctemp))//'.plt')
-            write (14, *) 'variables = "x", "y", "z", "dz", "d"'
-            close (14)
-        end if
-        if (mod(iter, intervalSurface) == 0) then
-            if (currentNode%ID == 0) then
-                open (unit=14, position='append', file='./Surface/SurfaceData_'//trim(adjustl(ctemp))//'.plt')
+        if (currentNode%ID == 0) then
+            nameNum = iter/intervalCreateFile
+            write (ctemp, '(i3)') nameNum
+            if (mod(iter, intervalCreateFile) == 0) then
+                open (unit=14, file='./Surface/SurfaceData_'//trim(adjustl(ctemp))//'.plt')
+                write (14, *) 'variables = "x", "y", "z", "dz", "d"'
+                close (14)
+            end if
+            if (mod(iter, intervalSurface) == 0) then
+                open (unit=14, position='append', file='./Surface/SurfaceData_'//trim(adjustl(ctemp))//'.plt', action='write')
                 write (14, *) 'zone', ' T = "', t, '"'
                 write (14, *) 'i=', mx, ' j=', my, ' datapacking=point'
                 do j = 1, my
@@ -753,6 +753,7 @@ contains
                 close (14)
             end if
         end if
+        call MPI_BARRIER(comm, ierr)
     end subroutine outputSurface
 
 end module surface_operations
@@ -792,14 +793,14 @@ module field_operations
 
     type(gridType), dimension(mx, my, nz + 1) :: grid
     type(profileType), dimension(nz) :: profile
-    real(kind=dbPc), dimension(nz) :: zd, zc, zcReal, u, tau_p, tau_f, F, phi
-    real(kind=dbPc), dimension(mx) :: xc, xv
-    real(kind=dbPc), dimension(my) :: yc, yv
-    real(kind=dbPc), dimension(nz + 1) :: zv, zvReal
-    real(kind=dbPc), dimension(mx, my, nz) :: pfrac
+    real(kind=dbPc), dimension(nz), save :: zd, zc, zcReal, u, tau_p, tau_f, F, phi, tau_pOld
+    real(kind=dbPc), dimension(mx), save :: xc, xv
+    real(kind=dbPc), dimension(my), save :: yc, yv
+    real(kind=dbPc), dimension(nz + 1), save :: zv, zvReal
+    real(kind=dbPc), dimension(mx, my, nz), save :: pfrac
 
     public :: generateGrid, initializeFluidField, calculateFluidField, &
-              updateFieldGrid, outputField
+              updateFieldGrid, outputField, calculateFluidField_St
     public :: grid, profile
 
 contains
@@ -824,6 +825,7 @@ contains
             refineRatio = (zDiffMax/zDiffMin)**(1.0/(nzUni - 1))
             zd(1) = zDiffMin
             zv(1) = 0.0
+            zc(1) = zd(1)*0.5
             do k = 2, nz
                 if (k <= nzUni) then
                     zd(k) = zd(k - 1)*refineRatio
@@ -913,6 +915,7 @@ contains
                 u(k) = 0.0
             end if
             tau_p(k) = 0.0
+            tau_pOld(k) = 0.0
             tau_f(k) = rho*uStar**2
             F(k) = 0.0
             profile(k)%xVelocity = u(k)
@@ -923,26 +926,23 @@ contains
     end subroutine initializeFluidField
 
     ! ****************************************************
-    ! Update the 1D fluid field using the Thomas algorithm
+    ! Update the 1D static fluid field
     ! ****************************************************
-    subroutine calculateFluidField
+    subroutine calculateFluidField_St
         use parallel_operations
         implicit none
         integer :: i, j, k, ierr
-        real(kind=dbPc) :: ap, at, ab, b
-        real(kind=dbPc) :: dzP, dzT, dzB, uT, uB
-        real(kind=dbPc) :: nut, nutot, dudz, mixl
-        real(kind=dbPc) :: wtt, wtb, wbb, wbt
-        real(kind=dbPc), dimension(nz) :: p, q
+        real(kind=dbPc) :: uT, uB
+        real(kind=dbPc) :: dudz, mixl, inSq, relax
         real(kind=dbPc), dimension(nz) :: tempF
         real(kind=dbPc), dimension(mx, my, nz) :: tempPfrac
-        real(kind=dbPc), dimension(3*nz) :: buffer
+        real(kind=dbPc), dimension(3, nz) :: buffer
 
         do k = 1, nz
             tempF(k) = profile(k)%forcingTerm
         end do
-        do j = 1, my
-            do i = 1, mx
+        do i = 1, mx
+            do j = 1, my
                 do k = 1, nz
                     tempPfrac(i, j, k) = grid(i, j, k)%particleVolumeFraction
                 end do
@@ -954,11 +954,87 @@ contains
 
         ! Calculate the shear stress
         phi(nz) = sum(pfrac(2:mx - 1, 2:my - 1, nz))/(nx*ny)
-        tau_p(nz) = F(nz)/(area*(1.0 - phi(nz)))
+        tau_p(nz) = F(nz)/area
+        do k = nz - 1, 1, -1
+            phi(k) = sum(pfrac(2:mx - 1, 2:my - 1, k))/(nx*ny)
+            tau_p(k) = tau_p(k + 1) + F(k)/area
+        end do
+        relax = 0.05
+        tau_p = tau_p*relax + tau_pOld*(1.0 - relax)
+        tau_f = rho*uStar**2 + tau_p
+
+        ! Calculate the velocity profile
+        uB = 0.0
+        do k = 1, nz
+            if (tau_f(k) < 0.0) then
+                tau_f(k) = 0.0
+            elseif (tau_f(k) > rho*uStar**2) then
+                tau_f(k) = rho*uStar**2
+            end if
+            mixl = kapa*zc(k)*(1.0 - exp(-1.0/26.0*zc(k)*uStar/nu))
+            inSq = nu**2 + 4.0*mixl**2*tau_f(k)/rho
+            dudz = (-nu + sqrt(inSq))/(2.0*mixl**2)
+            uT = uB + dudz*zd(k)
+            u(k) = 0.5*(uT + uB)
+            uB = uT
+        end do
+
+        do k = 1, nz
+            buffer(1, k) = u(k)
+            buffer(2, k) = tau_p(k)
+            buffer(3, k) = tau_f(k)
+        end do
+
+        call MPI_BARRIER(comm, ierr)
+        call MPI_BCAST(buffer, 3*nz, MPI_D, 0, comm, ierr)
+        call handleError(ierr)
+        do k = 1, nz
+            u(k) = buffer(1, k)
+            tau_p(k) = buffer(2, k)
+            tau_f(k) = buffer(3, k)
+            profile(k)%xVelocity = u(k)
+            profile(k)%particleShearStress = tau_p(k)
+            profile(k)%fluidShearStress = tau_f(k)
+        end do
+    end subroutine calculateFluidField_St
+
+    ! ****************************************************
+    ! Update the 1D fluid field using the Thomas algorithm
+    ! ****************************************************
+    subroutine calculateFluidField
+        use parallel_operations
+        implicit none
+        integer :: i, j, k, ierr
+        real(kind=dbPc) :: ap, at, ab, b, Fx
+        real(kind=dbPc) :: dzP, dzT, dzB, uT, uB
+        real(kind=dbPc) :: nut, nutot, dudz, mixl
+        real(kind=dbPc) :: wtt, wtb, wbb, wbt
+        real(kind=dbPc), dimension(nz) :: p, q
+        real(kind=dbPc), dimension(nz) :: tempF
+        real(kind=dbPc), dimension(mx, my, nz) :: tempPfrac
+        real(kind=dbPc), dimension(3*nz) :: buffer
+
+        do k = 1, nz
+            tempF(k) = profile(k)%forcingTerm
+        end do
+        do i = 1, mx
+            do j = 1, my
+                do k = 1, nz
+                    tempPfrac(i, j, k) = grid(i, j, k)%particleVolumeFraction
+                end do
+            end do
+        end do
+        call MPI_BARRIER(comm, ierr)
+        call MPI_ALLREDUCE(tempF, F, nz, MPI_D, MPI_SUM, comm, ierr)
+        call MPI_ALLREDUCE(tempPfrac, pfrac, mx*my*nz, MPI_D, MPI_SUM, comm, ierr)
+
+        ! Calculate the shear stress
+        phi(nz) = sum(pfrac(2:mx - 1, 2:my - 1, nz))/(nx*ny)
+        tau_p(nz) = F(nz)/area
         tau_f(nz) = rho*uStar**2 + tau_p(nz)
         do k = nz - 1, 1, -1
             phi(k) = sum(pfrac(2:mx - 1, 2:my - 1, k))/(nx*ny)
-            tau_p(k) = tau_p(k + 1) + F(k)/(area*(1.0 - phi(k)))
+            tau_p(k) = tau_p(k + 1) + F(k)/area
             tau_f(k) = rho*uStar**2 + tau_p(k)
         end do
 
@@ -974,9 +1050,10 @@ contains
         dudz = (uT - uB)/dzP
         nut = mixl**2*abs(dudz)
         nutot = nu + nut
-        ap = nutot/(dzP*dzT) + 1.0/dt
+        ap = nutot/(dzP*dzT) + 1.0/dt + 2.0*nutot/(dzP*dzP)
         at = -nutot/(dzP*dzT)
-        b = F(1)/(area*dzP*rho*(1.0 - phi(1))) + u(1)/dt - tau_f(1)/dzP
+        Fx = F(1)/(area*dzP*rho*(1.0 - phi(1)))
+        b = Fx + u(1)/dt !- tau_f(1)/(dzP*rho)
         p(1) = -at/ap
         q(1) = b/ap
         do k = 2, nz - 1
@@ -996,7 +1073,8 @@ contains
             ap = nutot/(dzP*dzT) + nutot/(dzP*dzB) + 1.0/dt
             at = -nutot/(dzP*dzT)
             ab = -nutot/(dzP*dzB)
-            b = F(k)/(area*dzP*rho*(1.0 - phi(k))) + u(k)/dt
+            Fx = F(k)/(area*dzP*rho*(1.0 - phi(k)))
+            b = Fx + u(k)/dt
             p(k) = -at/(ap + ab*p(k - 1))
             q(k) = (b - ab*q(k - 1))/(ap + ab*p(k - 1))
         end do
@@ -1008,7 +1086,8 @@ contains
         nutot = nu
         ap = nutot/(dzP*dzB) + 1.0/dt
         ab = -nutot/(dzP*dzB)
-        b = F(nz)/(area*dzP*rho*(1.0 - phi(nz))) + u(nz)/dt + rho*uStar**2/dzP
+        Fx = F(nz)/(area*dzP*rho*(1.0 - phi(nz)))
+        b = Fx + u(nz)/dt + rho*uStar**2/dzP
         q(nz) = (b - ab*q(nz - 1))/(ap + ab*p(nz - 1))
 
         ! Backward substitution
@@ -1070,12 +1149,12 @@ contains
         integer, intent(in) :: iter
         real(kind=dbPc), intent(in) :: t
         character(len=3) :: ctemp
-        integer :: i, j, k
+        integer :: i, j, k, ierr
         integer :: nameNum
 
-        ! Output the profile data
-        if (mod(iter, intervalProfile) == 0) then
-            if (currentNode%ID == 0) then
+        if (currentNode%ID == 0) then
+            ! Output the profile data
+            if (mod(iter, intervalProfile) == 0) then
                 open (unit=12, position='append', file='./Field/Profile.plt')
                 write (12, *) 'zone', ' T = "', t, '"'
                 do k = 1, nz
@@ -1083,19 +1162,17 @@ contains
                 end do
                 close (12)
             end if
-        end if
 
-        ! Output the field data
-        nameNum = iter/intervalCreateFile
-        write (ctemp, '(i3)') nameNum
-        if (mod(iter, intervalCreateFile) == 0) then
-            open (unit=13, file='./Field/FieldData_'//trim(adjustl(ctemp))//'.plt')
-            write (13, *) 'variables = "x", "y", "z", "Phi_p"'
-            close (13)
-        end if
-        if (mod(iter, intervalField) == 0) then
-            if (currentNode%ID == 0) then
-                open (unit=13, position='append', file='./Field/FieldData_'//trim(adjustl(ctemp))//'.plt')
+            ! Output the field data
+            nameNum = iter/intervalCreateFile
+            write (ctemp, '(i3)') nameNum
+            if (mod(iter, intervalCreateFile) == 0) then
+                open (unit=13, file='./Field/FieldData_'//trim(adjustl(ctemp))//'.plt')
+                write (13, *) 'variables = "x", "y", "z", "Phi_p"'
+                close (13)
+            end if
+            if (mod(iter, intervalField) == 0) then
+                open (unit=13, position='append', file='./Field/FieldData_'//trim(adjustl(ctemp))//'.plt', action='write')
                 write (13, *) 'zone', ' T = "', t, '"'
                 write (13, *) 'i=', mx, ' j=', my, ' k=', nz, ' datapacking=point'
                 do k = 1, nz
@@ -1108,6 +1185,7 @@ contains
                 close (13)
             end if
         end if
+        call MPI_BARRIER(comm, ierr)
     end subroutine outputField
 
 end module field_operations
@@ -1166,8 +1244,8 @@ contains
             call random_number(rand3)
             currentParticle%location(1) = xMax*rand1
             currentParticle%location(2) = yMax*rand2
-            currentParticle%location(3) = 0.1*dpa + initSurfElevation !zMax*rand3*0.1 + initSurfElevation
-            currentParticle%velocity = [1.0, 0.0, -0.1]
+            currentParticle%location(3) = zMax*rand3*0.1 + initSurfElevation + 0.01
+            currentParticle%velocity = 0.0
             currentParticle%diameter = valObeyCertainPDF(initDiameterDist)
             call determineParIJK(currentParticle)
             particle(n) = currentParticle
@@ -1256,7 +1334,7 @@ contains
         real(kind=dbPc) :: resCoeffTMidAir
         real(kind=dbPc), dimension(4) :: adjacentSurfGridZ
         real(kind=dbPc), dimension(3) :: vertex1, vertex2, vertex3
-        real(kind=dbPc), dimension(3) :: vector12
+        real(kind=dbPc), dimension(3) :: vector12, vectorV2
         real(kind=dbPc), dimension(3) :: surfaceNormalVector
         real(kind=dbPc), dimension(3) :: particleProjection
         real(kind=dbPc), dimension(3) :: impactVelocity, reboundVelocity
@@ -1448,7 +1526,7 @@ contains
 
         ! Calculate particle-particle collision
         if (ifMidairCollision) then
-            allocate (globalN(mx, my, pNum/(currentNode%nx*ny)*2))
+            allocate (globalN(mx, my, 100000))
             pNumInGrid = 0
             do n = 1, pNum
                 currentParticle = tempParticle(n)
@@ -1464,7 +1542,7 @@ contains
                     vector12 = currentParticle2%location - currentParticle%location
                     distance12 = vectorMagnitude(vector12)
                     contactDistance = 0.5*(currentParticle%diameter + currentParticle2%diameter)
-                    if (distance12 >= contactDistance) cycle
+                    if (distance12 >= contactDistance .or. distance12 < 1.0e-6) cycle
                     vector12 = unitVector(vector12)
                     relativeV12 = currentParticle%velocity - currentParticle2%velocity
                     relativeV12Normal = dotProduct(vector12, relativeV12)
@@ -1477,23 +1555,20 @@ contains
                     resCoeffTMidAir = max(0.0, 1.0 - 0.4*(1.0 + resCoeffN)/(2.0/7.0)*relativeV12Normal/relativeV12Tangent)
                     beta1 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta1)
                     beta2 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta2)
+                    tempParticle(n)%velocity = currentParticle%velocity - alpha1*relativeV12Normal*vector12 &
+                                               - beta1*(vector12 - relativeV12Normal*vector12)
                     tempParticle(globalN2)%velocity = currentParticle2%velocity + alpha2*relativeV12Normal*vector12 &
                                                       + beta2*(vector12 - relativeV12Normal*vector12)
-                    tempParticle(globalN2)%location = currentParticle2%location + 0.5*(contactDistance - distance12)*vector12
+                    vectorV2 = unitVector(tempParticle(globalN2)%velocity)
+                    tempParticle(globalN2)%location = currentParticle2%location + (contactDistance - distance12)*vectorV2 + &
+                                                      tempParticle(globalN2)%velocity*dt
                     exit
                 end do
-                tempParticle(n)%velocity = currentParticle%velocity - alpha1*relativeV12Normal*vector12 &
-                                           - beta1*(vector12 - relativeV12Normal*vector12)
-                tempParticle(n)%location = currentParticle%location - 0.5*(contactDistance - distance12)*vector12
             end do
             deallocate (globalN)
         end if
 
         ! Reallocate the particle array
-        if (totalEjectNum > maxEjectNum) then
-            print *, "The eject number in one time step", totalEjectNum, ">", maxEjectNum
-            stop
-        end if
         if (totalEjectNum > 0) then
             pNum = pNum + totalEjectNum
             tempParticle(currentTotalNum + 1:pNum) = addParticle(1:totalEjectNum)
@@ -1841,7 +1916,7 @@ contains
 
             do i = 1, 3
                 relativeU(i) = uf(i) - up(i)
-                if (abs(relativeU(i)) > 1.0e-8) then
+                if (relativeU(i) /= 0.0) then
                     Re_p(i) = abs(relativeU(i))*dp/nu
                     C_d(i) = (sqrt(0.5) + sqrt(24.0/Re_p(i)))**2
                     Fd(i) = pi/8.0*rho*dp**2*C_d(i)*abs(relativeU(i))*relativeU(i)
@@ -1972,7 +2047,7 @@ contains
             call handleError(ierr)
             if (currentNode%ID == 0) then
                 open (unit=10, position='append', file='./Particle/ParticleNum.plt')
-                write (10, "(E15.2, I5)") t, pNumTotal
+                write (10, *) t, pNumTotal
                 close (10)
             end if
         end if
@@ -2006,6 +2081,7 @@ contains
             end do
             call MPI_FILE_CLOSE(fh, ierr)
         end if
+        call MPI_BARRIER(comm, ierr)
     end subroutine outputParticle
 
 end module particle_operations
@@ -2103,11 +2179,11 @@ program main
     call initializeParticle
     ! create output file
     call generateOutPutFile
-    iteration = 1
+    iteration = 0
     time = 0.0
 
     ! start iteration loop
-    do while (time < Endtime)
+    do while (time <= Endtime)
         time = time + dt
         iteration = iteration + 1
         if (ifCalculateParticle) then
@@ -2115,17 +2191,12 @@ program main
             call calculateParColl
             call calculateParticleMovement
             call reallocateParticle
-            call calculateFluidField
+            call calculateFluidField_St
             call updateSurfaceGrid
             call updateFieldGrid
             call outputParticle(iteration, time)
             call outputField(iteration, time)
             call outputSurface(iteration, time)
-            ! **********************************Check1***********************************
-            call MPI_BARRIER(comm, ierr)
-            print *, currentNode%ID
-            stop
-            ! **************************************************************************
         end if
     end do
     call freeMpiStructure
