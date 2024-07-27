@@ -17,11 +17,11 @@ module public_parameter
     ! computational domain
 
     real(kind=dbPc), parameter :: xMax = 1.0 ! x size
-    real(kind=dbPc), parameter :: yMax = 0.02 ! y size
+    real(kind=dbPc), parameter :: yMax = 0.05 ! y size
     real(kind=dbPc), parameter :: zMax = 0.3 ! z size
     real(kind=dbPc), parameter :: area = xMax*yMax ! computational area
     integer, parameter :: nx = 500 ! x grid num
-    integer, parameter :: ny = 10 ! y grid num
+    integer, parameter :: ny = 25 ! y grid num
     integer, parameter :: nz = 60 ! z grid num
     integer, parameter :: nzUni = 30 ! z grid number above which zDiff becomes uniform
     real(kind=dbPc), parameter :: xDiff = xMax/nx
@@ -33,7 +33,7 @@ module public_parameter
     ! time
 
     real(kind=dbPc), parameter :: dt = 1.0e-4 ! time step
-    real(kind=dbPc), parameter :: EndTime = 1.0 ! the time program ends
+    real(kind=dbPc), parameter :: EndTime = 60.0 ! the time program ends
 
     ! fluid
 
@@ -75,7 +75,7 @@ module public_parameter
 
     ! bed surface
 
-    logical, parameter :: ifPreformedSurface = .true.
+    logical, parameter :: ifPreformedSurface = .false.
     real(kind=dbPc), parameter :: initSurfElevation = 0.05 ! initial average bed height
     real(kind=dbPc), parameter :: initAmp = 0.01 !8.0*dpa ! amplitude of prerippled surface
     real(kind=dbPc), parameter :: initOmg = 4.0*pi ! wave number of prerippled surface
@@ -87,16 +87,16 @@ module public_parameter
     ! output after every x steps
 
     integer, parameter :: shortInterval = 100
-    integer, parameter :: longInterval = 1000
+    integer, parameter :: longInterval = 10000
     integer, parameter :: intervalField = longInterval
-    integer, parameter :: intervalProfile = shortInterval
+    integer, parameter :: intervalProfile = longInterval
     integer, parameter :: intervalMonitor = shortInterval
     integer, parameter :: intervalParticle = longInterval
     integer, parameter :: intervalSurface = longInterval
 
     ! file
 
-    integer, parameter :: intervalCreateFile = 5*longInterval ! iter num contained in a file
+    integer, parameter :: intervalCreateFile = 10*longInterval ! iter num contained in a file
 
 end module public_parameter
 
@@ -122,12 +122,9 @@ module parallel_operations
 
     type(parallelType) :: currentNode
     integer :: comm, ierr
-    integer :: MPI_I, MPI_D
-    integer :: MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE
 
     public :: comm, currentNode
-    public :: initializeParallel, handleError, createMpiStructure, freeMpiStructure
-    public :: MPI_I, MPI_D, MPI_SG_TYPE, MPI_G_TYPE, MPI_PF_TYPE
+    public :: initializeParallel, handleError
 
 contains
 
@@ -140,9 +137,7 @@ contains
 
         ! create MPI Cartesian topology
         call MPI_CART_CREATE(MPI_COMM_WORLD, 1, nNodes, .true., .true., comm, ierr)
-        call handleError(ierr)
         call MPI_COMM_RANK(comm, currentNode%ID, ierr)
-        call handleError(ierr)
         ! find neighbors
         !
         !       |           |
@@ -158,7 +153,6 @@ contains
         !       |           |
         !
         call MPI_CART_SHIFT(comm, 0, 1, nbrLeft, nbrRight, ierr)
-        call handleError(ierr)
         currentNode%neighbor(1) = nbrLeft
         currentNode%neighbor(2) = nbrRight
         call MPI_BARRIER(comm, ierr)
@@ -197,73 +191,6 @@ contains
             stop
         end if
     end subroutine handleError
-
-    ! ******************************************************************************************
-    ! Create the MPI data types for the surfaceGridType, gridType, profileType, and particleType
-    ! ******************************************************************************************
-    subroutine createMpiStructure
-        implicit none
-        integer, allocatable, dimension(:):: blockLen
-        integer, allocatable, dimension(:):: disp
-        integer, allocatable, dimension(:):: oldType
-
-        ! create MPI data type for surfaceGridType
-        allocate (blockLen(7))
-        allocate (disp(7))
-        allocate (oldType(7))
-        MPI_I = MPI_INTEGER
-        MPI_D = MPI_DOUBLE
-        blockLen = [1, 1, 1, 1, 3, npdf, npdf]
-        disp = [0, kind(0), 2*kind(0), 2*kind(0) + kind(0.0_dbPc), &
-                2*kind(0) + 2*kind(0.0_dbPc), 2*kind(0) + 5*kind(0.0_dbPc), &
-                2*kind(0) + 5*kind(0.0_dbPc) + npdf*kind(0.0_dbPc)]
-        oldType = [MPI_I, MPI_I, MPI_D, MPI_D, MPI_D, MPI_D, MPI_D]
-        call MPI_TYPE_CREATE_STRUCT(7, blockLen, disp, oldType, MPI_SG_TYPE, ierr)
-        call handleError(ierr)
-        call MPI_TYPE_COMMIT(MPI_SG_TYPE, ierr)
-        deallocate (blockLen)
-        deallocate (disp)
-        deallocate (oldType)
-
-        ! create MPI data type for gridType
-        allocate (blockLen(5))
-        allocate (disp(5))
-        allocate (oldType(5))
-        blockLen = [1, 1, 1, 3, 3]
-        disp = [0, kind(0.0_dbPc), 2*kind(0.0_dbPc), 3*kind(0.0_dbPc), 6*kind(0.0_dbPc)]
-        oldType = [MPI_D, MPI_D, MPI_D, MPI_D, MPI_D]
-        call MPI_TYPE_CREATE_STRUCT(5, blockLen, disp, oldType, MPI_G_TYPE, ierr)
-        call handleError(ierr)
-        call MPI_TYPE_COMMIT(MPI_G_TYPE, ierr)
-        deallocate (blockLen)
-        deallocate (disp)
-        deallocate (oldType)
-
-        ! create MPI data type for profileType
-        allocate (blockLen(7))
-        allocate (disp(7))
-        allocate (oldType(7))
-        blockLen = [1, 1, 1, 1, 1, 1, 1]
-        disp = [0, kind(0.0_dbPc), 2*kind(0.0_dbPc), 3*kind(0.0_dbPc), 4*kind(0.0_dbPc), 5*kind(0.0_dbPc), 6*kind(0.0_dbPc)]
-        oldType = [MPI_D, MPI_D, MPI_D, MPI_D, MPI_D, MPI_D, MPI_D]
-        call MPI_TYPE_CREATE_STRUCT(7, blockLen, disp, oldType, MPI_PF_TYPE, ierr)
-        call handleError(ierr)
-        call MPI_TYPE_COMMIT(MPI_PF_TYPE, ierr)
-        deallocate (blockLen)
-        deallocate (disp)
-        deallocate (oldType)
-    end subroutine createMpiStructure
-
-    ! ***********************
-    ! Free the MPI data types
-    ! ***********************
-    subroutine freeMpiStructure
-        implicit none
-
-        call MPI_TYPE_FREE(MPI_SG_TYPE, ierr)
-        call MPI_TYPE_FREE(MPI_G_TYPE, ierr)
-        call MPI_TYPE_FREE(MPI_PF_TYPE, ierr)
-    end subroutine freeMpiStructure
 
 end module parallel_operations
 
@@ -672,8 +599,8 @@ contains
             end do
         end do
         !call MPI_BARRIER(comm, ierr)
-        call MPI_ALLREDUCE(tempDz, dz, mx*my, MPI_D, MPI_SUM, comm, ierr)
-        call MPI_ALLREDUCE(tempDBin, dBin, mx*my*npdf, MPI_D, MPI_SUM, comm, ierr)
+        call MPI_ALLREDUCE(tempDz, dz, mx*my, MPI_DOUBLE, MPI_SUM, comm, ierr)
+        call MPI_ALLREDUCE(tempDBin, dBin, mx*my*npdf, MPI_DOUBLE, MPI_SUM, comm, ierr)
         do j = 2, my - 1
             do i = 2, mx - 1
                 loc(i, j, 3) = loc(i, j, 3) + dz(i, j)
@@ -718,8 +645,8 @@ contains
                 surfGrid(i, j)%averageDiameter = avgD(i, j)
             end do
         end do
-        call MPI_BCAST(loc, mx*my*3, MPI_D, 0, comm, ierr)
-        call MPI_BCAST(hist, mx*my*npdf, MPI_D, 0, comm, ierr)
+        call MPI_BCAST(loc, mx*my*3, MPI_DOUBLE, 0, comm, ierr)
+        call MPI_BCAST(hist, mx*my*npdf, MPI_DOUBLE, 0, comm, ierr)
 
     end subroutine updateSurfaceGrid
 
@@ -733,7 +660,6 @@ contains
         real(kind=dbPc), intent(in) :: t
         character(len=3) :: ctemp
         integer :: i, j, nameNum
-        integer :: ierr
 
         if (currentNode%ID == 0) then
             nameNum = iter/intervalCreateFile
@@ -935,7 +861,7 @@ contains
         implicit none
         integer :: i, j, k, ierr
         real(kind=dbPc) :: uT, uB
-        real(kind=dbPc) :: dudz, mixl, inSq
+        real(kind=dbPc) :: dudz, mixl
         real(kind=dbPc), dimension(nz) :: tempF
         real(kind=dbPc), dimension(mx, my, nz) :: tempPfrac
         real(kind=dbPc) :: dzP, dzT, dzB
@@ -954,8 +880,8 @@ contains
             end do
         end do
         !call MPI_BARRIER(comm, ierr)
-        call MPI_ALLREDUCE(tempF, F, nz, MPI_D, MPI_SUM, comm, ierr)
-        call MPI_ALLREDUCE(tempPfrac, pfrac, mx*my*nz, MPI_D, MPI_SUM, comm, ierr)
+        call MPI_ALLREDUCE(tempF, F, nz, MPI_DOUBLE, MPI_SUM, comm, ierr)
+        call MPI_ALLREDUCE(tempPfrac, pfrac, mx*my*nz, MPI_DOUBLE, MPI_SUM, comm, ierr)
 
         ! Calculate the shear stress
         phi(nz) = sum(pfrac(2:mx - 1, 2:my - 1, nz))/(nx*ny)
@@ -966,11 +892,6 @@ contains
         end do
         do k = 1, nz
             tau_p(k) = tau_p(k)*relax + tau_pOld(k)*(1.0 - relax)
-            !if (tau_p(k) > 0.0) then
-            !    tau_p(k) = 0.0
-            !elseif (tau_p(k) < -rho*uStar**2) then
-            !    tau_p(k) = -rho*uStar**2
-            !end if
         end do
         tau_f = rho*uStar**2 + tau_p
 
@@ -1016,15 +937,6 @@ contains
         nutot = nu + nut
         uT = tau_f(nz)/(rho*nutot)*dzP + uB
         u(nz) = 0.5*(uT + uB)
-        !uB = 0.0
-        !do k = 1, nz
-        !    mixl = kapa*zc(k)*(1.0 - exp(-1.0/26.0*zc(k)*uStar/nu))
-        !    inSq = nu**2 + 4.0*mixl**2*tau_f(k)/rho
-        !    dudz = (-nu + sqrt(inSq))/(2.0*mixl**2)
-        !    uT = uB + dudz*zd(k)
-        !    u(k) = 0.5*(uT + uB)
-        !    uB = uT
-        !end do
 
         do k = 1, nz
             profile(k)%xVelocity = u(k)
@@ -1060,8 +972,8 @@ contains
             end do
         end do
         !call MPI_BARRIER(comm, ierr)
-        call MPI_ALLREDUCE(tempF, F, nz, MPI_D, MPI_SUM, comm, ierr)
-        call MPI_ALLREDUCE(tempPfrac, pfrac, mx*my*nz, MPI_D, MPI_SUM, comm, ierr)
+        call MPI_ALLREDUCE(tempF, F, nz, MPI_DOUBLE, MPI_SUM, comm, ierr)
+        call MPI_ALLREDUCE(tempPfrac, pfrac, mx*my*nz, MPI_DOUBLE, MPI_SUM, comm, ierr)
 
         ! Calculate the shear stress
         phi(nz) = sum(pfrac(2:mx - 1, 2:my - 1, nz))/(nx*ny)
@@ -1140,7 +1052,7 @@ contains
         end do
 
         !call MPI_BARRIER(comm, ierr)
-        call MPI_BCAST(buffer, 3*nz, MPI_D, 0, comm, ierr)
+        call MPI_BCAST(buffer, 3*nz, MPI_DOUBLE, 0, comm, ierr)
         do k = 1, nz
             u(k) = buffer(k)
             tau_p(k) = buffer(k + nz)
@@ -1185,7 +1097,7 @@ contains
         integer, intent(in) :: iter
         real(kind=dbPc), intent(in) :: t
         character(len=3) :: ctemp
-        integer :: i, j, k, ierr
+        integer :: i, j, k
         integer :: nameNum
 
         if (currentNode%ID == 0) then
@@ -1239,9 +1151,12 @@ module particle_operations
     private
 
     type particleType
+        integer :: collisionCount
         integer, dimension(3) :: indices
         real(kind=dbPc) :: diameter
         real(kind=dbPc) :: altitude
+        real(kind=dbPc) :: survivalTime
+        real(kind=dbPc) :: maxAltitude
         real(kind=dbPc), dimension(3) :: location
         real(kind=dbPc), dimension(3) :: velocity
     end type particleType
@@ -1283,6 +1198,9 @@ contains
             currentParticle%location(3) = zMax*rand3 + initSurfElevation
             currentParticle%velocity = 0.0
             currentParticle%diameter = valObeyCertainPDF(initDiameterDist)
+            currentParticle%collisionCount = 0
+            currentParticle%survivalTime = 0.0
+            currentParticle%maxAltitude = 0.0
             call determineParIJK(currentParticle)
             particle(n) = currentParticle
         end do
@@ -1429,6 +1347,8 @@ contains
             impactCoordinateZ = surfaceNormalVector
             impactVelocity(3) = dotProduct(currentParticle%velocity, impactCoordinateZ)
             if (currentParticle%altitude < 0.5*currentParticle%diameter .and. impactVelocity(3) < 0.0) then
+                currentParticle%survivalTime = 0.0
+                currentParticle%collisionCount = 0
                 ! Change to local coordinate system
                 impactCoordinateY = unitVector(crossProduct(impactCoordinateZ, currentParticle%velocity))
                 impactCoordinateX = unitVector(crossProduct(impactCoordinateY, impactCoordinateZ))
@@ -1468,7 +1388,8 @@ contains
                 else ! rebound
                     currentTotalNum = currentTotalNum + 1
                     currentParticle%altitude = 0.5*d1
-                    currentParticle%location(3) = particleProjection(3) + 0.5*d1
+                    currentParticle%maxAltitude = currentParticle%altitude
+                    currentParticle%location(3) = particleProjection(3) + currentParticle%altitude
                     currentParticle%velocity(1) = dotProduct(reboundVelocity, impactCoordinateX)
                     currentParticle%velocity(2) = dotProduct(reboundVelocity, impactCoordinateY)
                     currentParticle%velocity(3) = dotProduct(reboundVelocity, impactCoordinateZ)
@@ -1512,10 +1433,13 @@ contains
                         addParticle(totalEjectNum)%indices(2) = jp
                         addParticle(totalEjectNum)%indices(3) = 1
                         addParticle(totalEjectNum)%diameter = d2
-                        addParticle(totalEjectNum)%altitude = v2*dt
+                        addParticle(totalEjectNum)%altitude = 0.0 !v2*dt
+                        addParticle(totalEjectNum)%maxAltitude = 0.0
+                        addParticle(totalEjectNum)%survivalTime = 0.0
+                        addParticle(totalEjectNum)%collisionCount = 0
                         addParticle(totalEjectNum)%location(1) = rand1*vertex1(1) + rand2*vertex2(1) + rand3*vertex3(1)
                         addParticle(totalEjectNum)%location(2) = rand1*vertex1(2) + rand2*vertex2(2) + rand3*vertex3(2)
-                        addParticle(totalEjectNum)%location(3) = rand1*vertex1(3) + rand2*vertex2(3) + rand3*vertex3(3) + v2*dt
+                        addParticle(totalEjectNum)%location(3) = rand1*vertex1(3) + rand2*vertex2(3) + rand3*vertex3(3) !+ v2*dt
                         addParticle(totalEjectNum)%velocity(1) = 0.0
                         addParticle(totalEjectNum)%velocity(2) = 0.0
                         addParticle(totalEjectNum)%velocity(3) = v2
@@ -1591,8 +1515,10 @@ contains
                     resCoeffTMidAir = max(0.0, 1.0 - 0.4*(1.0 + resCoeffN)/(2.0/7.0)*relativeV12Normal/relativeV12Tangent)
                     beta1 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta1)
                     beta2 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta2)
+                    tempParticle(n)%collisionCount = tempParticle(n)%collisionCount + 1
                     tempParticle(n)%velocity = currentParticle%velocity - alpha1*relativeV12Normal*vector12 &
                                                - beta1*(vector12 - relativeV12Normal*vector12)
+                    tempParticle(globalN2)%collisionCount = tempParticle(globalN2)%collisionCount + 1
                     tempParticle(globalN2)%velocity = currentParticle2%velocity + alpha2*relativeV12Normal*vector12 &
                                                       + beta2*(vector12 - relativeV12Normal*vector12)
                     vectorV2 = unitVector(tempParticle(globalN2)%velocity)
@@ -1899,6 +1825,7 @@ contains
         end do
         do n = 1, pNum
             currentParticle = particle(n)
+            currentParticle%survivalTime = currentParticle%survivalTime + dt
             up = currentParticle%velocity
             dp = currentParticle%diameter
             kp = currentParticle%indices(3)
@@ -1969,7 +1896,7 @@ contains
     subroutine reallocateParticle
         use parallel_operations
         implicit none
-        integer :: n, ip, jp, kp, currentN, ierr
+        integer :: n, ip, currentN, ierr
         integer :: sendRightNum, recvLeftNum
         integer :: status(MPI_STATUS_SIZE)
         integer, allocatable, dimension(:) :: sendArryInt
@@ -1986,8 +1913,6 @@ contains
         do n = 1, pNum
             currentParticle = particle(n)
             ip = currentParticle%indices(1)
-            jp = currentParticle%indices(2)
-            kp = currentParticle%indices(3)
             if (ip > currentNode%in) then
                 sendRightNum = sendRightNum + 1
                 tempSendRight(sendRightNum) = currentParticle
@@ -1997,16 +1922,17 @@ contains
             end if
         end do
 
-        call MPI_SENDRECV(sendRightNum, 1, MPI_I, currentNode%neighbor(2), 10, &
-                          recvLeftNum, 1, MPI_I, currentNode%neighbor(1), 10, comm, status, ierr)
+        call MPI_SENDRECV(sendRightNum, 1, MPI_INTEGER, currentNode%neighbor(2), 10, &
+                          recvLeftNum, 1, MPI_INTEGER, currentNode%neighbor(1), 10, comm, status, ierr)
         if (sendRightNum > 0) then
-            allocate (sendArryInt(3*sendRightNum))
-            allocate (sendArryDouble(8*sendRightNum))
+            allocate (sendArryInt(4*sendRightNum))
+            allocate (sendArryDouble(10*sendRightNum))
             do n = 1, sendRightNum
                 currentParticle = tempSendRight(n)
                 sendArryInt(n) = currentParticle%indices(1)
                 sendArryInt(n + sendRightNum) = currentParticle%indices(2)
                 sendArryInt(n + 2*sendRightNum) = currentParticle%indices(3)
+                sendArryInt(n + 3*sendRightNum) = currentParticle%collisionCount
                 sendArryDouble(n) = currentParticle%location(1)
                 sendArryDouble(n + sendRightNum) = currentParticle%location(2)
                 sendArryDouble(n + 2*sendRightNum) = currentParticle%location(3)
@@ -2015,13 +1941,18 @@ contains
                 sendArryDouble(n + 5*sendRightNum) = currentParticle%velocity(3)
                 sendArryDouble(n + 6*sendRightNum) = currentParticle%altitude
                 sendArryDouble(n + 7*sendRightNum) = currentParticle%diameter
+                if (currentParticle%altitude > currentParticle%maxAltitude) then
+                    currentParticle%maxAltitude = currentParticle%altitude
+                end if
+                sendArryDouble(n + 8*sendRightNum) = currentParticle%maxAltitude
+                sendArryDouble(n + 9*sendRightNum) = currentParticle%survivalTime
             end do
-            call MPI_SEND(sendArryInt, sendRightNum*3, MPI_I, currentNode%neighbor(2), 20, comm, ierr)
-            call MPI_SEND(sendArryDouble, sendRightNum*8, MPI_D, currentNode%neighbor(2), 20, comm, ierr)
+            call MPI_SEND(sendArryInt, sendRightNum*4, MPI_INTEGER, currentNode%neighbor(2), 20, comm, ierr)
+            call MPI_SEND(sendArryDouble, sendRightNum*10, MPI_DOUBLE, currentNode%neighbor(2), 21, comm, ierr)
             deallocate (sendArryInt)
             deallocate (sendArryDouble)
         end if
-        call MPI_BARRIER(comm, ierr)
+        !call MPI_BARRIER(comm, ierr)
         if (recvLeftNum > 0) then
             pNum = currentN + recvLeftNum
             deallocate (particle)
@@ -2029,16 +1960,17 @@ contains
             particle(1:currentN) = tempP(1:currentN)
             deallocate (tempP)
 
-            allocate (recvArryInt(3*recvLeftNum))
-            allocate (recvArryDouble(8*recvLeftNum))
-            call MPI_RECV(recvArryInt, recvLeftNum*3, MPI_I, currentNode%neighbor(1), 20, comm, status, ierr)
-            call MPI_RECV(recvArryDouble, recvLeftNum*8, MPI_D, currentNode%neighbor(1), 20, comm, status, ierr)
+            allocate (recvArryInt(4*recvLeftNum))
+            allocate (recvArryDouble(10*recvLeftNum))
+            call MPI_RECV(recvArryInt, recvLeftNum*4, MPI_INTEGER, currentNode%neighbor(1), 20, comm, status, ierr)
+            call MPI_RECV(recvArryDouble, recvLeftNum*10, MPI_DOUBLE, currentNode%neighbor(1), 21, comm, status, ierr)
             do n = 1, recvLeftNum
                 currentN = currentN + 1
                 currentParticle = particle(currentN)
                 currentParticle%indices(1) = recvArryInt(n)
                 currentParticle%indices(2) = recvArryInt(n + recvLeftNum)
                 currentParticle%indices(3) = recvArryInt(n + 2*recvLeftNum)
+                currentParticle%collisionCount = recvArryInt(n + 3*recvLeftNum)
                 currentParticle%location(1) = recvArryDouble(n)
                 currentParticle%location(2) = recvArryDouble(n + recvLeftNum)
                 currentParticle%location(3) = recvArryDouble(n + 2*recvLeftNum)
@@ -2047,6 +1979,8 @@ contains
                 currentParticle%velocity(3) = recvArryDouble(n + 5*recvLeftNum)
                 currentParticle%altitude = recvArryDouble(n + 6*recvLeftNum)
                 currentParticle%diameter = recvArryDouble(n + 7*recvLeftNum)
+                currentParticle%maxAltitude = recvArryDouble(n + 8*recvLeftNum)
+                currentParticle%survivalTime = recvArryDouble(n + 9*recvLeftNum)
                 call determineParIJK(currentParticle)
                 particle(currentN) = currentParticle
             end do
@@ -2073,17 +2007,18 @@ contains
         character(len=200) :: filename, line
         integer :: ierr, nameNum, n, amode, fh
         integer :: pNumTotal
+        integer :: cNum
         integer :: status(MPI_STATUS_SIZE)
-        real(kind=dbPc) :: h, d, vMag
+        real(kind=dbPc) :: h, maxH, d, vMag, st
         real(kind=dbPc), dimension(3) :: loc
         real(kind=dbPc), dimension(3) :: vel
 
         if (mod(iter, intervalMonitor) == 0) then
-            call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_I, MPI_SUM, comm, ierr)
+            call MPI_ALLREDUCE(pNum, pNumTotal, 1, MPI_INTEGER, MPI_SUM, comm, ierr)
             call handleError(ierr)
             if (currentNode%ID == 0) then
                 open (unit=10, position='append', file='./Particle/ParticleNum.plt')
-                write (10, *) t, pNumTotal
+                write (10, *) iter, t, pNumTotal
                 close (10)
             end if
         end if
@@ -2093,7 +2028,7 @@ contains
         if (mod(iter, intervalCreateFile) == 0) then
             if (currentNode%ID == 0) then
                 open (unit=11, file=trim(adjustl(filename)))
-                write (11, "(A80)") 'variables = "x", "y", "z", "h", "u", "v", "w", "velocity_mag", "d"'
+                write (11, "(A100)") 'variables = "x", "y", "z", "h", "u", "v", "w", "velocity_mag", "d", "h_max", "t", "cNum"'
                 close (11)
             end if
         end if
@@ -2107,11 +2042,14 @@ contains
             call MPI_FILE_OPEN(comm, trim(adjustl(filename)), amode, MPI_INFO_NULL, fh, ierr)
             do n = 1, pNum
                 loc = particle(n)%location
+                cNum = particle(n)%collisionCount
                 vel = particle(n)%velocity
                 h = particle(n)%altitude
+                maxH = particle(n)%maxAltitude
                 d = particle(n)%diameter
                 vMag = vectorMagnitude(vel)
-                write (line, '(9E15.4)') loc(1), loc(2), loc(3), h, vel(1), vel(2), vel(3), vMag, d
+                st = particle(n)%survivalTime
+                write (line, '(11E15.4, I)') loc(1), loc(2), loc(3), h, vel(1), vel(2), vel(3), vMag, d, maxH, st, cNum
                 line = trim(adjustl(line))//char(10)
                 call MPI_FILE_WRITE_SHARED(fh, trim(line), len(trim(line)), MPI_CHARACTER, status, ierr)
             end do
@@ -2156,11 +2094,11 @@ contains
             call system(trim(adjustl(bashCmd)))
 
             open (unit=10, file='./Particle/ParticleNum.plt')
-            write (10, *) 'variables = "t", "Number"'
+            write (10, *) 'variables = "iteration", "t", "Number"'
             close (10)
 
             open (unit=11, file='./Particle/ParticleData_0.plt')
-            write (11, "(A80)") 'variables = "x", "y", "z", "h", "u", "v", "w", "velocity_mag", "d"'
+            write (11, "(A100)") 'variables = "x", "y", "z", "h", "u", "v", "w", "velocity_mag", "d", "h_max", "t", "cNum"'
             close (11)
 
             open (unit=12, file='./Field/Profile.plt')
@@ -2202,7 +2140,6 @@ program main
     call MPI_INIT(ierr)
     call initializeParallel
     call random_seed()
-    call createMpiStructure
     ! generate surfGrid and initial bed
     call generateSurfaceGrid
     ! initialize surface
@@ -2236,7 +2173,6 @@ program main
             call MPI_BARRIER(comm, ierr)
         end if
     end do
-    call freeMpiStructure
 
     call MPI_FINALIZE(ierr)
 end program main
