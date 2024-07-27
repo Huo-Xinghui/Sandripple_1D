@@ -1,7 +1,7 @@
 ! This is a Fortran 90 code for simulating the sandripple formation in a 1D wind field
 ! version 2.0
 ! Author: Xianghui Huo
-! Date: 2024-07-24
+! Date: 2024-07-27
 
 ! *****************************************
 
@@ -17,16 +17,16 @@ module public_parameter
     ! computational domain
 
     real(kind=dbPc), parameter :: xMax = 1.0 ! x size
-    real(kind=dbPc), parameter :: yMax = 0.1 ! y size
+    real(kind=dbPc), parameter :: yMax = 0.02 ! y size
     real(kind=dbPc), parameter :: zMax = 0.3 ! z size
     real(kind=dbPc), parameter :: area = xMax*yMax ! computational area
     integer, parameter :: nx = 500 ! x grid num
-    integer, parameter :: ny = 50 ! y grid num
-    integer, parameter :: nz = 50 ! z grid num
-    integer, parameter :: nzUni = 20 ! z grid number above which zDiff becomes uniform
+    integer, parameter :: ny = 10 ! y grid num
+    integer, parameter :: nz = 60 ! z grid num
+    integer, parameter :: nzUni = 30 ! z grid number above which zDiff becomes uniform
     real(kind=dbPc), parameter :: xDiff = xMax/nx
     real(kind=dbPc), parameter :: yDiff = yMax/ny
-    integer, parameter :: nNodes = 2 ! num of subdomain
+    integer, parameter :: nNodes = 4 ! num of subdomain
     integer, parameter :: mx = nx + 2 ! x grid num +2
     integer, parameter :: my = ny + 2 ! y grid num +2
 
@@ -42,6 +42,7 @@ module public_parameter
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.4 ! von Kaman's constant
     real(kind=dbPc), parameter :: zDiffMin = nu/uStar ! smallest z grid size
+    real(kind=dbPc), parameter :: relax = 1.0 ! relaxation factor
 
     ! particle
 
@@ -53,9 +54,10 @@ module public_parameter
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
     integer, parameter :: whichDiameterDist = 0
     integer, parameter :: npdf = 11 ! bin num of particle distribution
-    integer, parameter :: pNumInit = 1000 ! initial particle num
-    integer, parameter :: maxEjectNum = 1000000 ! max eject particle num in one time step
-    integer, parameter :: maxSendRecvNum = 1000000 ! max particle num to send or receive in one time step
+    integer, parameter :: pNumInit = 100 ! initial particle num
+    integer, parameter :: maxEjectNum = 100000 ! max eject particle num in one time step
+    integer, parameter :: maxSendRecvNum = 100000 ! max particle num to send or receive in one time step
+    integer, parameter :: maxPNumInGrid = 100000 ! max particle num in one subdomain
     real(kind=dbPc), parameter :: dpa = 2.5e-4 ! average particle diameter
     real(kind=dbPc), parameter :: dpStddDev = 8.0e-5 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
@@ -89,7 +91,7 @@ module public_parameter
     integer, parameter :: intervalField = longInterval
     integer, parameter :: intervalProfile = shortInterval
     integer, parameter :: intervalMonitor = shortInterval
-    integer, parameter :: intervalParticle = shortInterval
+    integer, parameter :: intervalParticle = longInterval
     integer, parameter :: intervalSurface = longInterval
 
     ! file
@@ -669,7 +671,7 @@ contains
                 end do
             end do
         end do
-        call MPI_BARRIER(comm, ierr)
+        !call MPI_BARRIER(comm, ierr)
         call MPI_ALLREDUCE(tempDz, dz, mx*my, MPI_D, MPI_SUM, comm, ierr)
         call MPI_ALLREDUCE(tempDBin, dBin, mx*my*npdf, MPI_D, MPI_SUM, comm, ierr)
         do j = 2, my - 1
@@ -753,7 +755,7 @@ contains
                 close (14)
             end if
         end if
-        call MPI_BARRIER(comm, ierr)
+        !call MPI_BARRIER(comm, ierr)
     end subroutine outputSurface
 
 end module surface_operations
@@ -933,10 +935,13 @@ contains
         implicit none
         integer :: i, j, k, ierr
         real(kind=dbPc) :: uT, uB
-        real(kind=dbPc) :: dudz, mixl, inSq, relax
+        real(kind=dbPc) :: dudz, mixl, inSq
         real(kind=dbPc), dimension(nz) :: tempF
         real(kind=dbPc), dimension(mx, my, nz) :: tempPfrac
-        real(kind=dbPc), dimension(3, nz) :: buffer
+        real(kind=dbPc) :: dzP, dzT, dzB
+        real(kind=dbPc) :: wtt, wtb, wbb, wbt
+        real(kind=dbPc) :: nut, nutot
+        !real(kind=dbPc), dimension(3, nz) :: buffer
 
         do k = 1, nz
             tempF(k) = profile(k)%forcingTerm
@@ -948,7 +953,7 @@ contains
                 end do
             end do
         end do
-        call MPI_BARRIER(comm, ierr)
+        !call MPI_BARRIER(comm, ierr)
         call MPI_ALLREDUCE(tempF, F, nz, MPI_D, MPI_SUM, comm, ierr)
         call MPI_ALLREDUCE(tempPfrac, pfrac, mx*my*nz, MPI_D, MPI_SUM, comm, ierr)
 
@@ -959,39 +964,69 @@ contains
             phi(k) = sum(pfrac(2:mx - 1, 2:my - 1, k))/(nx*ny)
             tau_p(k) = tau_p(k + 1) + F(k)/area
         end do
-        relax = 0.05
-        tau_p = tau_p*relax + tau_pOld*(1.0 - relax)
+        do k = 1, nz
+            tau_p(k) = tau_p(k)*relax + tau_pOld(k)*(1.0 - relax)
+            !if (tau_p(k) > 0.0) then
+            !    tau_p(k) = 0.0
+            !elseif (tau_p(k) < -rho*uStar**2) then
+            !    tau_p(k) = -rho*uStar**2
+            !end if
+        end do
         tau_f = rho*uStar**2 + tau_p
 
         ! Calculate the velocity profile
+        dzP = zd(1)
+        dzT = (zd(1) + zd(2))/2.0
+        wtt = 0.5*zd(1)/dzT
+        wtb = 0.5*zd(2)/dzT
+        uT = u(2)*wtt + u(1)*wtb
         uB = 0.0
-        do k = 1, nz
-            if (tau_f(k) < 0.0) then
-                tau_f(k) = 0.0
-            elseif (tau_f(k) > rho*uStar**2) then
-                tau_f(k) = rho*uStar**2
-            end if
+        mixl = kapa*zc(1)*(1.0 - exp(-1.0/26.0*zc(1)*uStar/nu))
+        dudz = (uT - uB)/dzP
+        nut = mixl**2*abs(dudz)
+        nutot = nu + nut
+        uT = tau_f(1)/(rho*nutot)*dzP + uB
+        u(1) = 0.5*(uT + uB)
+        do k = 2, nz - 1
+            dzP = zd(k)
+            dzT = (zd(k) + zd(k + 1))/2.0
+            dzB = (zd(k) + zd(k - 1))/2.0
+            wtt = 0.5*zd(k)/dzT
+            wtb = 0.5*zd(k + 1)/dzT
+            wbb = 0.5*zd(k)/dzB
+            wbt = 0.5*zd(k - 1)/dzB
+            uT = u(k + 1)*wtt + u(k)*wtb
+            uB = u(k - 1)*wbb + u(k)*wbt
             mixl = kapa*zc(k)*(1.0 - exp(-1.0/26.0*zc(k)*uStar/nu))
-            inSq = nu**2 + 4.0*mixl**2*tau_f(k)/rho
-            dudz = (-nu + sqrt(inSq))/(2.0*mixl**2)
-            uT = uB + dudz*zd(k)
+            dudz = (uT - uB)/dzP
+            nut = mixl**2*abs(dudz)
+            nutot = nu + nut
+            uT = tau_f(k)/(rho*nutot)*dzP + uB
             u(k) = 0.5*(uT + uB)
-            uB = uT
         end do
+        dzP = zd(nz)
+        dzB = (zd(nz) + zd(nz - 1))/2.0
+        wbb = 0.5*zd(nz)/dzB
+        wbt = 0.5*zd(nz - 1)/dzB
+        uT = u(nz)
+        uB = u(nz - 1)*wbb + u(nz)*wbt
+        mixl = kapa*zc(nz)*(1.0 - exp(-1.0/26.0*zc(nz)*uStar/nu))
+        dudz = (uT - uB)/dzP
+        nut = mixl**2*abs(dudz)
+        nutot = nu + nut
+        uT = tau_f(nz)/(rho*nutot)*dzP + uB
+        u(nz) = 0.5*(uT + uB)
+        !uB = 0.0
+        !do k = 1, nz
+        !    mixl = kapa*zc(k)*(1.0 - exp(-1.0/26.0*zc(k)*uStar/nu))
+        !    inSq = nu**2 + 4.0*mixl**2*tau_f(k)/rho
+        !    dudz = (-nu + sqrt(inSq))/(2.0*mixl**2)
+        !    uT = uB + dudz*zd(k)
+        !    u(k) = 0.5*(uT + uB)
+        !    uB = uT
+        !end do
 
         do k = 1, nz
-            buffer(1, k) = u(k)
-            buffer(2, k) = tau_p(k)
-            buffer(3, k) = tau_f(k)
-        end do
-
-        call MPI_BARRIER(comm, ierr)
-        call MPI_BCAST(buffer, 3*nz, MPI_D, 0, comm, ierr)
-        call handleError(ierr)
-        do k = 1, nz
-            u(k) = buffer(1, k)
-            tau_p(k) = buffer(2, k)
-            tau_f(k) = buffer(3, k)
             profile(k)%xVelocity = u(k)
             profile(k)%particleShearStress = tau_p(k)
             profile(k)%fluidShearStress = tau_f(k)
@@ -1024,7 +1059,7 @@ contains
                 end do
             end do
         end do
-        call MPI_BARRIER(comm, ierr)
+        !call MPI_BARRIER(comm, ierr)
         call MPI_ALLREDUCE(tempF, F, nz, MPI_D, MPI_SUM, comm, ierr)
         call MPI_ALLREDUCE(tempPfrac, pfrac, mx*my*nz, MPI_D, MPI_SUM, comm, ierr)
 
@@ -1037,6 +1072,8 @@ contains
             tau_p(k) = tau_p(k + 1) + F(k)/area
             tau_f(k) = rho*uStar**2 + tau_p(k)
         end do
+        tau_f(1) = rho*uStar**2
+        F = 0.0
 
         ! Calculate the velocity profile
         ! Forward elimination
@@ -1050,7 +1087,7 @@ contains
         dudz = (uT - uB)/dzP
         nut = mixl**2*abs(dudz)
         nutot = nu + nut
-        ap = nutot/(dzP*dzT) + 1.0/dt + 2.0*nutot/(dzP*dzP)
+        ap = nutot/(dzP*dzT) + 1.0/dt + 2.0*nutot/(dzP**2)
         at = -nutot/(dzP*dzT)
         Fx = F(1)/(area*dzP*rho*(1.0 - phi(1)))
         b = Fx + u(1)/dt !- tau_f(1)/(dzP*rho)
@@ -1102,9 +1139,8 @@ contains
             buffer(k + 2*nz) = tau_f(k)
         end do
 
-        call MPI_BARRIER(comm, ierr)
+        !call MPI_BARRIER(comm, ierr)
         call MPI_BCAST(buffer, 3*nz, MPI_D, 0, comm, ierr)
-        call handleError(ierr)
         do k = 1, nz
             u(k) = buffer(k)
             tau_p(k) = buffer(k + nz)
@@ -1185,7 +1221,7 @@ contains
                 close (13)
             end if
         end if
-        call MPI_BARRIER(comm, ierr)
+        !call MPI_BARRIER(comm, ierr)
     end subroutine outputField
 
 end module field_operations
@@ -1244,7 +1280,7 @@ contains
             call random_number(rand3)
             currentParticle%location(1) = xMax*rand1
             currentParticle%location(2) = yMax*rand2
-            currentParticle%location(3) = zMax*rand3*0.1 + initSurfElevation + 0.01
+            currentParticle%location(3) = zMax*rand3 + initSurfElevation
             currentParticle%velocity = 0.0
             currentParticle%diameter = valObeyCertainPDF(initDiameterDist)
             call determineParIJK(currentParticle)
@@ -1526,7 +1562,7 @@ contains
 
         ! Calculate particle-particle collision
         if (ifMidairCollision) then
-            allocate (globalN(mx, my, 100000))
+            allocate (globalN(mx, my, maxPNumInGrid))
             pNumInGrid = 0
             do n = 1, pNum
                 currentParticle = tempParticle(n)
@@ -2081,7 +2117,7 @@ contains
             end do
             call MPI_FILE_CLOSE(fh, ierr)
         end if
-        call MPI_BARRIER(comm, ierr)
+        !call MPI_BARRIER(comm, ierr)
     end subroutine outputParticle
 
 end module particle_operations
@@ -2197,6 +2233,7 @@ program main
             call outputParticle(iteration, time)
             call outputField(iteration, time)
             call outputSurface(iteration, time)
+            call MPI_BARRIER(comm, ierr)
         end if
     end do
     call freeMpiStructure
