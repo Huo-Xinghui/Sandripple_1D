@@ -27,7 +27,7 @@ def read_file(file_path):
 		return line
 
 # 读取多个文件内容, 并将其存储到一个字典中
-def read_data_file(folder_path, start_file, end_file, bed_elevation):
+def read_data_file(folder_path, start_file, end_file):
 	all_lines = []
 	time_step_data_dict: Dict[int, List[List[grid_node_data]]] = {}
 	for i in range(start_file, end_file+1):
@@ -53,7 +53,7 @@ def read_data_file(folder_path, start_file, end_file, bed_elevation):
 				current_grid_node = grid_node_data(
 					x=float(columns[0]),
 					y=float(columns[1]),
-					z=float(columns[2]) - bed_elevation,
+					z=float(columns[2]),
 					d=float(columns[3])
 				)
 				current_surface[current_j][current_i] = current_grid_node
@@ -80,7 +80,6 @@ def auto_correlation(data1):
 # 主程序
 if __name__ == "__main__":
 	# 定义常数
-	initial_bed = 0.05
 	nu = 1.51e-5
 	interval = 30
 	dt = 60 # 计算波速的时间间隔
@@ -108,16 +107,24 @@ if __name__ == "__main__":
 		5: "uStar055_250_0_2650_3600",
 		6: "uStar060_250_0_2650_3600",
 		7: "uStar065_250_0_2650_3600",
-		#8: "uStar045_200_0_2650_3600",
-		#9: "uStar045_250_1_2000_3600",
-		#10: "uStar045_250_1_3000_3600",
-		#11: "uStar045_250_1_4000_3600",
-		#12: "uStar045_250_2_2650_3600",
-		#13: "uStar045_250_3_2650_3600",
-		#14: "uStar045_300_0_2650_3600",
-		#15: "uStar045_350_0_2650_3600",
-		#16: "uStar045_400_0_2650_3600",
+		8: "uStar045_200_0_2650_3600",
+		9: "uStar045_250_1_2000_3600",
+		10: "uStar045_250_1_3000_3600",
+		11: "uStar045_250_1_4000_3600",
+		12: "uStar045_250_2_2650_3600",
+		13: "uStar045_250_3_2650_3600",
+		14: "uStar045_300_0_2650_3600",
+		15: "uStar045_350_0_2650_3600",
+		16: "uStar045_400_0_2650_3600",
 		17: "uStar040_150and350_0_2650_3600",
+		18: "uStar045_150and350_0_2650_3600",
+		19: "uStar050_150and350_0_2650_3600",
+		20: "uStar055_150and350_0_2650_3600",
+		21: "uStar060_150and350_0_2650_3600",
+		22: "uStar050_150and450_0_2650_3600",
+		23: "uStar050_150and550_0_2650_3600",
+		24: "uStar050_200and400_0_2650_3600",
+		25: "uStar050_250and350_0_2650_3600",
 	}
 	for i, folder_name in tqdm(case_dict.items(), desc="Processing", unit="case"):
 		parts = folder_name.split("_")
@@ -155,7 +162,7 @@ if __name__ == "__main__":
 		start_file_num = start // file_interval
 		end_file_num = real_end // file_interval
 		folder_path = f"{working_dir}/{folder_name}/Surface"
-		time_step_data = read_data_file(folder_path, start_file_num, end_file_num, initial_bed)
+		time_step_data = read_data_file(folder_path, start_file_num, end_file_num)
 		proflie_t = []
 		surface_profile_file = os.path.join(working_dir, f"{folder_name}/surfProfile.dat")
 		auto_corr_file = os.path.join(working_dir, f"{folder_name}/autoCorr.dat")
@@ -177,6 +184,8 @@ if __name__ == "__main__":
 				profile_x = np.array([node.x for node in surface[0]])
 				surface_z = np.array([[node.z for node in row] for row in surface])
 				profile_z = np.mean(surface_z, axis=0)
+				average_z = np.mean(profile_z)
+				profile_z = profile_z - average_z
 				time_step_profile[t] = profile_z
 				with open(surface_profile_file, 'a') as file:
 					file.write(f"x vs z at {t} with {len(profile_x)} points\n")
