@@ -7,7 +7,6 @@ import numpy as np
 from dataclasses import dataclass
 from typing import List
 from typing import Dict
-from scipy.signal import find_peaks
 
 @dataclass
 class file_data:
@@ -69,14 +68,15 @@ if __name__ == "__main__":
 	nu = 1.51e-5
 	interval = 30
 	# 控制参数
-	output_num = 0 # 出图类型：0为廓线，1为相关性，2为波长, 3为波高, 4为波速
+	output_num = 5 # 出图类型：0为床面廓线，1为相关性，2为波长, 3为波高, 4为波速, 5为床面粒径分布
 	start = 30 # 起始时间
 	end = 2400 # 结束时间
 	average_start = 30 # 开始计算平均值的时间
 	average_end = 900 # 结束计算平均值的时间
 	profile_offset = 2e-4 # 廓线图的纵向偏移
 	corr_offset = 1e-8 # 相关性图的纵向偏移
-	case_num = 21 # 算例号
+	diameter_offset = 2e-5 # 廓线图的纵向偏移
+	case_num = 30 # 算例号
 	case_num_dict = {
 		#0: 0,
 		#1: 1,
@@ -104,9 +104,14 @@ if __name__ == "__main__":
 		#23: 23,
 		#24: 24,
 		#25: 25,
+		26: 26,
+		27: 27,
+		28: 28,
+		29: 29,
+		30: 30,
 	}
 	# 定义文件路径
-	working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+	working_dir = "/home/ekalhxh/ripple/coll"
 	# 定义文件名字典
 	case_dict = {
 		0: "uStar030_250_0_2650_3600",
@@ -135,6 +140,11 @@ if __name__ == "__main__":
 		23: "uStar050_150and550_0_2650_3600",
 		24: "uStar050_200and400_0_2650_3600",
 		25: "uStar050_250and350_0_2650_3600",
+		26: "uStar050_300stdd5_0_2650_3600",
+		27: "uStar050_300stdd10_0_2650_3600",
+		28: "uStar050_300stdd20_0_2650_3600",
+		29: "uStar050_300stdd50_0_2650_3600",
+		30: "uStar050_300stdd100_0_2650_2774",
 	}
 	output_file_dict = {
 		0: "surfProfile.dat",
@@ -142,10 +152,11 @@ if __name__ == "__main__":
 		2: "surfTopology.dat",
 		3: "surfTopology.dat",
 		4: "surfTopology.dat",
+		5: "surfDiameter.dat",
 	}
 
 	output_file = output_file_dict[output_num]
-	if output_num == 0 or output_num == 1:
+	if output_num == 0 or output_num == 1 or output_num == 5:
 		folder_name = case_dict[case_num]
 		folder_path = f"{working_dir}/{folder_name}"
 		all_plot_data = read_data_file1(folder_path, output_file)
@@ -160,6 +171,8 @@ if __name__ == "__main__":
 				offset += profile_offset
 			elif output_num == 1:
 				offset += corr_offset
+			elif output_num == 5:
+				offset += diameter_offset
 			plt.plot(x, y, color='black', linewidth=0.5)  # 设置线的颜色为黑色，线的粗细为0.5
 
 		plt.xlabel('x')

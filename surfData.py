@@ -27,7 +27,7 @@ def read_file(file_path):
 		return line
 
 # 读取多个文件内容, 并将其存储到一个字典中
-def read_data_file(folder_path, start_file, end_file):
+def read_surface_file(folder_path, start_file, end_file):
 	all_lines = []
 	time_step_data_dict: Dict[int, List[List[grid_node_data]]] = {}
 	for i in range(start_file, end_file+1):
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 		start = 30
 		end = 3600
 	# 定义文件路径
-	working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+	working_dir = "/home/ekalhxh/ripple/coll"
 	cases_file = os.path.join(working_dir, "cases.dat")
 	if os.path.exists(cases_file):
 		os.remove(cases_file)
@@ -125,6 +125,11 @@ if __name__ == "__main__":
 		23: "uStar050_150and550_0_2650_3600",
 		24: "uStar050_200and400_0_2650_3600",
 		25: "uStar050_250and350_0_2650_3600",
+		26: "uStar050_300stdd5_0_2650_3600",
+		27: "uStar050_300stdd10_0_2650_3600",
+		28: "uStar050_300stdd20_0_2650_3600",
+		29: "uStar050_300stdd50_0_2650_3600",
+		30: "uStar050_300stdd100_0_2650_2774",
 	}
 	for i, folder_name in tqdm(case_dict.items(), desc="Processing", unit="case"):
 		parts = folder_name.split("_")
@@ -135,11 +140,18 @@ if __name__ == "__main__":
 		dia_name = parts[1]
 		if "and" in dia_name:
 			dia_name_list = dia_name.split("and")
+			dia1 = float(dia_name_list[0])/1e6
+			dia2 = float(dia_name_list[1])/1e6
+			dia =  (dia1 + dia2) / 2
+		elif "stdd" in dia_name:
+			dia_name_list = dia_name.split("stdd")
+			dia1 = float(dia_name_list[0])/1e6
+			dia2 = float(dia_name_list[1])/1e6
+			dia =  dia1
 		else:
-			dia_name_list = [dia_name, dia_name]
-		dia1 = float(dia_name_list[0])/1e6
-		dia2 = float(dia_name_list[1])/1e6
-		dia =  (dia1 + dia2) / 2
+			dia1 = float(dia_name)/1e6
+			dia2 = dia1
+			dia =  dia1
 		rho_name = parts[2]
 		if rho_name == "0":
 			rho = 1.263
@@ -162,13 +174,16 @@ if __name__ == "__main__":
 		start_file_num = start // file_interval
 		end_file_num = real_end // file_interval
 		folder_path = f"{working_dir}/{folder_name}/Surface"
-		time_step_data = read_data_file(folder_path, start_file_num, end_file_num)
+		time_step_data = read_surface_file(folder_path, start_file_num, end_file_num)
 		proflie_t = []
 		surface_profile_file = os.path.join(working_dir, f"{folder_name}/surfProfile.dat")
+		surface_diameter_file = os.path.join(working_dir, f"{folder_name}/surfDiameter.dat")
 		auto_corr_file = os.path.join(working_dir, f"{folder_name}/autoCorr.dat")
 		surface_topology_file = os.path.join(working_dir, f"{folder_name}/surfTopology.dat")
 		if os.path.exists(surface_profile_file):
 			os.remove(surface_profile_file)
+		if os.path.exists(surface_diameter_file):
+			os.remove(surface_diameter_file)
 		if os.path.exists(auto_corr_file):
 			os.remove(auto_corr_file)
 		if os.path.exists(surface_topology_file):
@@ -178,19 +193,27 @@ if __name__ == "__main__":
 		migration_t = []
 		time = []
 		time_step_profile: Dict[int, List[float]] = {}
+		time_step_profile_d: Dict[int, List[float]] = {}
 		lag = 0
 		for t, surface in time_step_data.items():
 			if t>=start and t<=end:
 				profile_x = np.array([node.x for node in surface[0]])
 				surface_z = np.array([[node.z for node in row] for row in surface])
+				surface_d = np.array([[node.d for node in row] for row in surface])
 				profile_z = np.mean(surface_z, axis=0)
+				profile_d = np.mean(surface_d, axis=0)
 				average_z = np.mean(profile_z)
 				profile_z = profile_z - average_z
 				time_step_profile[t] = profile_z
+				time_step_profile_d[t] = profile_d
 				with open(surface_profile_file, 'a') as file:
 					file.write(f"x vs z at {t} with {len(profile_x)} points\n")
 					for i in range(len(profile_x)):
 						file.write(f"{profile_x[i]} {profile_z[i]}\n")
+				with open(surface_diameter_file, 'a') as file:
+					file.write(f"x vs d at {t} with {len(profile_x)} points\n")
+					for i in range(len(profile_x)):
+						file.write(f"{profile_x[i]} {profile_d[i]}\n")
 				auto_corr_x = profile_x
 				auto_corr = np.correlate(profile_z, profile_z, mode='full')
 				auto_corr_z = auto_corr[len(auto_corr)//2:]
