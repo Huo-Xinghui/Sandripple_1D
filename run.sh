@@ -12,7 +12,7 @@ run_simulation() {
     local stdd=$7
     local output=$8
 
-    cd "/home/ekalhxh/ripple/$folder"
+    cd "/home/ekalhxh/ripple/coll/$folder"
     rm -f nohup.out
     # uStar
     line_number=57
@@ -40,9 +40,9 @@ run_simulation() {
     mpif90 -o "$output" "$file"
     nohup mpirun --bind-to none -np $nNodes "$output" &
 }
-run_simulation "uStar050_300and100_0_2650_3600" 0.50 3.0e-4 1.263 2650.0 3600.0 1.0e-4 "100.out"
-run_simulation "uStar050_300and50_0_2650_3600" 0.50 3.0e-4 1.263 2650.0 3600.0 5.0e-5 "50.out"
-run_simulation "uStar050_300and20_0_2650_3600" 0.50 3.0e-4 1.263 2650.0 3600.0 2.0e-5 "20.out"
-run_simulation "uStar050_300and10_0_2650_3600" 0.50 3.0e-4 1.263 2650.0 3600.0 1.0e-5 "10.out"
-run_simulation "uStar050_300and5_0_2650_3600" 0.50 3.0e-4 1.263 2650.0 3600.0 5.0e-6 "5.out"
-cd "/home/ekalhxh/ripple"
+run_simulation "uStar040_300stdd100_0_2650_3600" 0.40 3.0e-4 1.263 2650.0 3600.0 1.0e-4 "40.out"
+run_simulation "uStar045_300stdd100_0_2650_3600" 0.45 3.0e-4 1.263 2650.0 3600.0 1.0e-4 "45.out"
+run_simulation "uStar055_300stdd100_0_2650_3600" 0.55 3.0e-4 1.263 2650.0 3600.0 1.0e-4 "55.out"
+run_simulation "uStar060_300stdd100_0_2650_3600" 0.60 3.0e-4 1.263 2650.0 3600.0 1.0e-4 "60.out"
+#run_simulation "uStar050_300stdd100_0_2650_3600" 0.50 3.0e-4 1.263 2650.0 3600.0 5.0e-6 "5.out"
+cd "/home/ekalhxh/ripple/coll"

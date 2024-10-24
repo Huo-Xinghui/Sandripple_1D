@@ -93,7 +93,8 @@ if __name__ == "__main__":
 		start = 30
 		end = 3600
 	# 定义文件路径
-	working_dir = "/home/ekalhxh/ripple/coll"
+	#working_dir = "/home/ekalhxh/ripple/coll"
+	working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
 	cases_file = os.path.join(working_dir, "cases.dat")
 	if os.path.exists(cases_file):
 		os.remove(cases_file)

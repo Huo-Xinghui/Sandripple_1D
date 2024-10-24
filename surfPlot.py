@@ -68,7 +68,7 @@ if __name__ == "__main__":
 	nu = 1.51e-5
 	interval = 30
 	# 控制参数
-	output_num = 5 # 出图类型：0为床面廓线，1为相关性，2为波长, 3为波高, 4为波速, 5为床面粒径分布
+	output_num = 0 # 出图类型：0为床面廓线，1为相关性，2为波长, 3为波高, 4为波速, 5为床面粒径分布
 	start = 30 # 起始时间
 	end = 2400 # 结束时间
 	average_start = 30 # 开始计算平均值的时间
@@ -111,7 +111,8 @@ if __name__ == "__main__":
 		30: 30,
 	}
 	# 定义文件路径
-	working_dir = "/home/ekalhxh/ripple/coll"
+	#working_dir = "/home/ekalhxh/ripple/coll"
+	working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
 	# 定义文件名字典
 	case_dict = {
 		0: "uStar030_250_0_2650_3600",
