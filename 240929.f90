@@ -22,19 +22,20 @@ module public_val
     ! whichDiameterDist=0: npdf must >= 3, mu=dpa, sigma=dpStddDev, range:mu-3*sigma ~ mu+3*sigma
     ! whichDiameterDist=1: npdf must = 1, d=dpa
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
-    integer, parameter :: whichDiameterDist = 2
-    integer, parameter :: npdf = 2 ! bin num of particle distribution
+    integer, parameter :: whichDiameterDist = 0
+    integer, parameter :: npdf = 15 ! bin num of particle distribution
     integer, parameter :: pNumInit = 10 ! initial particle num
     integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
     integer, parameter :: maxNum = 100000 ! max particle num in one subdomain
     integer, parameter :: pNumInGridMax = maxNum/mxNode !/(my)
     integer, parameter :: pNumExchMax = maxNum/10
-    real(kind=dbPc), parameter :: dpa = 3.5e-4 ! average particle diameter
-    real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
+    real(kind=dbPc), parameter :: dpa = 3.0e-4 ! average particle diameter
+    real(kind=dbPc), parameter :: dpStddDev = 1.0e-4 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
-    real(kind=dbPc), parameter :: binWidth = 4.0*dpStddDev/npdf
-    real(kind=dbPc), parameter :: binStart = dpa - 2.0*dpStddDev
-    real(kind=dbPc), parameter :: binEnd = dpa + 2.0*dpStddDev
+    real(kind=dbPc), parameter :: dpStddDevNum = 3.0 ! num of standard deviation
+    real(kind=dbPc), parameter :: binWidth = 2.0*dpStddDevNum*dpStddDev/npdf
+    real(kind=dbPc), parameter :: binStart = dpa - dpStddDevNum*dpStddDev
+    real(kind=dbPc), parameter :: binEnd = dpa + dpStddDevNum*dpStddDev
     real(kind=dbPc), parameter :: resN = 0.9 ! normal restitution coefficient
     real(kind=dbPc), parameter :: resT = 0.0 ! tangential restitution coefficient
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density

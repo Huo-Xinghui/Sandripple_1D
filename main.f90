@@ -16,24 +16,24 @@ module public_parameter
 
     ! computational domain
 
-    real(kind=dbPc), parameter :: xMax = 1.0 ! x size
-    real(kind=dbPc), parameter :: yMax = 0.05 ! y size
+    real(kind=dbPc), parameter :: xMax = 0.5 ! x size
+    real(kind=dbPc), parameter :: yMax = 0.01 ! y size
     real(kind=dbPc), parameter :: zMax = 0.3 ! z size
     real(kind=dbPc), parameter :: area = xMax*yMax ! computational area
     integer, parameter :: nx = 500 ! x grid num
-    integer, parameter :: ny = 25 ! y grid num
-    integer, parameter :: nz = 60 ! z grid num
+    integer, parameter :: ny = 10 ! y grid num
+    integer, parameter :: nz = 150 ! z grid num
     integer, parameter :: nzUni = 30 ! z grid number above which zDiff becomes uniform
     real(kind=dbPc), parameter :: xDiff = xMax/nx
     real(kind=dbPc), parameter :: yDiff = yMax/ny
-    integer, parameter :: nNodes = 4 ! num of subdomain
+    integer, parameter :: nNodes = 10 ! num of subdomain
     integer, parameter :: mx = nx + 2 ! x grid num +2
     integer, parameter :: my = ny + 2 ! y grid num +2
 
     ! time
 
-    real(kind=dbPc), parameter :: dt = 1.0e-4 ! time step
-    real(kind=dbPc), parameter :: EndTime = 60.0 ! the time program ends
+    real(kind=dbPc), parameter :: dt = 5.0e-5 ! time step
+    real(kind=dbPc), parameter :: EndTime = 1200.0 ! the time program ends
 
     ! fluid
 
@@ -65,20 +65,19 @@ module public_parameter
     real(kind=dbPc), parameter :: binWidth = 6.0*dpStddDev/npdf
     real(kind=dbPc), parameter :: binStart = dpa - 3.0*dpStddDev
     real(kind=dbPc), parameter :: binEnd = dpa + 3.0*dpStddDev
-    real(kind=dbPc), parameter :: repostAngle = 30.0 ! repose angle
+    real(kind=dbPc), parameter :: repostAngle = 35.0 ! repose angle
     real(kind=dbPc), parameter :: tanRepostAngle = tan(repostAngle*pi/180.0)
     real(kind=dbPc), parameter :: resCoeffN = 0.9 ! normal restitution coefficient
     real(kind=dbPc), parameter :: resCoeffT = 0.0 ! tangential restitution coefficient
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
-    real(kind=dbPc), parameter :: nkl = 1.0 ! one particle stands for x particles
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
 
     ! bed surface
 
     logical, parameter :: ifPreformedSurface = .false.
     real(kind=dbPc), parameter :: initSurfElevation = 0.05 ! initial average bed height
-    real(kind=dbPc), parameter :: initAmp = 0.01 !8.0*dpa ! amplitude of prerippled surface
-    real(kind=dbPc), parameter :: initOmg = 4.0*pi ! wave number of prerippled surface
+    real(kind=dbPc), parameter :: initAmp = 0.0005 !8.0*dpa ! amplitude of prerippled surface
+    real(kind=dbPc), parameter :: initOmg = 16.0*pi ! wave number of prerippled surface
     real(kind=dbPc), parameter :: wavl = 2.0*pi/initOmg ! wavelength of prerippled surface
     real(kind=dbPc), parameter :: z0 = dpa/30.0 ! roughness height
     real(kind=dbPc), parameter :: blockHeight = 6.0*dpa ! bin height
@@ -86,13 +85,14 @@ module public_parameter
 
     ! output after every x steps
 
-    integer, parameter :: shortInterval = 100
-    integer, parameter :: longInterval = 10000
+    integer, parameter :: shortInterval = 1000
+    integer, parameter :: middleInterval = 20000
+    integer, parameter :: longInterval = 40000
     integer, parameter :: intervalField = longInterval
-    integer, parameter :: intervalProfile = longInterval
+    integer, parameter :: intervalProfile = middleInterval
     integer, parameter :: intervalMonitor = shortInterval
     integer, parameter :: intervalParticle = longInterval
-    integer, parameter :: intervalSurface = longInterval
+    integer, parameter :: intervalSurface = middleInterval
 
     ! file
 
@@ -620,18 +620,18 @@ contains
             bin(mx, j, :) = bin(2, j, :)
         end do
 
-        do j = 1, my
-            do i = 1, mx
-                if (whichDiameterDist /= 1) then
+        if (whichDiameterDist /= 1) then
+            do j = 1, my
+                do i = 1, mx
                     currentBlock = sum(bin(i, j, :))
                     patchBlock = initBlock - currentBlock
                     do n = 1, npdf
                         patchBin(n) = patchBlock*initDiameterDist(n)
-                        bin(i, j, n) = (bin(i, j, n) + patchBin(n))/initBlock
+                        bin(i, j, n) = bin(i, j, n) + patchBin(n)
                     end do
-                end if
+                end do
             end do
-        end do
+        end if
 
         do i = 1, mx
             do j = 1, my
@@ -984,8 +984,6 @@ contains
             tau_p(k) = tau_p(k + 1) + F(k)/area
             tau_f(k) = rho*uStar**2 + tau_p(k)
         end do
-        tau_f(1) = rho*uStar**2
-        F = 0.0
 
         ! Calculate the velocity profile
         ! Forward elimination
@@ -1257,7 +1255,7 @@ contains
         use vector_operations
         implicit none
 
-        integer :: n, nadd, n2
+        integer :: n, nadd
         integer :: totalEjectNum
         integer :: i, j, k
         integer :: ip, jp
@@ -1268,7 +1266,7 @@ contains
         integer :: closestIP, closestJP
         integer :: whichBin
         integer :: changedIP, changedJP
-        integer :: localN, globalN2
+        integer :: localN, globalN1, globalN2
         integer, dimension(mx, my) :: pNumInGrid
         integer, allocatable, dimension(:, :, :) :: globalN
         real(kind=dbPc) :: estimateAltitude
@@ -1281,6 +1279,7 @@ contains
         real(kind=dbPc) :: m1, m2
         real(kind=dbPc) :: E1, E2, Ed2, Eeff, E2Bar
         real(kind=dbPc) :: tau_s, tau_fw
+        real(kind=dbPc) :: erfcRes
         real(kind=dbPc) :: ejectVolume, rollVolume
         real(kind=dbPc) :: distance12, contactDistance
         real(kind=dbPc) :: eta1, eta2, alpha1, alpha2, beta1, beta2
@@ -1288,6 +1287,7 @@ contains
         real(kind=dbPc) :: resCoeffTMidAir
         real(kind=dbPc), dimension(4) :: adjacentSurfGridZ
         real(kind=dbPc), dimension(3) :: vertex1, vertex2, vertex3
+        real(kind=dbPc), dimension(3) :: vector1, vector2, vector3
         real(kind=dbPc), dimension(3) :: vector12, vectorV2
         real(kind=dbPc), dimension(3) :: surfaceNormalVector
         real(kind=dbPc), dimension(3) :: particleProjection
@@ -1344,16 +1344,16 @@ contains
             currentParticle%altitude = currentParticle%location(3) - particleProjection(3)
 
             ! Process the impact event
-            impactCoordinateZ = surfaceNormalVector
-            impactVelocity(3) = dotProduct(currentParticle%velocity, impactCoordinateZ)
-            if (currentParticle%altitude < 0.5*currentParticle%diameter .and. impactVelocity(3) < 0.0) then
+            if (currentParticle%altitude <= 0.0 .and. currentParticle%velocity(3) < 0.0) then
                 currentParticle%survivalTime = 0.0
                 currentParticle%collisionCount = 0
                 ! Change to local coordinate system
+                impactCoordinateZ = surfaceNormalVector
                 impactCoordinateY = unitVector(crossProduct(impactCoordinateZ, currentParticle%velocity))
                 impactCoordinateX = unitVector(crossProduct(impactCoordinateY, impactCoordinateZ))
                 impactVelocity(1) = dotProduct(currentParticle%velocity, impactCoordinateX)
                 impactVelocity(2) = dotProduct(currentParticle%velocity, impactCoordinateY)
+                impactVelocity(3) = dotProduct(currentParticle%velocity, impactCoordinateZ)
 
                 ! Find the closest vertex to the particle
                 call findClosestVertex(particleProjection, ip, jp, vertex1, vertex2, vertex3, &
@@ -1372,9 +1372,9 @@ contains
                 reboundVelocity(1) = v2*cos(theta2)
                 reboundVelocity(2) = 0.0
                 reboundVelocity(3) = v2*sin(theta2)
-                E2 = (m2*reboundVelocity(3)**2)*0.5
+                E2 = 0.5*m2*reboundVelocity(3)**2
                 Ed2 = m2*9.8*d2
-                if (theta2 <= 0.0 .or. E2 < Ed2 .or. eBar < 0.0) then ! no rebound
+                if (theta2 <= 0.0 .or. E2 < Ed2 .or. eBar <= 0.0) then ! no rebound
                     call findChangedGridNode(1, closestIP, closestJP, changedIP, changedJP)
                     surfGrid(changedIP, changedJP)%zChange = surfGrid(changedIP, changedJP)%zChange &
                                                              + (pi*d1**3)/6.0
@@ -1387,12 +1387,13 @@ contains
                     end if
                 else ! rebound
                     currentTotalNum = currentTotalNum + 1
-                    currentParticle%altitude = 0.5*d1
+                    currentParticle%altitude = 0.0
                     currentParticle%maxAltitude = currentParticle%altitude
-                    currentParticle%location(3) = particleProjection(3) + currentParticle%altitude
-                    currentParticle%velocity(1) = dotProduct(reboundVelocity, impactCoordinateX)
-                    currentParticle%velocity(2) = dotProduct(reboundVelocity, impactCoordinateY)
-                    currentParticle%velocity(3) = dotProduct(reboundVelocity, impactCoordinateZ)
+                    currentParticle%location(3) = particleProjection(3) !+ currentParticle%altitude
+                    vector1 = reboundVelocity(1)*impactCoordinateX
+                    vector2 = reboundVelocity(2)*impactCoordinateY
+                    vector3 = reboundVelocity(3)*impactCoordinateZ
+                    currentParticle%velocity = vector1 + vector2 + vector3
                     call determineParIJK(currentParticle)
                     tempParticle(currentTotalNum) = currentParticle
                 end if
@@ -1406,12 +1407,13 @@ contains
                 else
                     Eeff = Ed2*(1.0 - tau_fw/tau_s)
                 end if
-                E1 = (m1*v1**2)/2.0
-                lambda = 2.0*log((1.0 - eBar**2)*E1/Ed2)
+                E1 = 0.5*m1*v1**2
+                lambda = 2.0*log((1.0 - eBar**2)*E1/Eeff)
                 sigma = sqrt(lambda)*log(2.0)
                 mu = log((1.0 - eBar**2)*E1) - lambda*log(2.0)
-                E2Bar = Ed2*((1.0 - eBar**2)*E1/Ed2)**(1.0 - (2.0 - log(2.0))*log(2.0))
-                ejectNum = floor(0.06*((1.0 - eBar**2)*E1/(2.0*E2Bar))*erfc((log(Eeff) - mu)/(sqrt(2.0)*sigma)))
+                E2Bar = Eeff*((1.0 - eBar**2)*E1/Eeff)**(1.0 - (2.0 - log(2.0))*log(2.0))
+                erfcRes = erfc((log(Eeff) - mu)/(sqrt(2.0)*sigma))
+                ejectNum = int(0.06*((1.0 - eBar**2)*E1/(2.0*E2Bar))*erfcRes)
                 ! process eject particles and surface grid change
                 if (ejectNum > 0) then
                     ejectVolume = 0.0
@@ -1428,18 +1430,27 @@ contains
                             call random_number(rand2)
                             rand3 = 1.0 - rand1 - rand2
                         end do
+                        !call random_number(rand1)
+                        !call random_number(rand2)
+                        !call random_number(rand3)
+                        !vector1 = 0.0*impactCoordinateX
+                        !vector2 = 0.0*impactCoordinateY
+                        !vector3 = v2*impactCoordinateZ
                         totalEjectNum = totalEjectNum + 1
                         addParticle(totalEjectNum)%indices(1) = ip
                         addParticle(totalEjectNum)%indices(2) = jp
                         addParticle(totalEjectNum)%indices(3) = 1
                         addParticle(totalEjectNum)%diameter = d2
-                        addParticle(totalEjectNum)%altitude = 0.0 !v2*dt
+                        addParticle(totalEjectNum)%altitude = 0.0
                         addParticle(totalEjectNum)%maxAltitude = 0.0
                         addParticle(totalEjectNum)%survivalTime = 0.0
                         addParticle(totalEjectNum)%collisionCount = 0
+                        !addParticle(totalEjectNum)%location(1) = particleProjection(1) + vector3(1)*dt*rand1
                         addParticle(totalEjectNum)%location(1) = rand1*vertex1(1) + rand2*vertex2(1) + rand3*vertex3(1)
+                        !addParticle(totalEjectNum)%location(2) = particleProjection(2) + vector3(2)*dt*rand2
                         addParticle(totalEjectNum)%location(2) = rand1*vertex1(2) + rand2*vertex2(2) + rand3*vertex3(2)
-                        addParticle(totalEjectNum)%location(3) = rand1*vertex1(3) + rand2*vertex2(3) + rand3*vertex3(3) !+ v2*dt
+                        !addParticle(totalEjectNum)%location(3) = particleProjection(3) + vector3(3)*dt*rand3
+                        addParticle(totalEjectNum)%location(3) = rand1*vertex1(3) + rand2*vertex2(3) + rand3*vertex3(3)
                         addParticle(totalEjectNum)%velocity(1) = 0.0
                         addParticle(totalEjectNum)%velocity(2) = 0.0
                         addParticle(totalEjectNum)%velocity(3) = v2
@@ -1452,12 +1463,11 @@ contains
                                 surfGrid(closestIP, closestJP)%binVolumeChange(whichBin) - (pi*d2**3)/6.0
                         end if
                     end do
-                    surfGrid(closestIP, closestJP)%zChange = surfGrid(closestIP, closestJP)%zChange &
-                                                             - ejectVolume
+                    surfGrid(closestIP, closestJP)%zChange = surfGrid(closestIP, closestJP)%zChange - ejectVolume
                     ! Process particle roll due to avalanche
                     call findChangedGridNode(2, closestIP, closestJP, changedIP, changedJP)
-                    rollVolume = 0.0
                     if (closestIP /= changedIP .or. closestJP /= changedJP) then
+                        rollVolume = 0.0
                         do while (rollVolume < ejectVolume)
                             d2 = valObeyCertainPDF(surfGrid(changedIP, changedJP)%diameterDistribution)
                             rollVolume = rollVolume + (pi*d2**3)/6.0
@@ -1488,21 +1498,21 @@ contains
         if (ifMidairCollision) then
             allocate (globalN(mx, my, maxPNumInGrid))
             pNumInGrid = 0
-            do n = 1, pNum
-                currentParticle = tempParticle(n)
+            do globalN1 = 1, pNum
+                currentParticle = tempParticle(globalN1)
                 i = currentParticle%indices(1)
                 j = currentParticle%indices(2)
                 pNumInGrid(i, j) = pNumInGrid(i, j) + 1
                 localN = pNumInGrid(i, j)
-                globalN(i, j, localN) = n
+                globalN(i, j, localN) = globalN1
                 if (LocalN < 2) cycle
-                do n2 = 1, localN - 1
-                    globalN2 = globalN(i, j, n2)
+                do n = 1, localN - 1
+                    globalN2 = globalN(i, j, n)
                     currentParticle2 = tempParticle(globalN2)
                     vector12 = currentParticle2%location - currentParticle%location
                     distance12 = vectorMagnitude(vector12)
                     contactDistance = 0.5*(currentParticle%diameter + currentParticle2%diameter)
-                    if (distance12 >= contactDistance .or. distance12 < 1.0e-6) cycle
+                    if (distance12 >= contactDistance .or. distance12 <= 0.0) cycle
                     vector12 = unitVector(vector12)
                     relativeV12 = currentParticle%velocity - currentParticle2%velocity
                     relativeV12Normal = dotProduct(vector12, relativeV12)
@@ -1515,15 +1525,14 @@ contains
                     resCoeffTMidAir = max(0.0, 1.0 - 0.4*(1.0 + resCoeffN)/(2.0/7.0)*relativeV12Normal/relativeV12Tangent)
                     beta1 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta1)
                     beta2 = (2.0/7.0)*(1.0 - resCoeffTMidAir)/(1.0 + eta2)
-                    tempParticle(n)%collisionCount = tempParticle(n)%collisionCount + 1
-                    tempParticle(n)%velocity = currentParticle%velocity - alpha1*relativeV12Normal*vector12 &
-                                               - beta1*(vector12 - relativeV12Normal*vector12)
+                    tempParticle(globalN1)%collisionCount = tempParticle(globalN1)%collisionCount + 1
+                    tempParticle(globalN1)%velocity = currentParticle%velocity - alpha1*relativeV12Normal*vector12 &
+                                                      - beta1*(vector12 - relativeV12Normal*vector12)
                     tempParticle(globalN2)%collisionCount = tempParticle(globalN2)%collisionCount + 1
                     tempParticle(globalN2)%velocity = currentParticle2%velocity + alpha2*relativeV12Normal*vector12 &
                                                       + beta2*(vector12 - relativeV12Normal*vector12)
                     vectorV2 = unitVector(tempParticle(globalN2)%velocity)
-                    tempParticle(globalN2)%location = currentParticle2%location + (contactDistance - distance12)*vectorV2 + &
-                                                      tempParticle(globalN2)%velocity*dt
+                    tempParticle(globalN2)%location = currentParticle2%location + (contactDistance - distance12)*vectorV2
                     exit
                 end do
             end do
@@ -1749,7 +1758,10 @@ contains
             pointY = max(pointY, 0.0)
             pT2T1 = gama*(theta1 + pointX)/theta1*log(2.0*theta1/gama/(theta1 + pointX)**2)
             if (pointY <= pT2T1 .or. iterateNum > 10000) then
-                theta2 = pointX
+                theta2 = pointX + theta1
+                if (iterateNum > 10000) then
+                    write (*, *) 'Warning: Iteration number exceeds 10000 in calculateReboundPara'
+                end if
                 exit
             end if
         end do
@@ -2164,14 +2176,14 @@ program main
             call calculateParColl
             call calculateParticleMovement
             call reallocateParticle
-            call calculateFluidField_St
-            call updateSurfaceGrid
-            call updateFieldGrid
-            call outputParticle(iteration, time)
-            call outputField(iteration, time)
-            call outputSurface(iteration, time)
-            call MPI_BARRIER(comm, ierr)
         end if
+        call calculateFluidField_St
+        call updateSurfaceGrid
+        call updateFieldGrid
+        call outputParticle(iteration, time)
+        call outputField(iteration, time)
+        call outputSurface(iteration, time)
+        call MPI_BARRIER(comm, ierr)
     end do
 
     call MPI_FINALIZE(ierr)

@@ -4,12 +4,12 @@ module public_val
     integer, parameter :: dbPc = 8 !selected_real_kind(15, 307)
     real(kind=dbPc), parameter :: pi = 3.14159265358979323846
     ! computational domain
-    real(kind=dbPc), parameter :: xMax = 1.0 ! x size
-    real(kind=dbPc), parameter :: yMax = 0.05 ! y sizw
+    real(kind=dbPc), parameter :: xMax = 0.5 ! x size
+    real(kind=dbPc), parameter :: yMax = 0.4 ! y sizw
     real(kind=dbPc), parameter :: zMax = 0.3 ! z size
     real(kind=dbPc), parameter :: area = xMax*yMax
     integer, parameter :: mx = 502 ! x grid num +2
-    integer, parameter :: my = 27 ! y grid num +2
+    integer, parameter :: my = 402 ! y grid num +2
     integer, parameter :: mz = 150 ! z grid num
     integer, parameter :: mzUni = 30 ! z grid number above which zDiff becomes uniform
     real(kind=dbPc), parameter :: xDiff = xMax/(mx - 2)
@@ -22,52 +22,56 @@ module public_val
     ! whichDiameterDist=0: npdf must >= 3, mu=dpa, sigma=dpStddDev, range:mu-3*sigma ~ mu+3*sigma
     ! whichDiameterDist=1: npdf must = 1, d=dpa
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
-    integer, parameter :: whichDiameterDist = 0
-    integer, parameter :: npdf = 11 ! bin num of particle distribution
+    integer, parameter :: whichDiameterDist = 1
+    integer, parameter :: npdf = 1 ! bin num of particle distribution
     integer, parameter :: pNumInit = 10 ! initial particle num
     integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
     integer, parameter :: maxNum = 100000 ! max particle num in one subdomain
     integer, parameter :: pNumInGridMax = maxNum/mxNode !/(my)
     integer, parameter :: pNumExchMax = maxNum/10
-    real(kind=dbPc), parameter :: dpa = 2.5e-4 ! average particle diameter
-    real(kind=dbPc), parameter :: dpStddDev = 8.0e-5 ! particle diameter standard deviation
+    real(kind=dbPc), parameter :: dpa = 3.0e-4 ! average particle diameter
+    real(kind=dbPc), parameter :: dpStddDev = 1.0e-4 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
-    real(kind=dbPc), parameter :: binWidth = 6.0*dpStddDev/npdf
-    real(kind=dbPc), parameter :: binStart = dpa - 3.0*dpStddDev
-    real(kind=dbPc), parameter :: binEnd = dpa + 3.0*dpStddDev
+    real(kind=dbPc), parameter :: dpStddDevNum = 3.0 ! num of standard deviation
+    real(kind=dbPc), parameter :: binWidth = 2.0*dpStddDevNum*dpStddDev/npdf
+    real(kind=dbPc), parameter :: binStart = dpa - dpStddDevNum*dpStddDev
+    real(kind=dbPc), parameter :: binEnd = dpa + dpStddDevNum*dpStddDev
     real(kind=dbPc), parameter :: resN = 0.9 ! normal restitution coefficient
     real(kind=dbPc), parameter :: resT = 0.0 ! tangential restitution coefficient
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
     ! bed surface
     logical, parameter :: predefineSurface = .false.
-    real(kind=dbPc), parameter :: initSurfElevation = 2.0e-2 ! initial bed height
-    real(kind=dbPc), parameter :: amp = 0.0005 ! amplitude of the predefined surface
+    real(kind=dbPc), parameter :: initSurfElevation = 4.0e-2 ! initial bed height
+    real(kind=dbPc), parameter :: amp = 0.005 ! amplitude of the predefined surface
     real(kind=dbPc), parameter :: omg = 32.0*pi ! wave number (friquence) of the predefined surface
     real(kind=dbPc), parameter :: z0 = dpa/30.0 ! roughness height
     real(kind=dbPc), parameter :: repostAngle = 35.0 ! repost angle
     real(kind=dbPc), parameter :: tanRepostAngle = tan(repostAngle/180.0*pi)
-    real(kind=dbPc), parameter :: blockHeight = dpa*5.0
-    real(kind=dbPc), parameter :: initBlock = xDiff*yDiff*blockHeight
+    real(kind=dbPc), parameter :: chunkHeight = 5.0e-4 ! height of sand bed chunk
+    integer, parameter :: zChkNum = floor(initSurfElevation/chunkHeight)*2 ! num of sand bed chunks in z direction
+    real(kind=dbPc), parameter :: chunkVol = xDiff*yDiff*chunkHeight*por
+    real(kind=dbPc), parameter :: blockHeight = dpa*4.0 ! height of the block, must>chunkHeight
+    real(kind=dbPc), parameter :: blockVol = xDiff*yDiff*blockHeight*por
     ! fluid
-    real(kind=dbPc), parameter :: uStar = 0.5 ! fractional velocity
+    real(kind=dbPc), parameter :: uStar = 0.50 ! fractional velocity
     real(kind=dbPc), parameter :: rho = 1.263 ! fluid density
-    real(kind=dbPc), parameter :: nu = 1.49e-5 ! kinetic viscosity
+    real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.4 ! von Kaman's constant
     real(kind=dbPc), parameter :: zDiffMin = nu/uStar ! smallest z grid size
-    real(kind=dbPc), parameter :: relax = 1.0 ! relaxation factor
     ! iteration
     integer, parameter :: parStart = 1 ! Iteration num when the particle calculation starts
     integer, parameter :: oneSecond = 20000
-    integer, parameter :: intervalField = oneSecond*5
-    integer, parameter :: intervalProfile = oneSecond
-    integer, parameter :: intervalMonitor = oneSecond/10
-    integer, parameter :: intervalParticle = oneSecond*10
-    integer, parameter :: intervalSurface = oneSecond*5
-    integer, parameter :: intervalStatistics = oneSecond*5
-    integer, parameter :: intervalCreateFile = oneSecond*20
+    integer, parameter :: intervalField = oneSecond*120
+    integer, parameter :: intervalProfile = oneSecond*60
+    integer, parameter :: intervalMonitor = oneSecond
+    integer, parameter :: intervalParticle = oneSecond*60
+    integer, parameter :: intervalSurface = oneSecond*60
+    integer, parameter :: intervalInside = oneSecond*120
+    integer, parameter :: intervalStatistics = oneSecond*60
+    integer, parameter :: intervalCreateFile = oneSecond*240
     real(kind=dbPc), parameter :: dt = 5.0e-5 ! time step
-    real(kind=dbPc), parameter :: endTime = 1200.0 ! The time that the simulation lasts
+    real(kind=dbPc), parameter :: endTime = 2400.0 ! The time that the simulation lasts
 
     ! variables
     ! MPI
@@ -79,8 +83,6 @@ module public_val
     integer :: sliceType
     integer :: edgeType1, edgeType2
     integer, dimension(2) :: neighbor
-    real(kind=dbPc), dimension(my) :: zChangeEESend
-    real(kind=dbPc), dimension(my*npdf) :: binChangeEESend, binChangeEERecv
     ! Fluid field
     real(kind=dbPc), dimension(mxNode) :: x
     real(kind=dbPc), dimension(my) :: y
@@ -101,18 +103,21 @@ module public_val
     real(kind=dbPc), dimension(mz) :: F_pNode
     ! Particle bed
     integer, dimension(mxNode, my) :: rollTo, rollFrom
-    real(kind=dbPc), dimension(mxNode) :: xsf
+    integer, dimension(mxNode, my) :: kSurf
+    real(kind=dbPc), dimension(mxNode + 1) :: xsf
     real(kind=dbPc), dimension(my) :: ysf
-    real(kind=dbPc), dimension(mxNode, my) :: zsf
-    real(kind=dbPc), dimension(mxNode, my) :: dsf
+    real(kind=dbPc), dimension(mxNode + 1, my) :: zsf
+    real(kind=dbPc), dimension(mxNode + 1, my) :: dsf
     real(kind=dbPc), dimension(npdf) :: initDiameterDist
-    real(kind=dbPc), dimension(mxNode, my, npdf) :: hist
-    real(kind=dbPc), dimension(mxNode, my) :: zChange
-    real(kind=dbPc), dimension(mxNode, my, npdf) :: binChange
+    real(kind=dbPc), dimension(mxNode + 1, my, npdf) :: hist
+    real(kind=dbPc), dimension(mxNode + 1, my, npdf) :: binChange
+    real(kind=dbPc), dimension(zChkNum) :: zChk
+    real(kind=dbPc), dimension(mxNode, my) :: surfChkVol
+    real(kind=dbPc), dimension(mxNode, my, zChkNum) :: chunkDia
+    real(kind=dbPc), dimension(mxNode, my, zChkNum, npdf) :: chunkHist
     ! particle
     integer :: pNum
     integer, dimension(maxNum, 3) :: pIndex
-    integer, dimension(maxNum) :: collCount
     real(kind=dbPc) :: xflux, zflux
     real(kind=dbPc), dimension(maxNum) :: xp, yp, zp
     real(kind=dbPc), dimension(maxNum) :: up, vp, wp
@@ -121,6 +126,7 @@ module public_val
     real(kind=dbPc), dimension(maxNum) :: maxhp
     real(kind=dbPc), dimension(maxNum) :: survTime
     real(kind=dbPc), dimension(maxNum) :: survLength
+    real(kind=dbPc), dimension(maxNum) :: collCount
     real(kind=dbPc), dimension(mz) :: xfluxPf
     real(kind=dbPc), dimension(mz) :: zfluxPf
     ! iteration
@@ -194,6 +200,7 @@ contains
         !
         call random_number(rand)
         cumulativeProb = 0.0
+        val = binEnd - 0.5*binWidth
         do i = 1, npdf
             cumulativeProb = cumulativeProb + histogram(i)
             if (rand <= cumulativeProb) then
@@ -527,20 +534,19 @@ subroutine generateSurfGrid
     use public_val
     implicit none
     include "mpif.h"
-    integer :: i, j
+    integer :: i, j, k
     integer :: ierr
     integer :: status(MPI_STATUS_SIZE)
 
-    zsf = initSurfElevation
     if (myID == 0) then
         xsf(1) = -xDiff
-        do i = 2, mxNode
+        do i = 2, mxNode + 1
             xsf(i) = xsf(i - 1) + xDiff
         end do
         call MPI_SEND(xsf(mxNode - 1), 1, realtype, neighbor(2), 3, comm, ierr)
     else
         call MPI_RECV(xsf(1), 1, realtype, neighbor(1), 3, comm, status, ierr)
-        do i = 2, mxNode
+        do i = 2, mxNode + 1
             xsf(i) = xsf(i - 1) + xDiff
         end do
         call MPI_SEND(xsf(mxNode - 1), 1, realtype, neighbor(2), 3, comm, ierr)
@@ -549,13 +555,16 @@ subroutine generateSurfGrid
     do j = 2, my
         ysf(j) = ysf(j - 1) + yDiff
     end do
+    do k = 1, zChkNum
+        zChk(k) = k*0.5*chunkHeight
+    end do
 end subroutine generateSurfGrid
 
 subroutine initializeSurface
     use public_val
     use math_operations
     implicit none
-    integer :: i, j, n
+    integer :: i, j, k, kk, n
 
     ! Initialize the diameter distribution
     select case (whichDiameterDist)
@@ -583,14 +592,30 @@ subroutine initializeSurface
         end if
     end select
     ! Initialize the particle bed
+    zsf = initSurfElevation
     do j = 1, my
-        do i = 1, mxNode
+        do i = 1, mxNode + 1
             if (predefineSurface) then
                 zsf(i, j) = amp*sin(omg*xsf(i)) + initSurfElevation
             end if
             dsf(i, j) = dpa
             do n = 1, npdf
                 hist(i, j, n) = initDiameterDist(n)
+            end do
+        end do
+    end do
+    chunkDia = 0.0
+    chunkHist = 0.0
+    do j = 1, my
+        do i = 1, mxNode
+            kk = floor(zsf(i, j)/chunkHeight) + 1
+            kSurf(i, j) = kk
+            surfChkVol(i, j) = (zsf(i, j) - (kk - 1)*chunkHeight)*xDiff*yDiff*por
+            do k = 1, kk
+                chunkDia(i, j, k) = dsf(i, j)
+                do n = 1, npdf
+                    chunkHist(i, j, k, n) = hist(i, j, n)
+                end do
             end do
         end do
     end do
@@ -676,8 +701,8 @@ subroutine initializeParticle
     integer :: n
     real(kind=dbPc) :: rand1, rand2, rand3
 
-    if (binStart < 0.0) then
-        print *, 'Error: binStart must be greater than or equal to 0.0'
+    if (binStart + 0.5*binWidth < 0.0) then
+        print *, 'Error: particle diameter must be greater than or equal to 0'
         stop
     end if
     pNum = pNumInit
@@ -694,7 +719,7 @@ subroutine initializeParticle
         vp(n) = 0.0
         wp(n) = 0.0
         dp(n) = valObeyCertainPDF(initDiameterDist)
-        collCount(n) = 0
+        collCount(n) = 0.0
         survTime(n) = 0.0
         survLength(n) = 0.0
     end do
@@ -732,22 +757,22 @@ subroutine defineExchangeType
     use public_val
     implicit none
     include "mpif.h"
-    integer dataLength, tempType, ierr
+    integer dataLength, tempType1, tempType2, ierr
     ! sliceType: i=const planes
     ! datatype for i=const,k=const line
-    call MPI_TYPE_VECTOR(my, 1, mxNode, realtype, tempType, ierr)
-    call MPI_TYPE_COMMIT(tempType, ierr)
+    call MPI_TYPE_VECTOR(my, 1, mxNode, realtype, tempType1, ierr)
+    call MPI_TYPE_COMMIT(tempType1, ierr)
     ! datatype for i=const plane
     call MPI_TYPE_EXTENT(realtype, dataLength, ierr)
-    call MPI_TYPE_HVECTOR(mz, 1, mxNode*my*dataLength, tempType, sliceType, ierr)
+    call MPI_TYPE_HVECTOR(mz, 1, mxNode*my*dataLength, tempType1, sliceType, ierr)
     call MPI_TYPE_COMMIT(sliceType, ierr)
     ! datatype for i=const line
-    call MPI_TYPE_VECTOR(my, 1, mxNode, realtype, edgeType1, ierr)
+    call MPI_TYPE_VECTOR(my, 1, mxNode + 1, realtype, edgeType1, ierr)
     call MPI_TYPE_COMMIT(edgeType1, ierr)
 
-    call MPI_TYPE_VECTOR(my, 1, mxNode, realtype, tempType, ierr)
-    call MPI_TYPE_COMMIT(tempType, ierr)
-    call MPI_TYPE_HVECTOR(npdf, 1, mxNode*my*dataLength, tempType, edgeType2, ierr)
+    call MPI_TYPE_VECTOR(my, 1, mxNode + 1, realtype, tempType2, ierr)
+    call MPI_TYPE_COMMIT(tempType2, ierr)
+    call MPI_TYPE_HVECTOR(npdf, 1, (mxNode + 1)*my*dataLength, tempType2, edgeType2, ierr)
     call MPI_TYPE_COMMIT(edgeType2, ierr)
 
 end subroutine defineExchangeType
@@ -767,6 +792,8 @@ subroutine generateOutputFile
         call system(trim(adjustl(bashCmd)))
         bashCmd = 'rm -rf Statistics'
         call system(trim(adjustl(bashCmd)))
+        bashCmd = 'rm -rf Inside'
+        call system(trim(adjustl(bashCmd)))
 
         bashCmd = 'mkdir Particle'
         call system(trim(adjustl(bashCmd)))
@@ -775,6 +802,8 @@ subroutine generateOutputFile
         bashCmd = 'mkdir Surface'
         call system(trim(adjustl(bashCmd)))
         bashCmd = 'mkdir Statistics'
+        call system(trim(adjustl(bashCmd)))
+        bashCmd = 'mkdir Inside'
         call system(trim(adjustl(bashCmd)))
 
         open (unit=10, file='./Particle/ParticleNum.plt')
@@ -804,17 +833,17 @@ subroutine generateOutputFile
         open (unit=16, file='./Statistics/vsHeight.plt')
         write (16, *) 'variables = "z", "Q", "Psi", "Phi_p", "betterQ"'
         close (16)
+
+        open (unit=17, file='./Inside/InsideData_0.plt')
+        write (17, *) 'variables = "x", "y", "z", "d"'
+        close (17)
     end if
 end subroutine generateOutputFile
 
 subroutine determineParRollDir
     use public_val
     implicit none
-    include "mpif.h"
-    integer :: ierr
-    integer :: status(MPI_STATUS_SIZE)
     integer :: i, j, k
-    real(kind=dbPc), dimension(my) :: zsfEESend, zsf3
     real(kind=dbPc) :: centerZ, westZ, eastZ, northZ, southZ
     real(kind=dbPc), dimension(4) :: slopes
     real(kind=dbPc) :: maxSlope
@@ -835,19 +864,12 @@ subroutine determineParRollDir
     !         ^
     !         | 4
 
-    zsfEESend = zsf(3, :)
-    call MPI_SENDRECV(zsfEESend, my, realtype, neighbor(1), 10, &
-                      zsf3, my, realtype, neighbor(2), 10, comm, status, ierr)
     rollTo = 0
     rollFrom = 0
     do j = 2, my
         do i = 2, mxNode
             centerZ = zsf(i, j)
-            if (i < mxNode) then
-                eastZ = zsf(i + 1, j)
-            else
-                eastZ = zsf3(j)
-            end if
+            eastZ = zsf(i + 1, j)
             westZ = zsf(i - 1, j)
             if (j < my) then
                 northZ = zsf(i, j + 1)
@@ -890,7 +912,7 @@ subroutine calculateSplash
     use vector_cal
     use math_operations
     implicit none
-    include "mpif.h"
+
     integer :: tempNum
     integer :: nAddGlobal
     integer :: n
@@ -902,11 +924,8 @@ subroutine calculateSplash
     logical :: rebound
     integer :: ii, jj
     integer :: iBin
-    integer :: jiBin
     integer :: ejectNum
     integer :: nadd
-    integer :: ierr
-    integer :: status(MPI_STATUS_SIZE)
     real(kind=dbPc) :: estimateAltitude
     real(kind=dbPc) :: localXP, localYP
     real(kind=dbPc) :: d1, d2
@@ -931,7 +950,6 @@ subroutine calculateSplash
     real(kind=dbPc), dimension(maxEjectNum) :: tempw
     real(kind=dbPc), dimension(maxEjectNum) :: tempd
     real(kind=dbPc), dimension(maxEjectNum) :: tempi, tempj
-    real(kind=dbPc), dimension(my*npdf) :: histEESend, hist3
     real(kind=dbPc), dimension(4) :: adjacentZ
     real(kind=dbPc), dimension(3) :: point0, point1, point2, point3
     real(kind=dbPc), dimension(3) :: vector12, vector13
@@ -943,22 +961,11 @@ subroutine calculateSplash
     real(kind=dbPc), dimension(3) :: vout
     real(kind=dbPc), dimension(3) :: vec1, vec2, vec3
 
-    zChange = 0.0
-    zChangeEESend = 0.0
     binChange = 0.0
-    binChangeEESend = 0.0
     tempNum = 0
     nAddGlobal = 0
     xflux = 0.0
     zflux = 0.0
-    do jp = 1, my
-        do iBin = 1, npdf
-            jiBin = (jp - 1)*npdf + iBin
-            histEESend(jiBin) = hist(3, jp, iBin)
-        end do
-    end do
-    call MPI_SENDRECV(histEESend, my*npdf, realtype, neighbor(1), 11, &
-                      hist3, my*npdf, realtype, neighbor(2), 11, comm, status, ierr)
     do n = 1, pNum
         ip = pIndex(n, 1)
         jp = pIndex(n, 2)
@@ -1138,12 +1145,11 @@ subroutine calculateSplash
                 end if
             end do
             vout(3) = v2*sin(angout1)
-            E1 = 0.5*m1*v1**2
-            E2 = 0.5*m1*v2**2
+            E2 = 0.5*m1*vout(3)**2
             Ed1 = m1*9.8*0.5*(d1 + d2)
             if (E2 < Ed1 .or. eBar <= 0.0 .or. angout1 <= 0.0) then
                 rebound = .false.
-                eBar = 0.0
+                !eBar = 0.0
             else
                 rebound = .true.
             end if
@@ -1165,7 +1171,7 @@ subroutine calculateSplash
                 dp(tempNum) = d1
                 survLength(tempNum) = 0.0
                 survTime(tempNum) = 0.0
-                collCount(tempNum) = 0
+                collCount(tempNum) = 0.0
                 maxhp(tempNum) = 0.0
                 pIndex(tempNum, 1) = ip
                 pIndex(tempNum, 2) = jp
@@ -1189,6 +1195,7 @@ subroutine calculateSplash
                     ii = ipp
                     jj = jpp - 1
                 end select
+                if (jj > my) jj = 3
                 if (whichDiameterDist /= 1) then
                     iBin = floor((d1 - binStart)/binWidth) + 1
                     iBin = max(iBin, 1)
@@ -1197,16 +1204,9 @@ subroutine calculateSplash
                     iBin = 1
                 end if
                 vch = (pi*d1**3)/6.0
-                if (jj >= my + 1) jj = 3
-                if (ii <= mxNode) then
-                    zChange(ii, jj) = zChange(ii, jj) + vch
-                    binChange(ii, jj, iBin) = binChange(ii, jj, iBin) + vch
-                else
-                    zChangeEESend(jj) = zChangeEESend(jj) + vch
-                    jiBin = (jj - 1)*npdf + iBin
-                    binChangeEESend(jiBin) = binChangeEESend(jiBin) + vch
-                end if
+                binChange(ii, jj, iBin) = binChange(ii, jj, iBin) + vch
             end if
+            E1 = 0.5*m1*v1**2
             Ed2 = m2*9.8*d2
             tau_s = rho*0.0123*(rhoP/rho*9.8*d2 + 3.0e-4/(rho*d2))
             Eeff = Ed2*(1.0 - tau_f(1)/tau_s)
@@ -1251,63 +1251,39 @@ subroutine calculateSplash
                     end if
                     binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) - vch
                 end do
-                select case (rollFrom(ipp, jpp))
-                case (0)
-                    ii = ipp
-                    jj = jpp
-                case (1)
-                    ii = ipp + 1
-                    jj = jpp
-                case (2)
-                    ii = ipp - 1
-                    jj = jpp
-                case (3)
-                    ii = ipp
-                    jj = jpp + 1
-                case (4)
-                    ii = ipp
-                    jj = jpp - 1
-                end select
-                rollVol = 0.0
                 if (rollFrom(ipp, jpp) /= 0) then
+                    select case (rollFrom(ipp, jpp))
+                    case (1)
+                        ii = ipp + 1
+                        jj = jpp
+                    case (2)
+                        ii = ipp - 1
+                        jj = jpp
+                    case (3)
+                        ii = ipp
+                        jj = jpp + 1
+                    case (4)
+                        ii = ipp
+                        jj = jpp - 1
+                    end select
+                    if (jj > my) jj = 3
+                    rollVol = 0.0
                     do while (rollVol < ejectVol)
-                        if (jj == my + 1) jj = 3
-                        if (ii <= mxNode) then
-                            currentHist = hist(ii, jj, :)
-                            d2 = valObeyCertainPDF(currentHist)
-                            vch = (pi*d2**3)/6.0
-                            rollVol = rollVol + vch
-                            if (whichDiameterDist /= 1) then
-                                iBin = floor((d2 - binStart)/binWidth) + 1
-                                iBin = max(iBin, 1)
-                                iBin = min(iBin, npdf)
-                            else
-                                iBin = 1
-                            end if
-                            zChange(ii, jj) = zChange(ii, jj) - vch
-                            binChange(ii, jj, iBin) = binChange(ii, jj, iBin) - vch
-                            binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) + vch
+                        currentHist = hist(ii, jj, :)
+                        d2 = valObeyCertainPDF(currentHist)
+                        vch = (pi*d2**3)/6.0
+                        rollVol = rollVol + vch
+                        if (whichDiameterDist /= 1) then
+                            iBin = floor((d2 - binStart)/binWidth) + 1
+                            iBin = max(iBin, 1)
+                            iBin = min(iBin, npdf)
                         else
-                            currentHist = hist3((jj - 1)*npdf + 1:jj*npdf)
-                            d2 = valObeyCertainPDF(currentHist)
-                            vch = (pi*d2**3)/6.0
-                            rollVol = rollVol + vch
-                            if (whichDiameterDist /= 1) then
-                                iBin = floor((d2 - binStart)/binWidth) + 1
-                                iBin = max(iBin, 1)
-                                iBin = min(iBin, npdf)
-                            else
-                                iBin = 1
-                            end if
-                            zChangeEESend(jj) = zChangeEESend(jj) - vch
-                            jiBin = iBin + (jj - 1)*npdf
-                            binChangeEESend(jiBin) = binChangeEESend(jiBin) - vch
-                            binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) + vch
+                            iBin = 1
                         end if
+                        binChange(ii, jj, iBin) = binChange(ii, jj, iBin) - vch
+                        binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) + vch
                     end do
                 end if
-                zChange(ipp, jpp) = zChange(ipp, jpp) - ejectVol
-                zChange(ipp, jpp) = zChange(ipp, jpp) + rollVol
             end if
         else
             tempNum = tempNum + 1
@@ -1326,11 +1302,11 @@ subroutine calculateSplash
             pIndex(tempNum, :) = pIndex(n, :)
         end if
     end do
-    if (nAddGlobal >= 1) then
+    if (nAddGlobal > 0) then
         pNum = tempNum + nAddGlobal
         if (pNum > maxNum) then
             print *, pNum, maxNum
-            print *, "particle number reach the threshold"
+            print *, "particle number reach the limit"
             stop
         else
             xp(tempNum + 1:tempNum + nAddGlobal) = tempx(1:nAddGlobal)
@@ -1343,7 +1319,7 @@ subroutine calculateSplash
             dp(tempNum + 1:tempNum + nAddGlobal) = tempd(1:nAddGlobal)
             survLength(tempNum + 1:tempNum + nAddGlobal) = 0.0
             survTime(tempNum + 1:tempNum + nAddGlobal) = 0.0
-            collCount(tempNum + 1:tempNum + nAddGlobal) = 0
+            collCount(tempNum + 1:tempNum + nAddGlobal) = 0.0
             maxhp(tempNum + 1:tempNum + nAddGlobal) = 0.0
             pIndex(tempNum + 1:tempNum + nAddGlobal, 1) = tempi(1:nAddGlobal)
             pIndex(tempNum + 1:tempNum + nAddGlobal, 2) = tempj(1:nAddGlobal)
@@ -1397,6 +1373,7 @@ subroutine calculateParMov
         up(n) = up(n) + (tempA1(1) + 2.0*tempA2(1) + 2.0*tempA3(1) + tempA4(1))/6.0*dt
         vp(n) = vp(n) + (tempA1(2) + 2.0*tempA2(2) + 2.0*tempA3(2) + tempA4(2))/6.0*dt
         wp(n) = wp(n) + (tempA1(3) + 2.0*tempA2(3) + 2.0*tempA3(3) + tempA4(3))/6.0*dt
+        maxhp(n) = max(maxhp(n), hp(n))
         survTime(n) = survTime(n) + dt
         survLength(n) = survLength(n) + (tempU1(1) + 2.0*tempU2(1) + 2.0*tempU3(1) + tempU4(1))/6.0*dt
         F_pNode(k) = F_pNode(k) + fDrag(1)
@@ -1439,23 +1416,18 @@ subroutine reallocateParticle
     integer :: tempNum
     integer :: nESend, nWSend
     integer :: nERecv, nWRecv
-    integer, dimension(pNumExchMax) :: ccE
-    integer, dimension(pNumExchMax) :: ccW
     integer :: status(MPI_STATUS_SIZE)
     real(kind=dbPc), dimension(pNumExchMax) :: xpE, ypE, zpE
     real(kind=dbPc), dimension(pNumExchMax) :: upE, vpE, wpE
     real(kind=dbPc), dimension(pNumExchMax) :: dpE, hpE, mhE
-    real(kind=dbPc), dimension(pNumExchMax) :: slE, stE
+    real(kind=dbPc), dimension(pNumExchMax) :: slE, stE, ccE
     real(kind=dbPc), dimension(pNumExchMax) :: xpW, ypW, zpW
     real(kind=dbPc), dimension(pNumExchMax) :: upW, vpW, wpW
     real(kind=dbPc), dimension(pNumExchMax) :: dpW, hpW, mhW
-    real(kind=dbPc), dimension(pNumExchMax) :: slW, stW
+    real(kind=dbPc), dimension(pNumExchMax) :: slW, stW, ccW
     real(kind=dbPc), allocatable, dimension(:) :: exchESend, exchWSend
     real(kind=dbPc), allocatable, dimension(:) :: exchERecv, exchWRecv
-    real(kind=dbPc), allocatable, dimension(:) :: exchESendi, exchWSendi
-    real(kind=dbPc), allocatable, dimension(:) :: exchERecvi, exchWRecvi
 
-    ! pick out particles out of boundary
     tempNum = 0
     nESend = 0
     nWSend = 0
@@ -1519,10 +1491,8 @@ subroutine reallocateParticle
                       nERecv, 1, inttype, neighbor(1), 22, comm, status, ierr)
     call MPI_SENDRECV(nWSend, 1, inttype, neighbor(1), 23, &
                       nWRecv, 1, inttype, neighbor(2), 23, comm, status, ierr)
-    allocate (exchESend(11*nESend))
-    allocate (exchERecv(11*nERecv))
-    allocate (exchESendi(nESend))
-    allocate (exchERecvi(nERecv))
+    allocate (exchESend(12*nESend))
+    allocate (exchERecv(12*nERecv))
     exchESend(1:nESend) = xpE(1:nESend)
     exchESend(1*nESend + 1:2*nESend) = ypE(1:nESend)
     exchESend(2*nESend + 1:3*nESend) = zpE(1:nESend)
@@ -1534,12 +1504,9 @@ subroutine reallocateParticle
     exchESend(8*nESend + 1:9*nESend) = mhE(1:nESend)
     exchESend(9*nESend + 1:10*nESend) = slE(1:nESend)
     exchESend(10*nESend + 1:11*nESend) = stE(1:nESend)
-    exchESendi(1:nESend) = ccE(1:nESend)
-    call MPI_SENDRECV(exchESend, nESend*11, realtype, neighbor(2), 24, &
-                      exchERecv, nERecv*11, realtype, neighbor(1), 24, &
-                      comm, status, ierr)
-    call MPI_SENDRECV(exchESendi, nESend, inttype, neighbor(2), 25, &
-                      exchERecvi, nERecv, inttype, neighbor(1), 25, &
+    exchESend(11*nESend + 1:12*nESend) = ccE(1:nESend)
+    call MPI_SENDRECV(exchESend, nESend*12, realtype, neighbor(2), 24, &
+                      exchERecv, nERecv*12, realtype, neighbor(1), 24, &
                       comm, status, ierr)
     if (nERecv > 0) then
         xp(pNum + 1:pNum + nERecv) = exchERecv(1:nERecv)
@@ -1553,18 +1520,14 @@ subroutine reallocateParticle
         maxhp(pNum + 1:pNum + nERecv) = exchERecv(8*nERecv + 1:9*nERecv)
         survLength(pNum + 1:pNum + nERecv) = exchERecv(9*nERecv + 1:10*nERecv)
         survTime(pNum + 1:pNum + nERecv) = exchERecv(10*nERecv + 1:11*nERecv)
-        collCount(pNum + 1:pNum + nERecv) = exchERecvi(1:nERecv)
+        collCount(pNum + 1:pNum + nERecv) = exchERecv(11*nERecv + 1:12*nERecv)
         pNum = pNum + nERecv
     end if
     deallocate (exchESend)
     deallocate (exchERecv)
-    deallocate (exchESendi)
-    deallocate (exchERecvi)
 
-    allocate (exchWSend(11*nWSend))
-    allocate (exchWRecv(11*nWRecv))
-    allocate (exchWSendi(nWSend))
-    allocate (exchWRecvi(nWRecv))
+    allocate (exchWSend(12*nWSend))
+    allocate (exchWRecv(12*nWRecv))
     exchWSend(1:nWSend) = xpW(1:nWSend)
     exchWSend(1*nWSend + 1:2*nWSend) = ypW(1:nWSend)
     exchWSend(2*nWSend + 1:3*nWSend) = zpW(1:nWSend)
@@ -1576,12 +1539,9 @@ subroutine reallocateParticle
     exchWSend(8*nWSend + 1:9*nWSend) = mhW(1:nWSend)
     exchWSend(9*nWSend + 1:10*nWSend) = slW(1:nWSend)
     exchWSend(10*nWSend + 1:11*nWSend) = stW(1:nWSend)
-    exchWSendi(1:nWSend) = ccW(1:nWSend)
-    call MPI_SENDRECV(exchWSend, nWSend*11, realtype, neighbor(1), 26, &
-                      exchWRecv, nWRecv*11, realtype, neighbor(2), 26, &
-                      comm, status, ierr)
-    call MPI_SENDRECV(exchWSendi, nWSend, inttype, neighbor(1), 27, &
-                      exchWRecvi, nWRecv, inttype, neighbor(2), 27, &
+    exchWSend(11*nWSend + 1:12*nWSend) = ccW(1:nWSend)
+    call MPI_SENDRECV(exchWSend, nWSend*12, realtype, neighbor(1), 26, &
+                      exchWRecv, nWRecv*12, realtype, neighbor(2), 26, &
                       comm, status, ierr)
     if (nWRecv > 0) then
         xp(pNum + 1:pNum + nWRecv) = exchWRecv(1:nWRecv)
@@ -1595,13 +1555,11 @@ subroutine reallocateParticle
         maxhp(pNum + 1:pNum + nWRecv) = exchWRecv(8*nWRecv + 1:9*nWRecv)
         survLength(pNum + 1:pNum + nWRecv) = exchWRecv(9*nWRecv + 1:10*nWRecv)
         survTime(pNum + 1:pNum + nWRecv) = exchWRecv(10*nWRecv + 1:11*nWRecv)
-        collCount(pNum + 1:pNum + nWRecv) = exchWRecvi(1:nWRecv)
+        collCount(pNum + 1:pNum + nWRecv) = exchWRecv(11*nWRecv + 1:12*nWRecv)
         pNum = pNum + nWRecv
     end if
     deallocate (exchWSend)
     deallocate (exchWRecv)
-    deallocate (exchWSendi)
-    deallocate (exchWRecvi)
 
     do n = 1, pNum
         if (yp(n) >= yMax) then
@@ -1694,12 +1652,12 @@ subroutine calculateMidAirColl
                     up(globalN2) = pVol2(1) + alpha2*rv12N*nVec(1) + beta2*(rv12(1) - rv12N*nVec(1))
                     vp(globalN2) = pVol2(2) + alpha2*rv12N*nVec(2) + beta2*(rv12(2) - rv12N*nVec(2))
                     wp(globalN2) = pVol2(3) + alpha2*rv12N*nVec(3) + beta2*(rv12(3) - rv12N*nVec(3))
-                    collCount(globalN1) = collCount(globalN1) + 1
-                    collCount(globalN2) = collCount(globalN2) + 1
                     xp(globalN2) = xp(globalN2) + (contactDist - distance12)*nVec(1)
                     yp(globalN2) = yp(globalN2) + (contactDist - distance12)*nVec(2)
                     zp(globalN2) = zp(globalN2) + (contactDist - distance12)*nVec(3)
-                    exit
+                    collCount(globalN1) = collCount(globalN1) + 1
+                    collCount(globalN2) = collCount(globalN2) + 1
+                    !exit
                 end do
             end do
         end do
@@ -1714,139 +1672,169 @@ subroutine addGhostData
     integer :: i, j, k, jk
     integer :: ierr
     integer :: status(MPI_STATUS_SIZE)
-    real(kind=dbPc), dimension(my) :: zChangeESend, zChangeERecv
-    real(kind=dbPc), dimension(my) :: zChangeWSend, zChangeWRecv
-    real(kind=dbPc), dimension(my) :: zChangeEERecv
     real(kind=dbPc), dimension(my*npdf) :: binChangeESend, binChangeERecv
     real(kind=dbPc), dimension(my*npdf) :: binChangeWSend, binChangeWRecv
+    real(kind=dbPc), dimension(my*npdf) :: binChangeEESend, binChangeEERecv
 
     ! because the value of ghost cell has changed
     ! need to add ghost value back to real domain before exchange
-    ! zChange, binChange add back
+    ! binChange add back
     ! x=mxNode+1 add to x=3: send to 2 and receive from 1
     ! x=mxNode add to x=2: send to 2 and receive from 1
     ! x=1 add to x=mxNode-1: send to 1 and receive from 2
     do j = 1, my
-        zChangeESend(j) = zChange(mxNode, j)
-        zChangeWSend(j) = zChange(1, j)
         do k = 1, npdf
             jk = k + (j - 1)*npdf
             binChangeESend(jk) = binChange(mxNode, j, k)
+            binChangeEESend(jk) = binChange(mxNode + 1, j, k)
             binChangeWSend(jk) = binChange(1, j, k)
         end do
     end do
-    call MPI_SENDRECV(zChangeEESend, my, realtype, neighbor(2), 12, &
-                      zChangeEERecv, my, realtype, neighbor(1), 12, comm, status, ierr)
-    call MPI_SENDRECV(binChangeEESend, my*npdf, realtype, neighbor(2), 13, &
-                      binChangeEERecv, my*npdf, realtype, neighbor(1), 13, comm, status, ierr)
-    call MPI_SENDRECV(zChangeESend, my, realtype, neighbor(2), 14, &
-                      zChangeERecv, my, realtype, neighbor(1), 14, comm, status, ierr)
     call MPI_SENDRECV(binChangeESend, my*npdf, realtype, neighbor(2), 15, &
                       binChangeERecv, my*npdf, realtype, neighbor(1), 15, comm, status, ierr)
-    call MPI_SENDRECV(zChangeWSend, my, realtype, neighbor(1), 16, &
-                      zChangeWRecv, my, realtype, neighbor(2), 16, comm, status, ierr)
+    call MPI_SENDRECV(binChangeEESend, my*npdf, realtype, neighbor(2), 13, &
+                      binChangeEERecv, my*npdf, realtype, neighbor(1), 13, comm, status, ierr)
     call MPI_SENDRECV(binChangeWSend, my*npdf, realtype, neighbor(1), 17, &
                       binChangeWRecv, my*npdf, realtype, neighbor(2), 17, comm, status, ierr)
     do j = 1, my
-        zChange(3, j) = zChange(3, j) + zChangeEERecv(j)
-        zChange(2, j) = zChange(2, j) + zChangeERecv(j)
-        zChange(mxNode - 1, j) = zChange(mxNode - 1, j) + zChangeWRecv(j)
         do k = 1, npdf
             jk = k + (j - 1)*npdf
-            binChange(3, j, k) = binChange(3, j, k) + binChangeEERecv(jk)
             binChange(2, j, k) = binChange(2, j, k) + binChangeERecv(jk)
+            binChange(3, j, k) = binChange(3, j, k) + binChangeEERecv(jk)
             binChange(mxNode - 1, j, k) = binChange(mxNode - 1, j, k) + binChangeWRecv(jk)
         end do
     end do
     ! y=1 add to y=my-1, y=my add to y=2
-    do i = 1, mxNode
-        zChange(i, 2) = zChange(i, 2) + zChange(i, my)
-        zChange(i, my - 1) = zChange(i, my - 1) + zChange(i, 1)
+    do i = 1, mxNode + 1
         do k = 1, npdf
             binChange(i, 2, k) = binChange(i, 2, k) + binChange(i, my, k)
             binChange(i, my - 1, k) = binChange(i, my - 1, k) + binChange(i, 1, k)
         end do
     end do
-    !call edgeExch(zChange, binChange)
 end subroutine addGhostData
-
-subroutine edgeExch(data1, data2)
-    use public_val
-    implicit none
-    include "mpif.h"
-    ! public
-    real(kind=dbPc), dimension(mxNode, my) :: data1
-    real(kind=dbPc), dimension(mxNode, my, npdf) :: data2
-    ! local
-    integer :: i, k, ierr
-    integer :: status(MPI_STATUS_SIZE)
-    !
-    ! send to 2 and receive from 1
-    call MPI_SENDRECV(data1(mxNode - 1, 1), 1, edgeType1, neighbor(2), 18, &
-                      data1(1, 1), 1, edgeType1, neighbor(1), 18, comm, status, ierr)
-    call MPI_SENDRECV(data2(mxNode - 1, 1, 1), 1, edgeType2, neighbor(2), 19, &
-                      data2(1, 1, 1), 1, edgeType2, neighbor(1), 19, comm, status, ierr)
-    ! send to 1 and receive from 2
-    call MPI_SENDRECV(data1(2, 1), 1, edgeType1, neighbor(1), 20, &
-                      data1(mxNode, 1), 1, edgeType1, neighbor(2), 20, comm, status, ierr)
-    call MPI_SENDRECV(data2(2, 1, 1), 1, edgeType2, neighbor(1), 21, &
-                      data2(mxNode, 1, 1), 1, edgeType2, neighbor(2), 21, comm, status, ierr)
-    do i = 1, mxNode
-        data1(i, my) = data1(i, 2)
-        data1(i, 1) = data1(i, my - 1)
-        do k = 1, npdf
-            data2(i, my, k) = data2(i, 2, k)
-            data2(i, 1, k) = data2(i, my - 1, k)
-        end do
-    end do
-end subroutine edgeExch
 
 subroutine updateSurfGrid
     use public_val
     implicit none
 
-    integer :: i, j, n
-    real(kind=dbPc) :: currentBlkVol, patchBlkVol
-    real(kind=dbPc), dimension(npdf) :: patchBin
-    real(kind=dbPc), dimension(mxNode, my, npdf) :: bin
+    integer :: i, j, k, kk, kBottom, n
+    real(kind=dbPc) :: blkBottom, currentBlkHight
+    real(kind=dbPc) :: vChange
+    real(kind=dbPc) :: bottomChkfrac, bottomChkVol, bottomChkVolRst, currentBlkVol
+    real(kind=dbPc), dimension(npdf) :: currentBlkHist
+    real(kind=dbPc), dimension(npdf) :: bin
+    real(kind=dbPc), dimension(zChkNum, npdf) :: chunkBin
 
     call addGhostData
-    zsf = zsf + zChange/(xDiff*yDiff*por)
-    bin = hist*initBlock
-    bin = bin + binChange
-    do j = 1, my
-        do i = 1, mxNode
-            if (zsf(i, j) < 0. .or. zsf(i, j) > zMax) then
-                print *, 'Warning: zsf reach the lower/upper boundary', iter
-                stop
-            end if
-        end do
-    end do
-
     if (whichDiameterDist /= 1) then
-        do j = 1, my
-            do i = 1, mxNode
-                currentBlkVol = sum(bin(i, j, :))
-                patchBlkVol = initBlock - currentBlkVol
-                do n = 1, npdf
-                    patchBin(n) = patchBlkVol*initDiameterDist(n)
-                    bin(i, j, n) = bin(i, j, n) + patchBin(n)
-                end do
-            end do
-        end do
-        do j = 1, my
-            do i = 1, mxNode
+        do j = 2, my - 1
+            do i = 2, mxNode - 1
+                vChange = sum(binChange(i, j, :))
+                if (vChange == 0.0) cycle
+                kk = kSurf(i, j)
+                currentBlkHight = max(blockHeight, -vChange/(xDiff*yDiff*por))
+                blkBottom = zsf(i, j) - currentBlkHight
+                kBottom = floor(blkBottom/chunkHeight) + 1
+                bottomChkfrac = (kBottom*chunkHeight - blkBottom)/chunkHeight
+                bottomChkVol = bottomChkfrac*chunkVol
+                bottomChkVolRst = (1.0 - bottomChkfrac)*chunkVol
+                currentBlkVol = blockVol + vChange
+
+                if (currentBlkVol <= bottomChkVol) then
+                    if (currentBlkVol <= 0.0) then
+                        surfChkVol(i, j) = bottomChkVolRst
+                        chunkDia(i, j, kBottom) = 0.0
+                        do n = 1, npdf
+                            currentBlkHist(n) = binChange(i, j, n)/vChange
+                            chunkBin(kBottom, n) = chunkHist(i, j, kBottom, n)*chunkVol - currentBlkHist(n)*bottomChkVol
+                            chunkHist(i, j, kBottom, n) = chunkBin(kBottom, n)/bottomChkVolRst
+                            chunkDia(i, j, kBottom) = chunkDia(i, j, kBottom) + &
+                                                      chunkHist(i, j, kBottom, n)*(binStart + (n - 0.5)*binWidth)
+                        end do
+                    else
+                        surfChkVol(i, j) = currentBlkVol + bottomChkVolRst
+                        chunkDia(i, j, kBottom) = 0.0
+                        do n = 1, npdf
+                            bin(n) = blockVol*hist(i, j, n) + binChange(i, j, n)
+                            currentBlkHist(n) = bin(n)/currentBlkVol
+                            chunkBin(kBottom, n) = bin(n) + chunkHist(i, j, kBottom, n)*bottomChkVolRst
+                            chunkHist(i, j, kBottom, n) = chunkBin(kBottom, n)/surfChkVol(i, j)
+                            chunkDia(i, j, kBottom) = chunkDia(i, j, kBottom) + &
+                                                      chunkHist(i, j, kBottom, n)*(binStart + (n - 0.5)*binWidth)
+                        end do
+                    end if
+                    do k = kBottom + 1, kk
+                        do n = 1, npdf
+                            chunkHist(i, j, k, n) = 0.0
+                        end do
+                        chunkDia(i, j, k) = 0.0
+                    end do
+                    kSurf(i, j) = kBottom
+                else
+                    chunkDia(i, j, kBottom) = 0.0
+                    do n = 1, npdf
+                        bin(n) = blockVol*hist(i, j, n) + binChange(i, j, n)
+                        currentBlkHist(n) = bin(n)/currentBlkVol
+                        chunkBin(kBottom, n) = currentBlkHist(n)*bottomChkVol + chunkHist(i, j, kBottom, n)*bottomChkVolRst
+                        chunkHist(i, j, kBottom, n) = chunkBin(kBottom, n)/chunkVol
+                        chunkDia(i, j, kBottom) = chunkDia(i, j, kBottom) + &
+                                                  chunkHist(i, j, kBottom, n)*(binStart + (n - 0.5)*binWidth)
+                    end do
+                    do k = kBottom + 1, kk
+                        do n = 1, npdf
+                            chunkHist(i, j, k, n) = 0.0
+                        end do
+                        chunkDia(i, j, k) = 0.0
+                    end do
+                    kk = kBottom + floor((currentBlkVol - bottomChkVol)/chunkVol) + 1
+                    surfChkVol(i, j) = currentBlkVol - bottomChkVol
+                    do k = kBottom + 1, kk
+                        surfChkVol(i, j) = surfChkVol(i, j) - chunkVol
+                        chunkDia(i, j, k) = 0.0
+                        do n = 1, npdf
+                            chunkHist(i, j, k, n) = currentBlkHist(n)
+                            chunkDia(i, j, k) = chunkDia(i, j, k) + chunkHist(i, j, k, n)*(binStart + (n - 0.5)*binWidth)
+                        end do
+                    end do
+                    kSurf(i, j) = kk
+                    surfChkVol(i, j) = surfChkVol(i, j) + chunkVol
+                end if
+
+                zsf(i, j) = blkBottom + (currentBlkVol/(xDiff*yDiff*por))
+                if (zsf(i, j) - blockHeight < 0.0 .or. zsf(i, j) > zMax) then
+                    print *, 'Error: zsf reach the lower/upper boundary', iter
+                    stop
+                end if
+                kk = kSurf(i, j)
+                blkBottom = zsf(i, j) - blockHeight
+                kBottom = floor(blkBottom/chunkHeight) + 1
+                bottomChkVol = (kBottom*chunkHeight - blkBottom)*xDiff*yDiff*por
                 dsf(i, j) = 0.0
-                currentBlkVol = sum(bin(i, j, :))
                 do n = 1, npdf
-                    hist(i, j, n) = bin(i, j, n)/currentBlkVol
+                    bin(n) = surfChkVol(i, j)*chunkHist(i, j, kk, n) + bottomChkVol*chunkHist(i, j, kBottom, n)
+                    if (kBottom + 1 < kk) then
+                        do k = kBottom + 1, kk - 1
+                            bin(n) = bin(n) + chunkHist(i, j, k, n)*chunkVol
+                        end do
+                    end if
+                    hist(i, j, n) = bin(n)/blockVol
                     dsf(i, j) = dsf(i, j) + hist(i, j, n)*(binStart + (n - 0.5)*binWidth)
                 end do
+                if (dsf(i, j) < 0.0) then
+                    print *, 'Error: dsf<0', dsf(i, j), hist(i, j, :), iter
+                    stop
+                end if
             end do
         end do
     else
-        do j = 1, my
-            do i = 1, mxNode
+        do j = 2, my - 1
+            do i = 2, mxNode - 1
+                vChange = sum(binChange(i, j, :))
+                zsf(i, j) = zsf(i, j) + vChange/(xDiff*yDiff*por)
+                if (zsf(i, j) < 0.0 .or. zsf(i, j) > zMax) then
+                    print *, 'Error: zsf reach the lower/upper boundary', iter
+                    stop
+                end if
                 do n = 1, npdf
                     hist(i, j, n) = initDiameterDist(n)
                 end do
@@ -1854,8 +1842,60 @@ subroutine updateSurfGrid
         end do
         dsf = dpa
     end if
-    call edgeExch(zsf, hist)
+    call edgeExch1(zsf)
+    call edgeExch1(dsf)
+    call edgeExch2(hist)
 end subroutine updateSurfGrid
+
+subroutine edgeExch1(data1)
+    use public_val
+    implicit none
+    include "mpif.h"
+    ! public
+    real(kind=dbPc), dimension(mxNode + 1, my) :: data1
+    ! local
+    integer :: i, ierr
+    integer :: status(MPI_STATUS_SIZE)
+    !
+    ! send to 2 and receive from 1
+    call MPI_SENDRECV(data1(mxNode - 1, 1), 1, edgeType1, neighbor(2), 18, &
+                      data1(1, 1), 1, edgeType1, neighbor(1), 18, comm, status, ierr)
+    ! send to 1 and receive from 2
+    call MPI_SENDRECV(data1(2, 1), 1, edgeType1, neighbor(1), 20, &
+                      data1(mxNode, 1), 1, edgeType1, neighbor(2), 20, comm, status, ierr)
+    call MPI_SENDRECV(data1(3, 1), 1, edgeType1, neighbor(1), 28, &
+                      data1(mxNode + 1, 1), 1, edgeType1, neighbor(2), 28, comm, status, ierr)
+    do i = 1, mxNode + 1
+        data1(i, my) = data1(i, 2)
+        data1(i, 1) = data1(i, my - 1)
+    end do
+end subroutine edgeExch1
+
+subroutine edgeExch2(data2)
+    use public_val
+    implicit none
+    include "mpif.h"
+    ! public
+    real(kind=dbPc), dimension(mxNode + 1, my, npdf) :: data2
+    ! local
+    integer :: i, k, ierr
+    integer :: status(MPI_STATUS_SIZE)
+    !
+    ! send to 2 and receive from 1
+    call MPI_SENDRECV(data2(mxNode - 1, 1, 1), 1, edgeType2, neighbor(2), 19, &
+                      data2(1, 1, 1), 1, edgeType2, neighbor(1), 19, comm, status, ierr)
+    ! send to 1 and receive from 2
+    call MPI_SENDRECV(data2(2, 1, 1), 1, edgeType2, neighbor(1), 21, &
+                      data2(mxNode, 1, 1), 1, edgeType2, neighbor(2), 21, comm, status, ierr)
+    call MPI_SENDRECV(data2(3, 1, 1), 1, edgeType2, neighbor(1), 29, &
+                      data2(mxNode + 1, 1, 1), 1, edgeType2, neighbor(2), 29, comm, status, ierr)
+    do k = 1, npdf
+        do i = 1, mxNode + 1
+            data2(i, my, k) = data2(i, 2, k)
+            data2(i, 1, k) = data2(i, my - 1, k)
+        end do
+    end do
+end subroutine edgeExch2
 
 subroutine updateFieldGrid
     use public_val
@@ -1946,42 +1986,6 @@ subroutine calculateFluidField
     u(mz) = 0.5*(uT + uB)
 end subroutine calculateFluidField
 
-subroutine sliceExch(mxNode, my, mz, a, comm, neighbor, sliceType, tag)
-    implicit none
-    include "mpif.h"
-    ! public
-    integer, parameter :: dbPc = 8 !selected_real_kind(15, 307)
-    integer, intent(in) :: mxNode, my, mz
-    integer, intent(in) :: comm
-    integer, intent(in) :: sliceType
-    integer, intent(in) :: tag
-    integer, intent(in), dimension(2) :: neighbor
-    real(kind=dbPc), dimension(mxNode, my, mz) :: a
-    ! local
-    integer :: status(MPI_STATUS_SIZE)
-    integer :: ierr
-    !
-    ! planes i=constant
-    !
-    ! neighbor:
-    !       |           |
-    !      ---------------                j
-    !       |           |               ^
-    !       |           |               |
-    !      1|    myID   |2              |
-    !       |           |              ------>
-    !       |           |               |     i
-    !      ---------------
-    !       |           |
-    !
-    ! send to 2 and receive from 1
-    call MPI_SENDRECV(a(mxNode - 1, 1, 1), 1, sliceType, neighbor(2), tag, &
-                      a(1, 1, 1), 1, sliceType, neighbor(1), tag, comm, status, ierr)
-    ! send to 1 and receive from 2
-    call MPI_SENDRECV(a(2, 1, 1), 1, sliceType, neighbor(1), tag + 1, &
-                      a(mxNode, 1, 1), 1, sliceType, neighbor(2), tag + 1, comm, status, ierr)
-end subroutine sliceExch
-
 subroutine outputAll
     use public_val
     use gather_xyz
@@ -2000,9 +2004,12 @@ subroutine outputAll
     real(kind=dbPc) :: uMag
     real(kind=dbPc) :: xfluxTot, zfluxTot, hopLength
     real(kind=dbPc), dimension(mx) :: xsfTot, xTot
+    real(kind=dbPc), dimension(mxNode) :: xsfTemp
     real(kind=dbPc), dimension(mz) :: xfluxPfTot, zfluxPfTot
     real(kind=dbPc), dimension(mx, my) :: zsfTot, dsfTot
-    real(kind=dbPc), dimension(mx, my, mz) :: pfracTot
+    real(kind=dbPc), dimension(mxNode, my) :: zsfTemp, dsfTemp
+    real(kind=dbPc), dimension(mx, my, mz) :: pfracTot, zRealTot
+    real(kind=dbPc), dimension(mx, my, zChkNum) :: chunkDiaTot
 
     if (mod(iter, intervalMonitor) == 0) then
         call MPI_ALLREDUCE(pNum, pNumTot, 1, inttype, MPI_SUM, comm, ierr)
@@ -2029,6 +2036,10 @@ subroutine outputAll
             open (unit=14, file='./Surface/SurfaceData_'//trim(adjustl(str))//'.plt')
             write (14, *) 'variables = "x", "y", "z", "d"'
             close (14)
+
+            open (unit=17, file='./Inside/InsideData_'//trim(adjustl(str))//'.plt')
+            write (17, *) 'variables = "x", "y", "z", "d"'
+            close (17)
         end if
     end if
 
@@ -2042,10 +2053,11 @@ subroutine outputAll
         call MPI_FILE_OPEN(comm, trim(adjustl(filename)), amode, MPI_INFO_NULL, fh, ierr)
         do n = 1, pNum
             uMag = sqrt(up(n)**2 + vp(n)**2 + wp(n)**2)
-            write (line, "(12E15.4, I)") xp(n), yp(n), zp(n), up(n), vp(n), wp(n), uMag, hp(n), maxhp(n), &
+            line = ''
+            write (line, "(13E15.4)") xp(n), yp(n), zp(n), up(n), vp(n), wp(n), uMag, hp(n), maxhp(n), &
                 dp(n), survLength(n), survTime(n), collCount(n)
             line = trim(adjustl(line))//char(10)
-            call MPI_FILE_WRITE_SHARED(fh, line, len(line), MPI_CHARACTER, status, ierr)
+            call MPI_FILE_WRITE_SHARED(fh, trim(line), len(trim(line)), MPI_CHARACTER, status, ierr)
         end do
         call MPI_FILE_CLOSE(fh, ierr)
     end if
@@ -2064,6 +2076,7 @@ subroutine outputAll
     if (mod(iter, intervalField) == 0) then
         call gatherx(comm, mxNode, mx, x, xTot)
         call gatherxyz(comm, mxNode, mx, my, mz, pfrac, pfracTot)
+        call gatherxyz(comm, mxNode, mx, my, mz, zReal, zRealTot)
         if (myID == 0) then
             open (unit=13, position='append', file='./Field/FieldData_'//trim(adjustl(str))//'.plt', action='write')
             write (13, *) 'zone', ' T = "', time, '"'
@@ -2071,7 +2084,7 @@ subroutine outputAll
             do k = 1, mz
                 do j = 2, my - 1
                     do i = 2, mx - 1
-                        write (13, "(5E15.4)") xTot(i), y(j), zReal(i, j, k), u(k), pfracTot(i, j, k)
+                        write (13, "(5E15.4)") xTot(i), y(j), zRealTot(i, j, k), u(k), pfracTot(i, j, k)
                     end do
                 end do
             end do
@@ -2080,9 +2093,12 @@ subroutine outputAll
     end if
 
     if (mod(iter, intervalSurface) == 0) then
-        call gatherx(comm, mxNode, mx, xsf, xsfTot)
-        call gatherxy(comm, mxNode, mx, my, zsf, zsfTot)
-        call gatherxy(comm, mxNode, mx, my, dsf, dsfTot)
+        xsfTemp(1:mxNode) = xsf(1:mxNode)
+        zsfTemp(1:mxNode, 1:my) = zsf(1:mxNode, 1:my)
+        dsfTemp(1:mxNode, 1:my) = dsf(1:mxNode, 1:my)
+        call gatherx(comm, mxNode, mx, xsfTemp, xsfTot)
+        call gatherxy(comm, mxNode, mx, my, zsfTemp, zsfTot)
+        call gatherxy(comm, mxNode, mx, my, dsfTemp, dsfTot)
         if (myID == 0) then
             open (unit=14, position='append', file='./Surface/SurfaceData_'//trim(adjustl(str))//'.plt', action='write')
             write (14, *) 'zone', ' T = "', time, '"'
@@ -2118,9 +2134,27 @@ subroutine outputAll
             open (unit=16, position='append', file='./Statistics/vsHeight.plt', action='write')
             write (16, *) 'zone', ' T = "', time, '"'
             do k = 1, mz
-                write (16, "(5E15.7)") z(k), xfluxPfTot(k), zfluxPfTot(k), phi_p(k), phi_p(k)*u(k)
+                write (16, "(5E15.7)") z(k), xfluxPfTot(k), zfluxPfTot(k), phi_p(k), phi_p(k)*u(k)*rhoP
             end do
             close (16)
+        end if
+    end if
+
+    if (mod(iter, intervalInside) == 0) then
+        call gatherx(comm, mxNode, mx, x, xTot)
+        call gatherxyz(comm, mxNode, mx, my, zChkNum, chunkDia, chunkDiaTot)
+        if (myID == 0) then
+            open (unit=17, position='append', file='./Inside/InsideData_'//trim(adjustl(str))//'.plt', action='write')
+            write (17, *) 'zone', ' T = "', time, '"'
+            write (17, *) 'i=', mx - 2, ' j=', my - 2, ' k=', zChkNum, ' datapacking=point'
+            do k = 1, zChkNum
+                do j = 2, my - 1
+                    do i = 2, mx - 1
+                        write (17, "(4E15.4)") xTot(i), y(j), zChk(k), chunkDiaTot(i, j, k)
+                    end do
+                end do
+            end do
+            close (17)
         end if
     end if
 

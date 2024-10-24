@@ -30,7 +30,7 @@ module public_val
     integer, parameter :: pNumInGridMax = maxNum/mxNode !/(my)
     integer, parameter :: pNumExchMax = maxNum/10
     real(kind=dbPc), parameter :: dpa = 2.5e-4 ! average particle diameter
-    real(kind=dbPc), parameter :: dpStddDev = 1.0e-4 ! particle diameter standard deviation
+    real(kind=dbPc), parameter :: dpStddDev = 1.5e-4 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
     real(kind=dbPc), parameter :: binWidth = 4.0*dpStddDev/npdf
     real(kind=dbPc), parameter :: binStart = dpa - 2.0*dpStddDev
@@ -50,7 +50,7 @@ module public_val
     real(kind=dbPc), parameter :: blockHeight = dpa*5.0
     real(kind=dbPc), parameter :: initBlock = xDiff*yDiff*blockHeight*por
     ! fluid
-    real(kind=dbPc), parameter :: uStar = 0.45 ! fractional velocity
+    real(kind=dbPc), parameter :: uStar = 0.5 ! fractional velocity
     real(kind=dbPc), parameter :: rho = 1.263 ! fluid density
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.4 ! von Kaman's constant
@@ -66,7 +66,7 @@ module public_val
     integer, parameter :: intervalStatistics = oneSecond*60
     integer, parameter :: intervalCreateFile = oneSecond*240
     real(kind=dbPc), parameter :: dt = 5.0e-5 ! time step
-    real(kind=dbPc), parameter :: endTime = 3600.0 ! The time that the simulation lasts
+    real(kind=dbPc), parameter :: endTime = 120.0 ! The time that the simulation lasts
 
     ! variables
     ! MPI
@@ -1639,11 +1639,11 @@ subroutine calculateMidAirColl
                     up(globalN2) = pVol2(1) + alpha2*rv12N*nVec(1) + beta2*(rv12(1) - rv12N*nVec(1))
                     vp(globalN2) = pVol2(2) + alpha2*rv12N*nVec(2) + beta2*(rv12(2) - rv12N*nVec(2))
                     wp(globalN2) = pVol2(3) + alpha2*rv12N*nVec(3) + beta2*(rv12(3) - rv12N*nVec(3))
-                    collCount(globalN1) = collCount(globalN1) + 1
-                    collCount(globalN2) = collCount(globalN2) + 1
                     xp(globalN2) = xp(globalN2) + (contactDist - distance12)*nVec(1)
                     yp(globalN2) = yp(globalN2) + (contactDist - distance12)*nVec(2)
                     zp(globalN2) = zp(globalN2) + (contactDist - distance12)*nVec(3)
+                    collCount(globalN1) = collCount(globalN1) + 1
+                    collCount(globalN2) = collCount(globalN2) + 1
                     !exit
                 end do
             end do
@@ -1722,7 +1722,7 @@ subroutine updateSurfGrid
     implicit none
 
     integer :: i, j, n
-    real(kind=dbPc) :: currentBlock, patchBlock
+    real(kind=dbPc) :: currentBlkVol, patchBlkVol
     real(kind=dbPc), dimension(npdf) :: patchBin
     real(kind=dbPc), dimension(mxNode + 1, my, npdf) :: bin
 
@@ -1742,16 +1742,16 @@ subroutine updateSurfGrid
     if (whichDiameterDist /= 1) then
         do j = 2, my - 1
             do i = 2, mxNode - 1
-                currentBlock = sum(bin(i, j, :))
-                patchBlock = initBlock - currentBlock
-                if (patchBlock < 0.0) then
+                currentBlkVol = sum(bin(i, j, :))
+                patchBlkVol = initBlock - currentBlkVol
+                if (patchBlkVol < 0.0) then
                     do n = 1, npdf
-                        patchBin(n) = patchBlock*hist(i, j, n)
+                        patchBin(n) = patchBlkVol*hist(i, j, n)
                         bin(i, j, n) = bin(i, j, n) + patchBin(n)
                     end do
                 else
                     do n = 1, npdf
-                        patchBin(n) = patchBlock*initDiameterDist(n)
+                        patchBin(n) = patchBlkVol*initDiameterDist(n)
                         bin(i, j, n) = bin(i, j, n) + patchBin(n)
                     end do
                 end if
@@ -1760,9 +1760,9 @@ subroutine updateSurfGrid
         do j = 2, my - 1
             do i = 2, mxNode - 1
                 dsf(i, j) = 0.0
-                currentBlock = sum(bin(i, j, :))
+                currentBlkVol = sum(bin(i, j, :))
                 do n = 1, npdf
-                    hist(i, j, n) = bin(i, j, n)/currentBlock
+                    hist(i, j, n) = bin(i, j, n)/currentBlkVol
                     dsf(i, j) = dsf(i, j) + hist(i, j, n)*(binStart + (n - 0.5)*binWidth)
                 end do
             end do
