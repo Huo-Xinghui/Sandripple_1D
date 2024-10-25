@@ -111,8 +111,8 @@ if __name__ == "__main__":
 		30: 30,
 	}
 	# 定义文件路径
-	#working_dir = "/home/ekalhxh/ripple/coll"
-	working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+	working_dir = "/home/ekalhxh/ripple/coll"
+	#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
 	# 定义文件名字典
 	case_dict = {
 		0: "uStar030_250_0_2650_3600",

@@ -27,10 +27,10 @@ def read_file(file_path):
 		return line
 
 # 读取多个文件内容, 并将其存储到一个字典中
-def read_surface_file(folder_path, start_file, end_file):
-	time_step_data_dict: Dict[int, List[List[grid_node_data]]] = {}
+def read_inside_file(folder_path, start_file, end_file):
+	time_step_data_dict: Dict[int, List[grid_node_data]] = {}
 	for i in range(start_file, end_file+1):
-		file_path = os.path.join(folder_path, f"SurfaceData_{i}.plt")
+		file_path = os.path.join(folder_path, f"InsideData_{i}.plt")
 		results = read_file(file_path)
 
 		for line in results:
@@ -39,28 +39,12 @@ def read_surface_file(folder_path, start_file, end_file):
 			elif "zone" in line:
 				current_time_list = [float(num) for num in re.findall(r'\d+\.?\d*', line)]
 				current_time = round(current_time_list[0])
-			elif "i=" in line:
-				ij_range = [int(num) for num in re.findall(r'\d+', line)]
-				i_range = ij_range[0]
-				j_range = ij_range[1]
-				current_surface = [[None for _ in range(i_range)] for _ in range(j_range)]
-				current_i = 0
-				current_j = 0
-			else:
-				columns = line.split()
-				current_grid_node = grid_node_data(
-					x=float(columns[0]),
-					y=float(columns[1]),
-					z=float(columns[2]),
-					d=float(columns[3])
-				)
-				current_surface[current_j][current_i] = current_grid_node
-				current_i += 1
-				if current_i >= i_range:
-					current_i = 0
-					current_j += 1
-					if current_j >= j_range:
-						time_step_data_dict[current_time] = current_surface
+				time_step_data_dict[current_time] = []
+			elif "i=" is not in line:
+				data_values = [float(num) for num in line.split()]
+				if len(data_values) == 4:
+					node_data = grid_node_data(*data_values)
+					time_step_data_dict[current_time].append(node_data)
 	return time_step_data_dict
 
 def auto_correlation(data1):
@@ -92,7 +76,6 @@ if __name__ == "__main__":
 		end = 3600
 	# 定义文件路径
 	working_dir = "/home/ekalhxh/ripple/coll"
-	#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
 	cases_file = os.path.join(working_dir, "cases.dat")
 	if os.path.exists(cases_file):
 		os.remove(cases_file)
@@ -173,7 +156,7 @@ if __name__ == "__main__":
 		start_file_num = start // file_interval
 		end_file_num = real_end // file_interval
 		folder_path = f"{working_dir}/{folder_name}/Surface"
-		time_step_data = read_surface_file(folder_path, start_file_num, end_file_num)
+		time_step_data = read_inside_file(folder_path, start_file_num, end_file_num)
 		proflie_t = []
 		surface_profile_file = os.path.join(working_dir, f"{folder_name}/surfProfile.dat")
 		surface_diameter_file = os.path.join(working_dir, f"{folder_name}/surfDiameter.dat")
