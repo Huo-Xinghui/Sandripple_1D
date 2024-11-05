@@ -1,14 +1,29 @@
-# 导入必要的库
-import os
-import re
-import matplotlib.pyplot as plt
-import numpy as np
-from dataclasses import dataclass
-from typing import List
-from typing import Dict
-from scipy.signal import find_peaks
-from tqdm import tqdm
+# -*-*-*- Author: EkalHxH -*-*-*-
+# version: 1.0 (2024-11-5)
 
+# ********************************************************************************************************
+# 用于处理床面数据，输出处理后的数据到surfProfile.dat, surfDiameter.dat, autoCorr.dat, surfTopology.dat
+
+# cases.dat 用于记录每个case的参数
+# surfProfile.dat 用于记录每个时间步的床面廓线数据
+# surfDiameter.dat 用于记录每个时间步的床面粒径数据
+# autoCorr.dat 用于记录每个时间步的床面自相关数据
+# surfTopology.dat 用于记录每个时间步的波长、振幅、波速数据
+
+# 用法: 设置start和end变量来控制处理的时间范围，working_dir变量来控制工作目录，case_dict字典来控制处理的case
+# ********************************************************************************************************
+
+# 导入必要的库
+import os # 用于文件操作
+import re # 用于正则表达式
+import numpy as np # 用于数值计算
+from dataclasses import dataclass # 用于定义数据类
+from typing import List # 用于类型提示
+from typing import Dict # 用于类型提示
+from scipy.signal import find_peaks # 用于寻找峰值
+from tqdm import tqdm # 用于显示进度条
+
+# 定义一个数据类来存储网格节点数据
 @dataclass
 class grid_node_data:
 	x: float
@@ -63,39 +78,37 @@ def read_surface_file(folder_path, start_file, end_file):
 						time_step_data_dict[current_time] = current_surface
 	return time_step_data_dict
 
-def auto_correlation(data1):
-	mean_data1 = np.mean(data1)
-	data2 = data1
-	corr_list = []
-	for _ in range(len(data1)):
-		mean_data12 = np.mean([data1[i] * data2[i] for i in range(len(data1))])
-		corr = mean_data12 - mean_data1 * mean_data1
-		corr_list.append(corr)
-		data2_head = data2[-1]
-		data2 = np.insert(data2[:-1], 0, data2_head)
-	return corr_list
-
 # 主程序
 if __name__ == "__main__":
-	# 定义常数
-	nu = 1.51e-5
-	interval = 30
-	dt = 60 # 计算波速的时间间隔
-	file_interval = 240
-	user_input = False
-	if user_input:
-		# 用户输入
-		start = int(input("Please input start time (s), default=30: ") or 60)
-		end = int(input("Please input end time (s), default=1200: ") or 120)
+	# 操作系统
+	sys_OS = "w" # "w" for windows, "l" for linux
+	if sys_OS == "l":
+		linux_flag = True
+	elif sys_OS == "w":
+		linux_flag = False
 	else:
-		start = 30
-		end = 3600
+		print("Invalid input!")
+		exit()
+
+	# 定义常数
+	nu = 1.51e-5 # 运动粘度
+	interval = 30 # 源文件输出时间间隔
+	dt = 60 # 计算波速的时间间隔
+	file_interval = 240 # 两个文件之间的时间间隔
+	start = 30 # 开始时间
+	end = 3600 # 结束时间
+
 	# 定义文件路径
-	working_dir = "/home/ekalhxh/ripple/coll"
-	#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+	if linux_flag:
+		working_dir = "/home/ekalhxh/ripple/coll"
+	else:
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+
+	# 删除已存在的cases.dat文件
 	cases_file = os.path.join(working_dir, "cases.dat")
 	if os.path.exists(cases_file):
 		os.remove(cases_file)
+
 	# 定义文件名字典
 	case_dict = {
 		0: "uStar030_250_0_2650_3600",
@@ -128,9 +141,24 @@ if __name__ == "__main__":
 		27: "uStar050_300stdd10_0_2650_3600",
 		28: "uStar050_300stdd20_0_2650_3600",
 		29: "uStar050_300stdd50_0_2650_3600",
-		30: "uStar050_300stdd100_0_2650_2774",
+		30: "uStar035_300_0_2650_3600",
+		31: "uStar040_300_0_2650_3600",
+		32: "uStar045_300_0_2650_3600",
+		33: "uStar050_300_0_2650_3600",
+		34: "uStar055_300_0_2650_3600",
+		35: "uStar060_300_0_2650_3600",
+		36: "uStar035_300stdd100_0_2650_3600",
+		37: "uStar040_300stdd100_0_2650_3600",
+		38: "uStar045_300stdd100_0_2650_3600",
+		39: "uStar050_300stdd100_0_2650_2774",
+		40: "uStar055_300stdd100_0_2650_3600",
+		41: "uStar060_300stdd100_0_2650_3600",
+		42: "uStar065_300stdd100_0_2650_3600",
 	}
+
+	# 遍历字典中的每个case
 	for i, folder_name in tqdm(case_dict.items(), desc="Processing", unit="case"):
+		# 从文件名中提取参数
 		parts = folder_name.split("_")
 		ustar_name = parts[0]
 		ustar_str = ustar_name[6:]
@@ -157,10 +185,14 @@ if __name__ == "__main__":
 		else:
 			rho = float(rho_name)
 		rhoP = float(parts[3])
+
+		# 计算s, Sh和Ga
 		s = rhoP/rho
 		g_hat = 9.8 * (1 - 1/s)
 		Sh = rho*ustar**2/(rhoP*g_hat*dia)
 		Ga = (s*g_hat*dia**3)**0.5/nu
+
+		# 将各参数写入cases.dat文件
 		with open(cases_file, 'a') as file:
 			file.write(f"{folder_name}\n")
 			file.write(f"u* = {ustar:.2f}, dia1={dia1:.4f}, dia2={dia2:.4f}, dia={dia:.4f}\n")
@@ -168,13 +200,15 @@ if __name__ == "__main__":
 			file.write(f"s={s:.4f}, Sh={Sh:.4f}, Ga={Ga:.4f}\n")
 			file.write("\n")
 
+		# 读取床面数据
 		last_time = int(parts[4])
 		real_end = min(end, last_time)
 		start_file_num = start // file_interval
 		end_file_num = real_end // file_interval
 		folder_path = f"{working_dir}/{folder_name}/Surface"
 		time_step_data = read_surface_file(folder_path, start_file_num, end_file_num)
-		proflie_t = []
+
+		# 删除已存在的surfProfile.dat, surfDiameter.dat, autoCorr.dat, surfTopology.dat文件
 		surface_profile_file = os.path.join(working_dir, f"{folder_name}/surfProfile.dat")
 		surface_diameter_file = os.path.join(working_dir, f"{folder_name}/surfDiameter.dat")
 		auto_corr_file = os.path.join(working_dir, f"{folder_name}/autoCorr.dat")
@@ -187,15 +221,20 @@ if __name__ == "__main__":
 			os.remove(auto_corr_file)
 		if os.path.exists(surface_topology_file):
 			os.remove(surface_topology_file)
-		wavelength_t = []
-		amplitude_t = []
-		migration_t = []
-		time = []
-		time_step_profile: Dict[int, List[float]] = {}
-		time_step_profile_d: Dict[int, List[float]] = {}
+
+		# 初始化
+		wavelengths = [] # 波长
+		amplitudes = [] # 振幅
+		time = [] # 时间
+		time_step_profile: Dict[int, List[float]] = {} # 床面高度廓线
+		time_step_profile_d: Dict[int, List[float]] = {} # 床面粒径廓线
 		lag = 0
+
+		# 遍历每个时间步
 		for t, surface in time_step_data.items():
 			if t>=start and t<=end:
+				time.append(t)
+				# 计算床面高度、粒径的平均廓线
 				profile_x = np.array([node.x for node in surface[0]])
 				surface_z = np.array([[node.z for node in row] for row in surface])
 				surface_d = np.array([[node.d for node in row] for row in surface])
@@ -205,6 +244,8 @@ if __name__ == "__main__":
 				profile_z = profile_z - average_z
 				time_step_profile[t] = profile_z
 				time_step_profile_d[t] = profile_d
+
+				# 将床面廓线、粒径写入文件
 				with open(surface_profile_file, 'a') as file:
 					file.write(f"x vs z at {t} with {len(profile_x)} points\n")
 					for i in range(len(profile_x)):
@@ -213,29 +254,34 @@ if __name__ == "__main__":
 					file.write(f"x vs d at {t} with {len(profile_x)} points\n")
 					for i in range(len(profile_x)):
 						file.write(f"{profile_x[i]} {profile_d[i]}\n")
+
+				# 计算床面自相关
 				auto_corr_x = profile_x
 				auto_corr = np.correlate(profile_z, profile_z, mode='full')
 				auto_corr_z = auto_corr[len(auto_corr)//2:]
-				#auto_corr_z = auto_correlation(profile_z)
+
+				# 将床面自相关写入文件
 				with open(auto_corr_file, 'a') as file:
 					file.write(f"x vs corr at {t} with {len(auto_corr_x)} points\n")
 					for i in range(len(auto_corr_x)):
 						file.write(f"{auto_corr_x[i]} {auto_corr_z[i]}\n")
+
+				# 计算波长、振幅
 				peaks, _ = find_peaks(auto_corr_z, height=0)
+				amplitude = 2*np.sqrt(2*auto_corr_z[0])
+				amplitudes.append(amplitude)
 				if len(peaks) > 0:
 					lag = peaks[0]
 				displacement = auto_corr_x[lag]
-				amplitude = 2*np.sqrt(2*auto_corr_z[0])
-				time.append(t)
-				wavelength_t.append(displacement)
-				amplitude_t.append(amplitude)
-		times = list(time_step_profile.keys())
-		velocities = []
-		di = dt // interval
+				wavelengths.append(displacement)
+
+		# 计算波速
+		velocities = [] # 波速
+		di = dt // interval # 计算波速的键值间隔
 		lag = 0
-		for i in range(len(times)-di):
-			t1 = times[i]
-			t2 = times[i+di]
+		for i in range(len(time)-di):
+			t1 = time[i]
+			t2 = time[i+di]
 			z1 = time_step_profile[t1]
 			z2 = time_step_profile[t2]
 			cross_corr = np.correlate(z1, z2, mode='full')
@@ -248,10 +294,12 @@ if __name__ == "__main__":
 			time_diff = t2 - t1
 			velocity = displacement / time_diff
 			velocities.append(velocity)
-		# Ensure velocities has the same length as times by appending the last element
-		while len(velocities) < len(times):
+		# 确保波速和时间长度相同, 如果不同则用最后一个值填充
+		while len(velocities) < len(time):
 			velocities.append(velocities[-1])
+
+		# 将波长、振幅、波速写入文件
 		with open(surface_topology_file, 'w') as file:
 			file.write(f"lambda amplitude velocity vs t with {len(time)} points\n")
 			for i in range(len(time)):
-				file.write(f"{time[i]} {wavelength_t[i]} {amplitude_t[i]} {velocities[i]}\n")
+				file.write(f"{time[i]} {wavelengths[i]} {amplitudes[i]} {velocities[i]}\n")
