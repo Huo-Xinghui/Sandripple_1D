@@ -195,7 +195,7 @@ if __name__ == "__main__":
 		# 将各参数写入cases.dat文件
 		with open(cases_file, 'a') as file:
 			file.write(f"{folder_name}\n")
-			file.write(f"u* = {ustar:.2f}, dia1={dia1:.4f}, dia2={dia2:.4f}, dia={dia:.4f}\n")
+			file.write(f"u* = {ustar:.2f}, dia1={dia1:.6f}, dia2={dia2:.6f}, dia={dia:.6f}\n")
 			file.write(f"rho={rho:.4f}, rhoP={rhoP:.1f}\n")
 			file.write(f"s={s:.4f}, Sh={Sh:.4f}, Ga={Ga:.4f}\n")
 			file.write("\n")
