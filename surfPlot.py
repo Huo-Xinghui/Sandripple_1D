@@ -1,13 +1,13 @@
 # 导入必要的库
-import math
-import os
-import re
-import matplotlib.pyplot as plt
-import numpy as np
-from dataclasses import dataclass
-from typing import List
-from typing import Dict
+import os # 用于文件操作
+import re # 用于正则表达式
+import matplotlib.pyplot as plt # 用于绘图
+import numpy as np # 用于数值计算
+from dataclasses import dataclass # 用于定义数据类
+from typing import List # 用于定义列表
+from typing import Dict # 用于定义字典
 
+# 定义一个数据类，用于存储文件中的数据
 @dataclass
 class file_data:
 	data: List[float]
@@ -22,12 +22,12 @@ def read_file(file_path):
 		line = file.readlines()
 		return line
 
-# 读取文件内容, 并将其存储到一个字典中
+# 读取廓线文件内容, 并将其存储到一个字典中
 def read_data_file1(folder_path, file_name):
-	file_path = os.path.join(folder_path, file_name)
-	all_lines = read_file(file_path)
+	file_path = os.path.join(folder_path, file_name) # 拼接文件路径
+	all_lines = read_file(file_path) # 读取文件内容
 
-	time_step_data_dict: Dict[int, List[file_data]] = {}
+	time_step_data_dict: Dict[int, List[file_data]] = {} # 定义一个字典，用于存储数据
 	for line in all_lines:
 		if "vs" in line:
 			nums_in_first_line = [int(num) for num in re.findall(r'\d+\.?\d*', line)]
@@ -47,11 +47,12 @@ def read_data_file1(folder_path, file_name):
 				time_step_data_dict[current_time] = data_list
 	return time_step_data_dict
 
+# 读取时间序列文件内容, 并将其存储到一个列表中
 def read_data_file2(folder_path, file_name):
-	file_path = os.path.join(folder_path, file_name)
+	file_path = os.path.join(folder_path, file_name) # 拼接文件路径
 	all_lines = read_file(file_path)
 
-	data_list = []
+	data_list = [] # 定义一个列表，用于存储数据
 	for line in all_lines:
 		if "vs" not in line:
 			columns = line.split()
@@ -64,9 +65,19 @@ def read_data_file2(folder_path, file_name):
 
 # 主程序
 if __name__ == "__main__":
+	# 判断操作系统
+	sys_OS = "l" # "w" for windows, "l" for linux
+	if sys_OS == "l":
+		linux_flag = True
+	elif sys_OS == "w":
+		linux_flag = False
+	else:
+		print("Invalid input!")
+		exit()
+
 	# 固定参数
-	nu = 1.51e-5
-	interval = 30
+	nu = 1.51e-5 # 运动粘度
+	interval = 30 # 源文件时间间隔
 	# 控制参数
 	output_num = 0 # 出图类型：0为床面廓线，1为相关性，2为波长, 3为波高, 4为波速, 5为床面粒径分布
 	start = 30 # 起始时间
@@ -77,6 +88,8 @@ if __name__ == "__main__":
 	corr_offset = 1e-8 # 相关性图的纵向偏移
 	diameter_offset = 2e-5 # 廓线图的纵向偏移
 	case_num = 30 # 算例号
+
+	# 定义算例字典
 	case_num_dict = {
 		#0: 0,
 		#1: 1,
@@ -109,10 +122,27 @@ if __name__ == "__main__":
 		28: 28,
 		29: 29,
 		30: 30,
+		#31: 31,
+		#32: 32,
+		#33: 33,
+		#34: 34,
+		#35: 35,
+		#36: 36,
+		#37: 37,
+		#38: 38,
+		#39: 39,
+		#40: 40,
+		#41: 41,
+		#42: 42,
+		#43: 43,
 	}
+
 	# 定义文件路径
-	working_dir = "/home/ekalhxh/ripple/coll"
-	#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+	if linux_flag:
+		working_dir = "/home/ekalhxh/ripple/coll"
+	else:
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+
 	# 定义文件名字典
 	case_dict = {
 		0: "uStar030_250_0_2650_3600",
@@ -145,7 +175,19 @@ if __name__ == "__main__":
 		27: "uStar050_300stdd10_0_2650_3600",
 		28: "uStar050_300stdd20_0_2650_3600",
 		29: "uStar050_300stdd50_0_2650_3600",
-		30: "uStar050_300stdd100_0_2650_2774",
+		30: "uStar035_300_0_2650_3600",
+		31: "uStar040_300_0_2650_3600",
+		32: "uStar045_300_0_2650_3600",
+		33: "uStar050_300_0_2650_3600",
+		34: "uStar055_300_0_2650_3600",
+		35: "uStar060_300_0_2650_3600",
+		36: "uStar035_300stdd100_0_2650_3600",
+		37: "uStar040_300stdd100_0_2650_3600",
+		38: "uStar045_300stdd100_0_2650_3600",
+		#39: "uStar050_300stdd100_0_2650_2774",
+		40: "uStar055_300stdd100_0_2650_3600",
+		41: "uStar060_300stdd100_0_2650_3600",
+		42: "uStar065_300stdd100_0_2650_3600",
 	}
 	output_file_dict = {
 		0: "surfProfile.dat",

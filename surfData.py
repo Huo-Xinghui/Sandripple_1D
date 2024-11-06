@@ -93,7 +93,7 @@ def read_surface_file(folder_path, start_file, end_file):
 # 主程序
 if __name__ == "__main__":
 	# 操作系统
-	sys_OS = "w" # "w" for windows, "l" for linux
+	sys_OS = "l" # "w" for windows, "l" for linux
 	if sys_OS == "l":
 		linux_flag = True
 	elif sys_OS == "w":
@@ -162,7 +162,7 @@ if __name__ == "__main__":
 		36: "uStar035_300stdd100_0_2650_3600",
 		37: "uStar040_300stdd100_0_2650_3600",
 		38: "uStar045_300stdd100_0_2650_3600",
-		39: "uStar050_300stdd100_0_2650_2774",
+		#39: "uStar050_300stdd100_0_2650_2774",
 		40: "uStar055_300stdd100_0_2650_3600",
 		41: "uStar060_300stdd100_0_2650_3600",
 		42: "uStar065_300stdd100_0_2650_3600",
