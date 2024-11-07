@@ -51,14 +51,14 @@ if __name__ == "__main__":
 	file_interval = 240
 	start = interval*20
 	end = interval*23
-	plot_case = 14 #对照case_dict的键值
+	plot_case = 18 #对照case_dict的键值
 	plot_section = 1 #从0开始
 	average_on_time = False
 	average_on_y = True
 	plot_type = 0 #0: pcolormesh, 1: contourf
 	# 定义文件路径
-	#working_dir = "/home/ekalhxh/ripple/coll"
-	working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+	working_dir = "/home/ekalhxh/ripple/coll"
+	#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
 	# 定义文件名字典
 	case_dict = {
 		1: "uStar040_150and350_0_2650_3600",
@@ -74,7 +74,13 @@ if __name__ == "__main__":
 		11: "uStar050_300stdd10_0_2650_3600",
 		12: "uStar050_300stdd20_0_2650_3600",
 		13: "uStar050_300stdd50_0_2650_3600",
-		14: "uStar050_300stdd100_0_2650_2774",
+		14: "uStar035_300stdd100_0_2650_3600",
+		15: "uStar040_300stdd100_0_2650_3600",
+		16: "uStar045_300stdd100_0_2650_3600",
+		17: "uStar050_300stdd100_0_2650_3600",
+		18: "uStar055_300stdd100_0_2650_3600",
+		19: "uStar060_300stdd100_0_2650_3600",
+		20: "uStar065_300stdd100_0_2650_3600",
 	}
 	folder_name = case_dict[plot_case]
 	parts = folder_name.split("_")
