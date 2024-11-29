@@ -15,7 +15,7 @@
 
 # ********************************************************************************************************
 
-# 用于画床面波浪的时空图，相关性图，波长、波高、波速随时间的变化图，波长、波高、波速随u*的变化图
+# 用于画床面波浪的时空图，相关性图，波长、波高、波速随时间的变化图，波长、波高、波速随x的变化图
 
 # ********************************************************************************************************
 
@@ -96,15 +96,17 @@ if __name__ == "__main__":
 		print("Invalid input!")
 		exit()
 
+# ----------------------------------------------------------------------------------------
 	# 固定参数
 	nu = 1.51e-5 # 运动粘度
 	interval = 30 # 源文件时间间隔
 	# 控制参数
 	output_num = 0 # 出图类型：0为床面廓线，1为相关性，2为波长, 3为波高, 4为波速, 5为床面粒径分布
+	x_type = 4 # 算例对比图中x轴的类型：0为u*, 1为d_min, 2为d_max, 3为d, 4为stddev, 5为Sh, 6为Ga
 	start = 30 # 时空图的起始时间或者变量随时间变化的起始时间
-	end = 2400 # 时空图的结束时间或者变量随时间变化的结束时间
+	end = 400 # 时空图的结束时间或者变量随时间变化的结束时间
 	average_start = 30 # 开始计算平均值的时间
-	average_end = 900 # 结束计算平均值的时间
+	average_end = 400 # 结束计算平均值的时间
 	profile_offset = 2e-4 # 廓线图的纵向偏移
 	corr_offset = 1e-8 # 相关性图的纵向偏移
 	diameter_offset = 2e-5 # 廓线图的纵向偏移
@@ -138,24 +140,24 @@ if __name__ == "__main__":
 		#23: 23,
 		#24: 24,
 		#25: 25,
-		#26: 26,
-		#27: 27,
-		#28: 28,
-		#29: 29,
-		30: 30,
-		31: 31,
-		32: 32,
+		26: 26,
+		27: 27,
+		28: 28,
+		29: 29,
+		#30: 30,
+		#31: 31,
+		#32: 32,
 		33: 33,
-		34: 34,
-		35: 35,
-		36: 36,
-		37: 37,
-		38: 38,
-		39: 39,
+		#34: 34,
+		#35: 35,
+		#36: 36,
+		#37: 37,
+		#38: 38,
+		#39: 39,
 		40: 40,
-		41: 41,
-		42: 42,
-		43: 43,
+		#41: 41,
+		#42: 42,
+		#43: 43,
 	}
 
 	# 定义文件路径
@@ -163,6 +165,7 @@ if __name__ == "__main__":
 		working_dir = "/home/ekalhxh/ripple/coll"
 	else:
 		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+# ----------------------------------------------------------------------------------------
 
 	# 定义文件名字典
 	case_dict = {
@@ -272,16 +275,19 @@ if __name__ == "__main__":
 				dia1 = float(dia_name_list[0])/1e6
 				dia2 = float(dia_name_list[1])/1e6
 				dia =  (dia1 + dia2) / 2
+				stdd = dia2 - dia1
 			elif "stdd" in dia_name:
 				dia_name_list = dia_name.split("stdd")
 				dia1 = float(dia_name_list[0])/1e6 - 3*float(dia_name_list[1])/1e6
 				dia2 = float(dia_name_list[0])/1e6 + 3*float(dia_name_list[1])/1e6
 				dia =  (dia1 + dia2) / 2
+				stdd = float(dia_name_list[1])/1e6
 			else:
 				dia_name_list = [dia_name, dia_name]
 				dia1 = float(dia_name_list[0])/1e6
 				dia2 = float(dia_name_list[1])/1e6
 				dia =  (dia1 + dia2) / 2
+				stdd = 0
 			rho_name = parts[2]
 			if rho_name == "0":
 				rho = 1.263
@@ -319,14 +325,14 @@ if __name__ == "__main__":
 			i_start = average_start // interval - 1
 			i_end = average_end // interval - 1
 			average_y = np.mean(y[i_start:i_end])
-			y_list.append((ustar, dia1, dia2, dia, Sh, Ga, average_y))
+			y_list.append((ustar, dia1, dia2, dia, stdd, Sh, Ga, average_y))
 
 			# 画第一副图为波长、波高、波速随时间的变化图
 			plt.figure(1)
 			if dia1 == dia2:
-				plt.plot(x, y, label=f"$u*={ustar}$, $d={dia}$") # 画图, 设置标签
+				plt.plot(x, y, label=f"$u*={ustar:.2f}$, $d={dia:.6f}$") # 画图, 设置图例内容
 			else:
-				plt.plot(x, y, label=f"$u*={ustar}$, $d_1={dia1}$, $d_2={dia2}$") # 画图, 设置标签
+				plt.plot(x, y, label=f"$u*={ustar:.2f}$, $d_1={dia1:.6f}$, $d_2={dia2:.6f}$") # 画图, 设置图例内容
 		plt.xlabel('$t$') # 设置横坐标标签
 		# 设置纵坐标标签和范围
 		if output_num == 2:
@@ -343,10 +349,15 @@ if __name__ == "__main__":
 		plt.xlim(start, end) # 设置横坐标范围
 		plt.show() # 显示图像
 
-		# 画第二副图为波长、波高、波速随u*的变化图
+		# 画第二副图为波长、波高、波速随x的变化图
 		plt.figure(2)
-		plt.plot([item[0] for item in y_list], [item[6] for item in y_list], 'o')
-		plt.xlabel('$u*$') # 设置横坐标标签
+		x = [item[x_type] for item in y_list]
+		y = [item[7] for item in y_list]
+		plt.plot(x, y, 'o')
+		label_list = ["$u*$", "$d_{min}$", "$d_{max}$", "$d$", "$stddev$", "$Sh$", "$Ga$"]
+		plt.xlabel(label_list[x_type]) # 设置横坐标标签
+		if x_type >= 1 and x_type <= 4:
+			plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 		# 设置纵坐标标签
 		if output_num == 2:
 			plt.ylabel('$\lambda$')
