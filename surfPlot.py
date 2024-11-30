@@ -87,7 +87,7 @@ def read_data_file2(folder_path, file_name):
 # 主程序
 if __name__ == "__main__":
 	# 判断操作系统
-	sys_OS = "l" # "w" for windows, "l" for linux
+	sys_OS = "w" # "w" for windows, "l" for linux
 	if sys_OS == "l":
 		linux_flag = True
 	elif sys_OS == "w":
@@ -101,12 +101,12 @@ if __name__ == "__main__":
 	nu = 1.51e-5 # 运动粘度
 	interval = 30 # 源文件时间间隔
 	# 控制参数
-	output_num = 0 # 出图类型：0为床面廓线，1为相关性，2为波长, 3为波高, 4为波速, 5为床面粒径分布
-	x_type = 4 # 算例对比图中x轴的类型：0为u*, 1为d_min, 2为d_max, 3为d, 4为stddev, 5为Sh, 6为Ga
+	output_num = 2 # 出图类型：0为床面廓线，1为相关性，2为波长, 3为波高, 4为波速, 5为床面粒径分布
+	x_type = 0 # 算例对比图中x轴的类型：0为u*, 1为d_min, 2为d_max, 3为d, 4为stddev, 5为Sh, 6为Ga
 	start = 30 # 时空图的起始时间或者变量随时间变化的起始时间
-	end = 400 # 时空图的结束时间或者变量随时间变化的结束时间
-	average_start = 30 # 开始计算平均值的时间
-	average_end = 400 # 结束计算平均值的时间
+	end = 1500 # 时空图的结束时间或者变量随时间变化的结束时间
+	average_start = 300 # 开始计算平均值的时间
+	average_end = 900 # 结束计算平均值的时间
 	profile_offset = 2e-4 # 廓线图的纵向偏移
 	corr_offset = 1e-8 # 相关性图的纵向偏移
 	diameter_offset = 2e-5 # 廓线图的纵向偏移
@@ -140,32 +140,32 @@ if __name__ == "__main__":
 		#23: 23,
 		#24: 24,
 		#25: 25,
-		26: 26,
-		27: 27,
-		28: 28,
-		29: 29,
-		#30: 30,
-		#31: 31,
-		#32: 32,
+		#26: 26,
+		#27: 27,
+		#28: 28,
+		#29: 29,
+		30: 30,
+		31: 31,
+		32: 32,
 		33: 33,
-		#34: 34,
-		#35: 35,
-		#36: 36,
-		#37: 37,
-		#38: 38,
-		#39: 39,
+		34: 34,
+		35: 35,
+		36: 36,
+		37: 37,
+		38: 38,
+		39: 39,
 		40: 40,
-		#41: 41,
-		#42: 42,
-		#43: 43,
+		41: 41,
+		42: 42,
+		43: 43,
 	}
+# ----------------------------------------------------------------------------------------
 
 	# 定义文件路径
 	if linux_flag:
 		working_dir = "/home/ekalhxh/ripple/coll"
 	else:
 		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
-# ----------------------------------------------------------------------------------------
 
 	# 定义文件名字典
 	case_dict = {
@@ -214,7 +214,7 @@ if __name__ == "__main__":
 		42: "uStar060_300stdd100_0_2650_3600",
 		43: "uStar065_300stdd100_0_2650_3600",
 	}
-	
+
 	# 定义读取文件名字典
 	output_file_dict = {
 		0: "surfProfile.dat",
@@ -336,7 +336,7 @@ if __name__ == "__main__":
 		plt.xlabel('$t$') # 设置横坐标标签
 		# 设置纵坐标标签和范围
 		if output_num == 2:
-			plt.ylabel('$\lambda$') 
+			plt.ylabel('$\lambda$')
 			plt.ylim(0, y_max)
 		elif output_num == 3:
 			plt.yscale('log')
