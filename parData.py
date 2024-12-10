@@ -48,13 +48,19 @@ class ParticleData:
 	survT: float = 0.0
 	collNum: int = 0
 
+	def calculate_mass(self) -> float:
+		"""计算质量"""
+		return math.pi*self.dia**3/6*self.rho
+
 	def calculate_momentum(self) -> List[float]:
 		"""计算动量"""
-		return [self.vel[i]*math.pi*self.dia**3/6*self.rho for i in range(len(self.vel))]
-	
-	def __post_init__(self):
-		"""初始化后计算速度的模"""
-		self.vMag = math.sqrt(sum([self.vel[i]**2 for i in range(len(self.vel))]))
+		mass = self.calculate_mass()
+		return [mass*vel for vel in self.vel]
+
+	def calculate_energy(self) -> float:
+		"""计算能量"""
+		mass = self.calculate_mass()
+		return 0.5*mass*self.vMag**2 + mass*9.8*self.h
 
 @dataclass
 class TimeStepData:
@@ -62,23 +68,88 @@ class TimeStepData:
 	count: int = 0
 	particles: List[ParticleData]
 
-	def add_particle(self, particle: ParticleData):
-		"""添加粒子"""
-		self.particles.append(particle)
-		self.count += 1
+	def calculate_total_energy(self) -> Dict[str, float]:
+		"""计算总能量"""
+		total_energy = 0.0
+		coll_energy = 0.0
+		non_coll_energy = 0.0
 
-	def get_particle_count(self) -> int:
-		"""返回粒子数量"""
-		return len(self.particles)
-
-	def calculate_total_momentum(self) -> List[float]:
-		"""计算总动量"""
-		total_momentum = [0.0, 0.0, 0.0]
 		for particle in self.particles:
-			particle_momentum = particle.calculate_momentum()
-			for i in range(len(total_momentum)):
-				total_momentum[i] += particle_momentum[i]
-		return total_momentum
+			energy = particle.calculate_energy()
+			total_energy += energy
+			if particle.collNum > 0:
+				coll_energy += energy
+			else:
+				non_coll_energy += energy
+
+		return {
+			"total": total_energy,
+			"coll": coll_energy,
+			"non_coll": non_coll_energy
+		}
+
+	def calculate_dia_in_air(self) -> Dict[str, float]:
+		"""计算空中颗粒平均直径"""
+		dia_sum = 0.0
+		coll_dia_sum = 0.0
+		non_coll_dia_sum = 0.0
+		coll_count = 0
+		non_coll_count = 0
+
+		for particle in self.particles:
+			dia_sum += particle.dia
+			if particle.collNum > 0:
+				coll_dia_sum += particle.dia
+				coll_count += 1
+			else:
+				non_coll_dia_sum += particle.dia
+				non_coll_count += 1
+		return {
+			"total": dia_sum / self.count,
+			"coll": coll_dia_sum / coll_count,
+			"non_coll": non_coll_dia_sum / non_coll_count
+		}
+
+	def calculate_mass_flux(self) -> Dict[str, List[float]]:
+		"""计算质量通量"""
+		total_momentum_sum = [0.0, 0.0, 0.0]
+		coll_momentum_sum = [0.0, 0.0, 0.0]
+		non_coll_momentum_sum = [0.0, 0.0, 0.0]
+
+		for particle in self.particles:
+			momentum = particle.calculate_momentum()
+			for i in range(3):
+				total_momentum_sum[i] += momentum[i]
+				if particle.collNum > 0:
+					coll_momentum_sum[i] += momentum[i]
+				else:
+					non_coll_momentum_sum[i] += momentum[i]
+
+		return {
+			"total": [m / area for m in total_momentum_sum],
+			"coll": [m / area for m in coll_momentum_sum],
+			"non_coll": [m / area for m in non_coll_momentum_sum]
+		}
+
+	def calculete_carrying_capacity(self) -> Dict[str, float]:
+		"""计算颗粒携带量"""
+		total_mass_sum = 0.0
+		coll_mass_sum = 0.0
+		non_coll_mass_sum = 0.0
+
+		for particle in self.particles:
+			mass = particle.calculate_mass()
+			total_mass_sum += mass
+			if particle.collNum > 0:
+				coll_mass_sum += mass
+			else:
+				non_coll_mass_sum += mass
+		return {
+			"total": total_mass_sum / area,
+			"coll": coll_mass_sum / area,
+			"non_coll": non_coll_mass_sum / area
+		}
+
 
 @dataclass
 class ParticleNumData:
@@ -100,7 +171,7 @@ class ParticleNumData:
 		else:
 			time_filtered = self.time
 			particleNum_filtered = self.particleNum
-		
+
 		plt.plot(time_filtered, particleNum_filtered)
 		plt.xlabel('Time')
 		plt.ylabel('Number')
@@ -178,9 +249,9 @@ def parse_particle_data(lines: List[str]) -> List[ParticleData]:
 	return particles
 
 # 定义一个函数来读取多个颗粒文件内容
-def read_data_file(folder_path: str, file_num: int) -> Dict[int, TimeStepData]:
+def read_particle_file(folder_path: str, end_num: int) -> List[TimeStepData]:
 	all_data = []
-	for i in range(file_num):
+	for i in range(end_num):
 		file_path = os.path.join(folder_path, f"ParticleData_{i}.plt")
 		results = read_file(file_path)
 		if results:
@@ -191,8 +262,7 @@ def read_data_file(folder_path: str, file_num: int) -> Dict[int, TimeStepData]:
 
 	extracted_time = extract_times(all_data, indices_with_zone)
 
-	time_step_data: Dict[int, TimeStepData] = {}
-
+	time_step_data = []
 	for i in range(len(indices_with_zone)):
 		index1 = indices_with_zone[i] + 1
 		index2 = indices_with_zone[i+1] - 1 if i < len(indices_with_zone) - 1 else len(all_data) - 1
@@ -200,19 +270,9 @@ def read_data_file(folder_path: str, file_num: int) -> Dict[int, TimeStepData]:
 			index2 -= 1
 		particles = parse_particle_data(all_data[index1:index2+1])
 		extracted_num = len(particles)
-		time_step_data[extracted_time[i]] = TimeStepData(time=extracted_time[i], count=extracted_num, particles=particles)
+		time_step_data.append(TimeStepData(time=extracted_time[i], count=extracted_num, particles=particles))
 
 	return time_step_data
-
-def plot_Num_vs_time(time, particleNum, output_N_t):
-	if output_N_t:
-		plt.plot(time, particleNum)
-		plt.xlabel('Time')
-		plt.ylabel('Number')
-		plt.title('Number vs Time')
-		plt.show()
-	else:
-		return
 
 def plot_Q_vs_time(time, flux_x, output_Q_t):
 	if output_Q_t:
@@ -226,252 +286,149 @@ def plot_Q_vs_time(time, flux_x, output_Q_t):
 
 # 主程序
 if __name__ == "__main__":
-	midair_collision = True
-	midair_collision_input = input("Midair collision (y/n), default=yes: ")
-	if midair_collision_input.lower() == "n":
-		midair_collision = False
-	Bernoulli = False
-	Bernoulli_input = input("Bernoulli distribution (y/n), default=no: ")
-	if Bernoulli_input.lower() == "y":
-		Bernoulli = True
-	# 定义一些常量
-	if not midair_collision:
-		working_dir = "E:/Data/Sandripples1DFluid/noMidairColl"
-	elif Bernoulli:
-		working_dir = "E:/Data/Sandripples1DFluid/Bernoulli"
+	# 操作系统
+	sys_OS = "w" # "w" for windows, "l" for linux
+	if sys_OS == "l":
+		linux_flag = True
+	elif sys_OS == "w":
+		linux_flag = False
 	else:
-		working_dir = "E:/Data/Sandripples1DFluid/uniform"
-	xMax = 0.5
-	yMax = 0.01
-	nu = 1.51e-5
-	Sh_d = 0.00298
-	plot_N_t = False
-	plot_Q_t = False
-	output_ave = True
-	area = xMax*yMax
-	if output_ave:
-		# 用户输入
-		start = int(input("Please input start time (s), default=60: ") or 60)
-		end = int(input("Please input end time (s), default=120: ") or 120)
-		z_num = end // 60
-		recalculate = input("Recalculate the data (y/n), default=no: ")
-		average_data_file = os.path.join(working_dir, "averageData.dat")
-		if recalculate.lower() == "y":
-			if os.path.exists(average_data_file):
-				os.remove(average_data_file)
-			if not midair_collision:
-				my_dict = {
-					0: "uStar030_250_0_2650_3600_nc",
-					1: "uStar035_200_0_2650_120_nc",
-					2: "uStar035_250_0_2650_3600_nc",
-					3: "uStar035_250_1_2000_120_nc",
-					4: "uStar035_250_1_3000_120_nc",
-					5: "uStar035_250_1_4000_120_nc",
-					6: "uStar035_250_2_2650_120_nc",
-					7: "uStar035_250_3_2650_120_nc",
-					8: "uStar035_300_0_2650_120_nc",
-					9: "uStar035_350_0_2650_120_nc",
-					10: "uStar035_400_0_2650_120_nc",
-					11: "uStar040_250_0_2650_3600_nc",
-					12: "uStar045_200_0_2650_340_nc",
-					13: "uStar045_250_0_2650_3600_nc",
-					14: "uStar045_250_1_2000_120_nc",
-					15: "uStar045_250_1_3000_120_nc",
-					16: "uStar045_250_1_4000_120_nc",
-					17: "uStar045_250_2_2650_337_nc",
-					18: "uStar045_250_3_2650_120_nc",
-					19: "uStar045_300_0_2650_439_nc",
-					20: "uStar045_350_0_2650_120_nc",
-					21: "uStar045_400_0_2650_677_nc",
-					22: "uStar050_200_1_1000_120_nc",
-					23: "uStar050_250_0_2650_3600_nc",
-					24: "uStar050_250_1_1000_120_nc",
-					25: "uStar050_250_3_2650_120_nc",
-					26: "uStar050_300_1_1000_120_nc",
-					27: "uStar055_200_0_2650_120_nc",
-					28: "uStar055_200_1_1000_120_nc",
-					29: "uStar055_250_0_2650_3600_nc",
-					30: "uStar055_250_1_1000_120_nc",
-					31: "uStar055_250_1_2000_120_nc",
-					32: "uStar055_250_1_3000_120_nc",
-					33: "uStar055_250_1_4000_120_nc",
-					34: "uStar055_250_2_2650_120_nc",
-					35: "uStar055_250_3_2650_120_nc",
-					36: "uStar055_300_0_2650_120_nc",
-					37: "uStar055_300_1_1000_120_nc",
-					38: "uStar055_350_0_2650_120_nc",
-					39: "uStar055_400_0_2650_120_nc",
-					40: "uStar060_200_0_2650_120_nc",
-					41: "uStar060_250_0_2650_3600_nc",
-					42: "uStar060_250_1_1000_120_nc",
-					43: "uStar060_250_1_2000_120_nc",
-					44: "uStar060_250_1_3000_120_nc",
-					45: "uStar060_250_1_4000_120_nc",
-					46: "uStar060_250_2_2650_120_nc",
-					47: "uStar060_300_1_1000_120_nc",
-					48: "uStar065_250_0_2650_3600_nc",
-				}
-			elif Bernoulli:
-				my_dict = {
-					0: "uStar035_150and350_0_2650_120",
-					1: "uStar035_150and450_0_2650_120",
-					2: "uStar045_150and350_0_2650_3600",
-					3: "uStar045_150and450_0_2650_3600",
-					4: "uStar055_150and350_0_2650_120",
-					5: "uStar035_250and450_0_2650_120",
-					6: "uStar035_250and550_0_2650_120",
-					7: "uStar045_250and450_0_2650_3600",
-					8: "uStar045_250and550_0_2650_3600",
-					9: "uStar055_250and450_0_2650_120",
-					10: "uStar055_250and550_0_2650_120",
-					11: "uStar035_350and550_0_2650_120",
-					12: "uStar045_350and550_0_2650_3600",
-					13: "uStar055_350and550_0_2650_120",
-				}
+		print("Invalid input!")
+		exit()
+
+	# 定义常量
+	xMax = 0.5 # 计算域x方向长度
+	yMax = 0.01 # 计算域y方向长度
+	nu = 1.51e-5 # 运动粘度
+	interval = 60 # 源文件输出时间间隔
+	file_interval = 240 # 两个文件之间的时间间隔
+	Sh_d = 0.00298 # 冲击临界
+	area = xMax*yMax # 计算域底面积
+
+	# 定义文件路径
+	if linux_flag:
+		working_dir = "/home/ekalhxh/ripple/coll1"
+	else:
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll1"
+
+	# 定义文件名字典
+	case_dict = {
+		#0: "uStar030_250_0_2650_3600",
+		#1: "uStar035_250_0_2650_3600",
+		#2: "uStar040_250_0_2650_3600",
+		#3: "uStar045_250_0_2650_3600",
+		#4: "uStar050_250_0_2650_3600",
+		#5: "uStar055_250_0_2650_3600",
+		#6: "uStar060_250_0_2650_3600",
+		#7: "uStar065_250_0_2650_3600",
+		#8: "uStar045_200_0_2650_3600",
+		#9: "uStar045_250_1_2000_3600",
+		#10: "uStar045_250_1_3000_3600",
+		#11: "uStar045_250_1_4000_3600",
+		#12: "uStar045_250_2_2650_3600",
+		#13: "uStar045_250_3_2650_3600",
+		#14: "uStar045_300_0_2650_3600",
+		#15: "uStar045_350_0_2650_3600",
+		#16: "uStar045_400_0_2650_3600",
+		#17: "uStar040_150and350_0_2650_3600",
+		#18: "uStar045_150and350_0_2650_3600",
+		#19: "uStar050_150and350_0_2650_3600",
+		#20: "uStar055_150and350_0_2650_3600",
+		#21: "uStar060_150and350_0_2650_3600",
+		#22: "uStar050_150and450_0_2650_3600",
+		#23: "uStar050_150and550_0_2650_3600",
+		#24: "uStar050_200and400_0_2650_3600",
+		#25: "uStar050_250and350_0_2650_3600",
+		#26: "uStar050_300stdd5_0_2650_3600",
+		#27: "uStar050_300stdd10_0_2650_3600",
+		#28: "uStar050_300stdd20_0_2650_3600",
+		#29: "uStar050_300stdd50_0_2650_3600",
+		30: "uStar035_300_0_2650_3600",
+		31: "uStar040_300_0_2650_3600",
+		32: "uStar045_300_0_2650_3600",
+		33: "uStar050_300_0_2650_3600",
+		34: "uStar055_300_0_2650_3600",
+		35: "uStar060_300_0_2650_3600",
+		36: "uStar065_300_0_2650_3600",
+		#37: "uStar035_300stdd100_0_2650_3600",
+		#38: "uStar040_300stdd100_0_2650_3600",
+		#39: "uStar045_300stdd100_0_2650_3600",
+		#40: "uStar050_300stdd100_0_2650_3600",
+		#41: "uStar055_300stdd100_0_2650_3600",
+		#42: "uStar060_300stdd100_0_2650_3600",
+		#43: "uStar065_300stdd100_0_2650_3600",
+	}
+
+	for folder_name in case_dict.items():
+		# 从文件夹名字中提取参数
+		parts = folder_name.split("_")
+		uStar = int(parts[0][6:])/100
+		dia_name = parts[1]
+		if "and" in dia_name:
+			dia_name_list = dia_name.split("and")
+			dia1 = float(dia_name_list[0])/1e6
+			dia2 = float(dia_name_list[1])/1e6
+			dia =  (dia1 + dia2) / 2
+		elif "stdd" in dia_name:
+			dia_name_list = dia_name.split("stdd")
+			dia1 = float(dia_name_list[0])/1e6
+			dia2 = float(dia_name_list[1])/1e6
+			dia =  dia1
+		else:
+			dia1 = float(dia_name)/1e6
+			dia2 = dia1
+			dia =  dia1
+		rho_name = parts[2]
+		if rho_name == "0":
+			rho = 1.263
+		else:
+			rho = float(rho_name)
+		rhoP = float(parts[3])
+
+		# 计算s，g_hat，Sh，Ga
+		s = rhoP/rho
+		g_hat = 9.8 * (1 - 1/s)
+		Sh = rho*uStar**2/(rhoP*g_hat*dia)
+		Ga = (s*g_hat*dia**3)**0.5/nu
+
+		# 读取颗粒数据
+		last_time = int(parts[4])
+		end_file_num = last_time // file_interval
+		folder_path = f"{working_dir}/{folder_name}/Particle"
+		time_step_data = read_particle_file(folder_path, end_file_num)
+
+		for current_data in time_step_data:
+			d_in_air = current_data.calculate_dia_in_air()
+			mass_flux = current_data.calculate_mass_flux()
+			carrying_capacity = current_data.calculete_carrying_capacity()
+			total_energy, coll_energy, non_coll_energy = current_data.calculate_total_energy()
+				m_sum = sum([math.pi*particle.dia**3/6*rhoP for particle in current_data.particles])
+				x_momentum_sum = sum([particle.vel[0]*(math.pi*particle.dia**3)/6*rhoP for particle in current_data.particles])
+				mass = m_sum / area
+				mass_star = mass / (rhoP * dia_ave)
+				flux_x = x_momentum_sum / area
+				flux_x_star = flux_x / (rhoP * dia_ave * (s*g_hat*dia_ave)**0.5)
 			else:
-				my_dict = {
-					0: "uStar030_250_0_2650_3600",
-					1: "uStar035_200_0_2650_120",
-					2: "uStar035_250_0_2650_3600",
-					3: "uStar035_250_1_2000_120",
-					4: "uStar035_250_1_3000_120",
-					5: "uStar035_250_1_4000_120",
-					6: "uStar035_250_2_2650_120",
-					7: "uStar035_250_3_2650_120",
-					8: "uStar035_300_0_2650_120",
-					9: "uStar035_350_0_2650_120",
-					10: "uStar035_400_0_2650_120",
-					11: "uStar040_250_0_2650_3600",
-					12: "uStar045_200_0_2650_3600",
-					13: "uStar045_250_0_2650_3600",
-					14: "uStar045_250_1_2000_3600",
-					15: "uStar045_250_1_3000_3600",
-					16: "uStar045_250_1_4000_3600",
-					17: "uStar045_250_2_2650_3600",
-					18: "uStar045_250_3_2650_3600",
-					19: "uStar045_300_0_2650_3600",
-					20: "uStar045_350_0_2650_3600",
-					21: "uStar045_400_0_2650_3600",
-					22: "uStar050_200_1_1000_120",
-					23: "uStar050_250_0_2650_3600",
-					24: "uStar050_250_1_1000_120",
-					25: "uStar050_250_3_2650_120",
-					26: "uStar050_300_1_1000_120",
-					27: "uStar055_200_0_2650_120",
-					28: "uStar055_200_1_1000_120",
-					29: "uStar055_250_0_2650_3600",
-					30: "uStar055_250_1_1000_120",
-					31: "uStar055_250_1_2000_120",
-					32: "uStar055_250_1_3000_120",
-					33: "uStar055_250_1_4000_120",
-					34: "uStar055_250_2_2650_120",
-					35: "uStar055_250_3_2650_120",
-					36: "uStar055_300_0_2650_120",
-					37: "uStar055_300_1_1000_120",
-					38: "uStar055_350_0_2650_120",
-					39: "uStar055_400_0_2650_120",
-					40: "uStar060_200_0_2650_120",
-					41: "uStar060_250_0_2650_3600",
-					42: "uStar060_250_1_1000_120",
-					43: "uStar060_250_1_2000_120",
-					44: "uStar060_250_1_3000_120",
-					45: "uStar060_250_1_4000_120",
-					46: "uStar060_250_2_2650_120",
-					47: "uStar060_300_1_1000_120",
-					48: "uStar065_250_0_2650_3600",
-				}
-			uStar_list = []
-			dia1_list = []
-			dia2_list = []
-			dia_ave_list = []
-			rho_list = []
-			rhoP_list = []
-			s_list = []
-			Q_list = []
-			Q_star_list = []
-			M_list = []
-			M_star_list = []
-			Sh_list = []
-			Ga_list = []
-			d_list = []
-			for i, value in my_dict.items():
-				parts = value.split("_")
-				uStar_name = parts[0]
-				uStar_str = uStar_name[6:]
-				uStar_int = int(uStar_str)
-				uStar = uStar_int / 100
-				uStar_list.append(uStar)
-				dia_name = parts[1]
-				if "and" in dia_name:
-					dia1_name, dia2_name = dia_name.split("and")
-					dia1 = float(dia1_name)/1e6
-					dia2 = float(dia2_name)/1e6
-				else:
-					dia1 = float(dia_name)/1e6
-					dia2 = dia1
-				dia_ave = (dia1 + dia2) / 2
-				dia1_list.append(dia1)
-				dia2_list.append(dia2)
-				dia_ave_list.append(dia_ave)
-				rho_name = parts[2]
-				if rho_name == "0":
-					rho = 1.263
-				else:
-					rho = float(rho_name)
-				rho_list.append(rho)
-				rhoP_name = parts[3]
-				rhoP = float(rhoP_name)
-				rhoP_list.append(rhoP)
-				s = rhoP/rho
-				s_list.append(s)
-				g_hat = 9.8 * (1 - 1/s)
-				Sh = rho*uStar**2/(rhoP*g_hat*dia_ave)
-				Sh_list.append(Sh)
-				Ga = (s*g_hat*dia_ave**3)**0.5/nu
-				Ga_list.append(Ga)
-				last_time = int(parts[4])
-				zone_num = last_time // 60
-				file_num = zone_num // 4 + 1
-				folder_name = value
-				folder_path = f"{working_dir}/{folder_name}/Particle"
-				results = read_data_file(folder_path, file_num)
-				time_step_data = results
-				flux_x_list = []
-				flux_x_star_list = []
-				mass_list = []
-				mass_star_list = []
-				d_ave_list = []
-				for current_time in range(start, end+1, 60):
-					if z_num <= zone_num:
-						current_data = time_step_data[current_time]
-						d_ave = sum([particle.dia for particle in current_data.particles]) / current_data.number
-						m_sum = sum([math.pi*particle.dia**3/6*rhoP for particle in current_data.particles])
-						x_momentum_sum = sum([particle.vel[0]*(math.pi*particle.dia**3)/6*rhoP for particle in current_data.particles])
-						mass = m_sum / area
-						mass_star = mass / (rhoP * dia_ave)
-						flux_x = x_momentum_sum / area
-						flux_x_star = flux_x / (rhoP * dia_ave * (s*g_hat*dia_ave)**0.5)
-					else:
-						d_ave = 0
-						mass = 0
-						mass_star = 0
-						flux_x = 0
-						flux_x_star = 0
-					mass_list.append(mass)
-					mass_star_list.append(mass_star)
-					flux_x_list.append(flux_x)
-					flux_x_star_list.append(flux_x_star)
-					d_ave_list.append(d_ave)
-				ave_M = sum(mass_list) / len(mass_list)
-				ave_M_star = sum(mass_star_list) / len(mass_star_list)
-				ave_Q = sum(flux_x_list) / len(flux_x_list)
-				ave_Q_star = sum(flux_x_star_list) / len(flux_x_star_list)
-				ave_d = sum(d_ave_list) / len(d_ave_list)
-				Q_list.append(ave_Q)
-				Q_star_list.append(ave_Q_star)
-				M_list.append(ave_M)
-				M_star_list.append(ave_M_star)
-				d_list.append(ave_d)
+				d_ave = 0
+				mass = 0
+				mass_star = 0
+				flux_x = 0
+				flux_x_star = 0
+			mass_list.append(mass)
+			mass_star_list.append(mass_star)
+			flux_x_list.append(flux_x)
+			flux_x_star_list.append(flux_x_star)
+			d_ave_list.append(d_ave)
+		ave_M = sum(mass_list) / len(mass_list)
+		ave_M_star = sum(mass_star_list) / len(mass_star_list)
+		ave_Q = sum(flux_x_list) / len(flux_x_list)
+		ave_Q_star = sum(flux_x_star_list) / len(flux_x_star_list)
+		ave_d = sum(d_ave_list) / len(d_ave_list)
+		Q_list.append(ave_Q)
+		Q_star_list.append(ave_Q_star)
+		M_list.append(ave_M)
+		M_star_list.append(ave_M_star)
+		d_list.append(ave_d)
 			with open(average_data_file, 'w') as file:
 				file.write("uStar dia1 dia2 d_ave rho rhoP Sh Ga s Q Q* M M*\n")
 				for i in range(len(uStar_list)):
@@ -557,7 +514,7 @@ if __name__ == "__main__":
 		folder_path = f"{working_dir}/{folder_name}/Particle"
 		dia1 = dia1 * 1e-6
 		results1 = read_num_file(folder_path)
-		results2 = read_data_file(folder_path, file_num)
+		results2 = read_particle_file(folder_path, file_num)
 		time, particleNum, iterNum = results1
 		time_step_data = results2
 		flux_x_list = []
