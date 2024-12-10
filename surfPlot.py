@@ -104,13 +104,13 @@ if __name__ == "__main__":
 	output_num = 2 # 出图类型：0为床面廓线，1为相关性，2为波长, 3为波高, 4为波速, 5为床面粒径分布
 	x_type = 0 # 算例对比图中x轴的类型：0为u*, 1为d_min, 2为d_max, 3为d, 4为stddev, 5为Sh, 6为Ga
 	start = 30 # 时空图的起始时间或者变量随时间变化的起始时间
-	end = 1500 # 时空图的结束时间或者变量随时间变化的结束时间
+	end = 3000 # 时空图的结束时间或者变量随时间变化的结束时间
 	average_start = 300 # 开始计算平均值的时间
-	average_end = 900 # 结束计算平均值的时间
+	average_end = 600 # 结束计算平均值的时间
 	profile_offset = 2e-4 # 廓线图的纵向偏移
 	corr_offset = 1e-8 # 相关性图的纵向偏移
 	diameter_offset = 2e-5 # 廓线图的纵向偏移
-	case_num = 39 # 算例号，用于画时空图
+	case_num = 36 # 算例号，用于画时空图
 
 	# 定义算例字典，用于画不同算例的对比图
 	case_num_dict = {
@@ -151,21 +151,21 @@ if __name__ == "__main__":
 		34: 34,
 		35: 35,
 		36: 36,
-		37: 37,
-		38: 38,
-		39: 39,
-		40: 40,
-		41: 41,
-		42: 42,
-		43: 43,
+		#37: 37,
+		#38: 38,
+		#39: 39,
+		#40: 40,
+		#41: 41,
+		#42: 42,
+		#43: 43,
 	}
 # ----------------------------------------------------------------------------------------
 
 	# 定义文件路径
 	if linux_flag:
-		working_dir = "/home/ekalhxh/ripple/coll"
+		working_dir = "/home/ekalhxh/ripple/coll1"
 	else:
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll1"
 
 	# 定义文件名字典
 	case_dict = {
