@@ -1,5 +1,5 @@
 # -*-*-*- Author: EkalHxH -*-*-*-
-# version: 1.0 (2024-12-10)
+# version: 1.0 (2024-12-12)
 #
 #      ___           ___           ___           ___       ___           __            ___
 #     /  /\         /  /\         /  /\         /  /\     /  /\         |  |\         /  /\
@@ -14,26 +14,18 @@
 #     \__\/         \__\|         \__\/         \__\/     \__\/         \__\|         \__\/
 
 # ********************************************************************************************************
-# 用于处理床面数据，输出处理后的数据到surfProfile.dat, surfDiameter.dat, autoCorr.dat, surfTopology.dat
-
-# cases.dat 用于记录每个case的参数
-# surfProfile.dat 用于记录每个时间步的床面廓线数据
-# surfDiameter.dat 用于记录每个时间步的床面粒径数据
-# autoCorr.dat 用于记录每个时间步的床面自相关数据
-# surfTopology.dat 用于记录每个时间步的波长、振幅、波速数据
-
-# 用法: 设置start和end变量来控制处理的时间范围，working_dir变量来控制工作目录，case_dict字典来控制处理的case
+"""用于处理颗粒数据，计算颗粒的通量、携带量、能量等信息"""
 # ********************************************************************************************************
 
 # 导入必要的库
 import math # 导入数学库
 import os # 导入操作系统库
 import re # 导入正则表达式库
-import matplotlib.pyplot as plt # 导入绘图库
 from dataclasses import dataclass # 导入dataclass库
 from dataclasses import field # 导入field库
 from typing import List # 导入List类型
 from typing import Dict # 导入Dict类型
+from tqdm import tqdm # 导入进度条库
 
 @dataclass
 class ParticleData:
@@ -64,9 +56,9 @@ class ParticleData:
 
 @dataclass
 class TimeStepData:
+	particles: List[ParticleData]
 	time: int = 0
 	count: int = 0
-	particles: List[ParticleData]
 
 	def calculate_total_energy(self) -> Dict[str, float]:
 		"""计算总能量"""
@@ -150,7 +142,6 @@ class TimeStepData:
 			"non_coll": non_coll_mass_sum / area
 		}
 
-
 @dataclass
 class ParticleNumData:
 	time: List[int] = field(default_factory=list)
@@ -162,36 +153,6 @@ class ParticleNumData:
 		self.time.append(time)
 		self.particleNum.append(particleNum)
 		self.iterNum.append(iterNum)
-
-	def plot_num_vs_time(self, start_time=None, end_time=None):
-		"""绘制颗粒数随时间变化的图像"""
-		if start_time is not None and end_time is not None:
-			time_filtered = [t for t in self.time if start_time <= t <= end_time]
-			particleNum_filtered = [self.particleNum[i] for i, t in enumerate(self.time) if start_time <= t <= end_time]
-		else:
-			time_filtered = self.time
-			particleNum_filtered = self.particleNum
-
-		plt.plot(time_filtered, particleNum_filtered)
-		plt.xlabel('Time')
-		plt.ylabel('Number')
-		plt.title('Number vs Time')
-		plt.show()
-
-	def plot_num_vs_iter(self, start_iter=None, end_iter=None):
-		"""绘制颗粒数随迭代次数变化的图像"""
-		if start_iter is not None and end_iter is not None:
-			iter_filtered = [i for i in self.iterNum if start_iter <= i <= end_iter]
-			particleNum_filtered = [self.particleNum[i] for i, t in enumerate(self.iterNum) if start_iter <= t <= end_iter]
-		else:
-			iter_filtered = self.iterNum
-			particleNum_filtered = self.particleNum
-
-		plt.plot(iter_filtered, particleNum_filtered)
-		plt.xlabel('Iteration')
-		plt.ylabel('Number')
-		plt.title('Number vs Iteration')
-		plt.show()
 
 # 定义一个函数来读取任意文件
 def read_file(file_path):
@@ -234,17 +195,62 @@ def parse_particle_data(lines: List[str]) -> List[ParticleData]:
 	particles = []
 	for line in lines:
 		columns = line.split()
-		particle = ParticleData(
-			loc=[float(columns[0]), float(columns[1]), float(columns[2])],
-			vel=[float(columns[3]), float(columns[4]), float(columns[5])],
-			vMag=float(columns[6]),
-			h=float(columns[7]),
-			hMax=float(columns[8]),
-			dia=float(columns[9]),
-			survL=float(columns[10]),
-			survT=float(columns[11]),
-			collNum=int(columns[12])
-		)
+		try:
+			x = float(columns[0])
+		except ValueError:
+			x = 0.0
+		try:
+			y = float(columns[1])
+		except ValueError:
+			y = 0.0
+		try:
+			z = float(columns[2])
+		except ValueError:
+			z = 0.0
+		loc=[x, y, z]
+		try:
+			u = float(columns[3])
+		except ValueError:
+			u = 0.0
+		try:
+			v = float(columns[4])
+		except ValueError:
+			v = 0.0
+		try:
+			w = float(columns[5])
+		except ValueError:
+			w = 0.0
+		vel=[u, v, w]
+		try:
+			vMag = float(columns[6])
+		except ValueError:
+			vMag = 0.0
+		try:
+			h = float(columns[7])
+		except ValueError:
+			h = 0.0
+		try:
+			hMax = float(columns[8])
+		except ValueError:
+			hMax = 0.0
+		try:
+			dia = float(columns[9])
+		except ValueError:
+			dia = 0.0
+		try:
+			survL = float(columns[10])
+		except ValueError:
+			survL = 0.0
+		try:
+			survT = float(columns[11])
+		except ValueError:
+			survT = 0.0
+		try:
+			collNum = int(float(columns[12]))
+		except ValueError:
+			collNum = 0
+
+		particle = ParticleData(loc=loc, vel=vel, vMag=vMag, h=h, hMax=hMax, dia=dia, survL=survL, survT=survT, collNum=collNum)
 		particles.append(particle)
 	return particles
 
@@ -274,15 +280,24 @@ def read_particle_file(folder_path: str, end_num: int) -> List[TimeStepData]:
 
 	return time_step_data
 
-def plot_Q_vs_time(time, flux_x, output_Q_t):
-	if output_Q_t:
-		plt.plot(time, flux_x)
-		plt.xlabel('Time')
-		plt.ylabel('Q')
-		plt.title('Q vs Time')
-		plt.show()
-	else:
-		return
+def write_file_head(file_path, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, variables):
+	with open(file_path, 'w') as file:
+		if "and" in dia_name:
+			file.write(f"""uStar = {uStar} dia1 = {dia1} dia2 = {dia2} rho = {rho} rhoP = {rhoP}\n
+s = {s} g_hat = {g_hat} Sh = {Sh} Ga = {Ga}\n
+variables = {variables}\n""")
+		elif "stdd" in dia_name:
+			file.write(f"""uStar = {uStar} dia1 = {dia1} stdd = {dia2} rho = {rho} rhoP = {rhoP}\n
+s = {s} g_hat = {g_hat} Sh = {Sh} Ga = {Ga}\n
+variables = {variables}\n""")
+		else:
+			file.write(f"""uStar = {uStar} dia = {dia1} rho = {rho} rhoP = {rhoP}\n
+s = {s} g_hat = {g_hat} Sh = {Sh} Ga = {Ga}\n
+variables = {variables}\n""")
+
+def write_file_data(file_path, data):
+	with open(file_path, 'a') as file:
+		file.write(data)
 
 # 主程序
 if __name__ == "__main__":
@@ -309,40 +324,40 @@ if __name__ == "__main__":
 	if linux_flag:
 		working_dir = "/home/ekalhxh/ripple/coll1"
 	else:
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll1"
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
 
 	# 定义文件名字典
 	case_dict = {
-		#0: "uStar030_250_0_2650_3600",
-		#1: "uStar035_250_0_2650_3600",
-		#2: "uStar040_250_0_2650_3600",
-		#3: "uStar045_250_0_2650_3600",
-		#4: "uStar050_250_0_2650_3600",
-		#5: "uStar055_250_0_2650_3600",
-		#6: "uStar060_250_0_2650_3600",
-		#7: "uStar065_250_0_2650_3600",
-		#8: "uStar045_200_0_2650_3600",
-		#9: "uStar045_250_1_2000_3600",
-		#10: "uStar045_250_1_3000_3600",
-		#11: "uStar045_250_1_4000_3600",
-		#12: "uStar045_250_2_2650_3600",
-		#13: "uStar045_250_3_2650_3600",
-		#14: "uStar045_300_0_2650_3600",
-		#15: "uStar045_350_0_2650_3600",
-		#16: "uStar045_400_0_2650_3600",
-		#17: "uStar040_150and350_0_2650_3600",
-		#18: "uStar045_150and350_0_2650_3600",
-		#19: "uStar050_150and350_0_2650_3600",
-		#20: "uStar055_150and350_0_2650_3600",
-		#21: "uStar060_150and350_0_2650_3600",
-		#22: "uStar050_150and450_0_2650_3600",
-		#23: "uStar050_150and550_0_2650_3600",
-		#24: "uStar050_200and400_0_2650_3600",
-		#25: "uStar050_250and350_0_2650_3600",
-		#26: "uStar050_300stdd5_0_2650_3600",
-		#27: "uStar050_300stdd10_0_2650_3600",
-		#28: "uStar050_300stdd20_0_2650_3600",
-		#29: "uStar050_300stdd50_0_2650_3600",
+		0: "uStar030_250_0_2650_3600",
+		1: "uStar035_250_0_2650_3600",
+		2: "uStar040_250_0_2650_3600",
+		3: "uStar045_250_0_2650_3600",
+		4: "uStar050_250_0_2650_3600",
+		5: "uStar055_250_0_2650_3600",
+		6: "uStar060_250_0_2650_3600",
+		7: "uStar065_250_0_2650_3600",
+		8: "uStar045_200_0_2650_3600",
+		9: "uStar045_250_1_2000_3600",
+		10: "uStar045_250_1_3000_3600",
+		11: "uStar045_250_1_4000_3600",
+		12: "uStar045_250_2_2650_3600",
+		13: "uStar045_250_3_2650_3600",
+		14: "uStar045_300_0_2650_3600",
+		15: "uStar045_350_0_2650_3600",
+		16: "uStar045_400_0_2650_3600",
+		17: "uStar040_150and350_0_2650_3600",
+		18: "uStar045_150and350_0_2650_3600",
+		19: "uStar050_150and350_0_2650_3600",
+		20: "uStar055_150and350_0_2650_3600",
+		21: "uStar060_150and350_0_2650_3600",
+		22: "uStar050_150and450_0_2650_3600",
+		23: "uStar050_150and550_0_2650_3600",
+		24: "uStar050_200and400_0_2650_3600",
+		25: "uStar050_250and350_0_2650_3600",
+		26: "uStar050_300stdd5_0_2650_3600",
+		27: "uStar050_300stdd10_0_2650_3600",
+		28: "uStar050_300stdd20_0_2650_3600",
+		29: "uStar050_300stdd50_0_2650_3600",
 		30: "uStar035_300_0_2650_3600",
 		31: "uStar040_300_0_2650_3600",
 		32: "uStar045_300_0_2650_3600",
@@ -350,16 +365,16 @@ if __name__ == "__main__":
 		34: "uStar055_300_0_2650_3600",
 		35: "uStar060_300_0_2650_3600",
 		36: "uStar065_300_0_2650_3600",
-		#37: "uStar035_300stdd100_0_2650_3600",
-		#38: "uStar040_300stdd100_0_2650_3600",
-		#39: "uStar045_300stdd100_0_2650_3600",
-		#40: "uStar050_300stdd100_0_2650_3600",
-		#41: "uStar055_300stdd100_0_2650_3600",
-		#42: "uStar060_300stdd100_0_2650_3600",
-		#43: "uStar065_300stdd100_0_2650_3600",
+		37: "uStar035_300stdd100_0_2650_3600",
+		38: "uStar040_300stdd100_0_2650_3600",
+		39: "uStar045_300stdd100_0_2650_3600",
+		40: "uStar050_300stdd100_0_2650_3600",
+		41: "uStar055_300stdd100_0_2650_3600",
+		42: "uStar060_300stdd100_0_2650_3600",
+		43: "uStar065_300stdd100_0_2650_3600",
 	}
 
-	for folder_name in case_dict.items():
+	for folder_name in tqdm(case_dict.values(), desc="Processing", unit="case"):
 		# 从文件夹名字中提取参数
 		parts = folder_name.split("_")
 		uStar = int(parts[0][6:])/100
@@ -396,135 +411,74 @@ if __name__ == "__main__":
 		end_file_num = last_time // file_interval
 		folder_path = f"{working_dir}/{folder_name}/Particle"
 		time_step_data = read_particle_file(folder_path, end_file_num)
+		particle_num_data = read_num_file(folder_path)
+
+		for current_data in time_step_data:
+			for particle in current_data.particles:
+				particle.rho = rhoP
+
+		# 文件路径
+		d_in_air_file = os.path.join(working_dir, f"{folder_name}/d_in_air.dat")
+		mass_flux_x_file = os.path.join(working_dir, f"{folder_name}/mass_flux_x.dat")
+		mass_flux_y_file = os.path.join(working_dir, f"{folder_name}/mass_flux_y.dat")
+		mass_flux_z_file = os.path.join(working_dir, f"{folder_name}/mass_flux_z.dat")
+		carrying_capacity_file = os.path.join(working_dir, f"{folder_name}/carrying_capacity.dat")
+		total_energy_file = os.path.join(working_dir, f"{folder_name}/total_energy.dat")
+		particle_num_file = os.path.join(working_dir, f"{folder_name}/particle_num.dat")
+
+		file_dict = {
+			1: d_in_air_file,
+			2: mass_flux_x_file,
+			3: mass_flux_y_file,
+			4: mass_flux_z_file,
+			5: carrying_capacity_file,
+			6: total_energy_file,
+			7: particle_num_file
+		}
+
+		# 删除已有文件
+		for file_path in file_dict.values():
+			if os.path.exists(file_path):
+				os.remove(file_path)
+
+		# 写入文件头
+		write_file_head(d_in_air_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time d d_c d_nc")
+		write_file_head(mass_flux_x_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time Q Q_c Q_nc Q_star Q_star_c Q_star_nc")
+		write_file_head(mass_flux_y_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time Q Q_c Q_nc Q_star Q_star_c Q_star_nc")
+		write_file_head(mass_flux_z_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time Q Q_c Q_nc Q_star Q_star_c Q_star_nc")
+		write_file_head(carrying_capacity_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time M M_c M_nc M_star M_star_c M_star_nc")
+		write_file_head(total_energy_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time E E_c E_nc")
+		write_file_head(particle_num_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time Num iteration")
+
+		with open(particle_num_file, 'a') as file:
+			for i in range(len(particle_num_data.time)):
+				file.write(f"{particle_num_data.time[i]} {particle_num_data.particleNum[i]} {particle_num_data.iterNum[i]}\n")
 
 		for current_data in time_step_data:
 			d_in_air = current_data.calculate_dia_in_air()
 			mass_flux = current_data.calculate_mass_flux()
 			carrying_capacity = current_data.calculete_carrying_capacity()
-			total_energy, coll_energy, non_coll_energy = current_data.calculate_total_energy()
-				m_sum = sum([math.pi*particle.dia**3/6*rhoP for particle in current_data.particles])
-				x_momentum_sum = sum([particle.vel[0]*(math.pi*particle.dia**3)/6*rhoP for particle in current_data.particles])
-				mass = m_sum / area
-				mass_star = mass / (rhoP * dia_ave)
-				flux_x = x_momentum_sum / area
-				flux_x_star = flux_x / (rhoP * dia_ave * (s*g_hat*dia_ave)**0.5)
-			else:
-				d_ave = 0
-				mass = 0
-				mass_star = 0
-				flux_x = 0
-				flux_x_star = 0
-			mass_list.append(mass)
-			mass_star_list.append(mass_star)
-			flux_x_list.append(flux_x)
-			flux_x_star_list.append(flux_x_star)
-			d_ave_list.append(d_ave)
-		ave_M = sum(mass_list) / len(mass_list)
-		ave_M_star = sum(mass_star_list) / len(mass_star_list)
-		ave_Q = sum(flux_x_list) / len(flux_x_list)
-		ave_Q_star = sum(flux_x_star_list) / len(flux_x_star_list)
-		ave_d = sum(d_ave_list) / len(d_ave_list)
-		Q_list.append(ave_Q)
-		Q_star_list.append(ave_Q_star)
-		M_list.append(ave_M)
-		M_star_list.append(ave_M_star)
-		d_list.append(ave_d)
-			with open(average_data_file, 'w') as file:
-				file.write("uStar dia1 dia2 d_ave rho rhoP Sh Ga s Q Q* M M*\n")
-				for i in range(len(uStar_list)):
-					file.write(f"{uStar_list[i]} {dia1_list[i]} {dia2_list[i]} {d_list[i]} {rho_list[i]} {rhoP_list[i]} \
-{Sh_list[i]} {Ga_list[i]} {s_list[i]} {Q_list[i]} {Q_star_list[i]} {M_list[i]} {M_star_list[i]}\n")
-		else:
-			if os.path.exists(average_data_file):
-				with open(average_data_file, 'r') as file:
-					lines = file.readlines()
-				uStar_list = []
-				dia1_list = []
-				dia2_list = []
-				d_list = []
-				rho_list = []
-				rhoP_list = []
-				Sh_list = []
-				Ga_list = []
-				s_list = []
-				Q_list = []
-				Q_star_list = []
-				M_list = []
-				M_star_list = []
-				for line in lines[1:]:
-					columns = line.split()
-					uStar_list.append(float(columns[0]))
-					dia1_list.append(float(columns[1]))
-					dia2_list.append(float(columns[2]))
-					d_list.append(float(columns[3]))
-					rho_list.append(float(columns[4]))
-					rhoP_list.append(float(columns[5]))
-					Sh_list.append(float(columns[6]))
-					Ga_list.append(float(columns[7]))
-					s_list.append(float(columns[8]))
-					Q_list.append(float(columns[9]))
-					Q_star_list.append(float(columns[10]))
-					M_list.append(float(columns[11]))
-					M_star_list.append(float(columns[12]))
-			else:
-				print(f"文件 {average_data_file} 不存在。")
-				exit()
-		plt.plot(Sh_list, Q_star_list, 'ro')
-		plt.xlabel('Sheilds number')
-		plt.ylabel('Q')
-		plt.title(f"Sheilds number vs Q* during {start}s to {end}s")
-		plt.show()
-	else:
-		file_num = int(input("Please input the number of files, default=16: ") or 16)
-		uStar = float(input("Please input u star (m/s): "))
-		dia1 = float(input("Please input particle diameter (um), default=250: ") or 250)
-		rho = float(input("Please input fluid density (kg/m^3), default=1.263: ") or 1.263)
-		rhoP = float(input("Please input particle density (kg/m^3), default=2650: ") or 2650)
-		specified_time = int(input("Please input specified time (s), default=60: ") or 60)
-		Bernoulli = False
-		Bernoulli_input = input("Bernoulli distribution (y/n), default=no: ")
-		if Bernoulli_input.lower() == "y":
-			Bernoulli = True
-			dia2 = float(input("Please input the second particle diameter (um): "))
-			if dia2 <= dia1:
-				print("The second particle diameter should be larger than the first one.")
-				exit()
-		my_uStar_dict = {
-        	0.3: "uStar030",
-        	0.35: "uStar035",
-        	0.4: "uStar040",
-        	0.45: "uStar045",
-        	0.5: "uStar050",
-        	0.55: "uStar055",
-        	0.6: "uStar060",
-        	0.65: "uStar065",
-        	0.7: "uStar070"
-    	}
-		uStar_name = my_uStar_dict[uStar]
-		if rho == 1.263:
-			rho_name = 0
-		else:
-			rho_name = int(rho)
-		if Bernoulli:
-			dia_name = f"{int(dia1)}and{int(dia2)}"
-		else:
-			dia_name = int(dia1)
-		rhoP_name = int(rhoP)
-		folder_name = f"{uStar_name}_{dia_name}_{rho_name}_{rhoP_name}"
-		folder_path = f"{working_dir}/{folder_name}/Particle"
-		dia1 = dia1 * 1e-6
-		results1 = read_num_file(folder_path)
-		results2 = read_particle_file(folder_path, file_num)
-		time, particleNum, iterNum = results1
-		time_step_data = results2
-		flux_x_list = []
-		time_list = []
-		for current_time in range(60, 3601, 60):
-			current_data = time_step_data[current_time]
-			x_momentum_sum = sum([particle.vel[0]*(math.pi*particle.dia**3)/6*rhoP for particle in current_data.particles])
-			flux_x = x_momentum_sum / area
-			flux_x_list.append(flux_x)
-			current_time = current_data.time
-			time_list.append(current_time)
-		plot_Q_vs_time(time_list, flux_x_list, plot_Q_t)
-		plot_Num_vs_time(time, particleNum, plot_N_t)
+			total_energy = current_data.calculate_total_energy()
+
+			mass_flux_star = {
+		        "total": [m / (rhoP * d_in_air['total'] * (s * g_hat * d_in_air['total']) ** 0.5) for m in mass_flux['total']],
+		        "coll": [m / (rhoP * d_in_air['coll'] * (s * g_hat * d_in_air['coll']) ** 0.5) for m in mass_flux['coll']],
+		        "non_coll": [m / (rhoP * d_in_air['non_coll'] * (s * g_hat * d_in_air['non_coll']) ** 0.5) for m in mass_flux['non_coll']]
+		    }
+
+			carrying_capacity_star = {
+		        "total": carrying_capacity['total'] / (rhoP * d_in_air['total']),
+				"coll": carrying_capacity['coll'] / (rhoP * d_in_air['coll']),
+				"non_coll": carrying_capacity['non_coll'] / (rhoP * d_in_air['non_coll'])
+		    }
+
+			write_file_data(d_in_air_file, f"{current_data.time} {d_in_air['total']} {d_in_air['coll']} {d_in_air['non_coll']}\n")
+			write_file_data(mass_flux_x_file, f"{current_data.time} {mass_flux['total'][0]} {mass_flux['coll'][0]} {mass_flux['non_coll'][0]} "
+            								  f"{mass_flux_star['total'][0]} {mass_flux_star['coll'][0]} {mass_flux_star['non_coll'][0]}\n")
+			write_file_data(mass_flux_y_file, f"{current_data.time} {mass_flux['total'][1]} {mass_flux['coll'][1]} {mass_flux['non_coll'][1]} "
+											  f"{mass_flux_star['total'][1]} {mass_flux_star['coll'][1]} {mass_flux_star['non_coll'][1]}\n")
+			write_file_data(mass_flux_z_file, f"{current_data.time} {mass_flux['total'][2]} {mass_flux['coll'][2]} {mass_flux['non_coll'][2]} "
+											  f"{mass_flux_star['total'][2]} {mass_flux_star['coll'][2]} {mass_flux_star['non_coll'][2]}\n")
+			write_file_data(carrying_capacity_file, f"{current_data.time} {carrying_capacity['total']} {carrying_capacity['coll']} {carrying_capacity['non_coll']} "
+												  	f"{carrying_capacity_star['total']} {carrying_capacity_star['coll']} {carrying_capacity_star['non_coll']}\n")
+			write_file_data(total_energy_file, f"{current_data.time} {total_energy['total']} {total_energy['coll']} {total_energy['non_coll']}\n")
