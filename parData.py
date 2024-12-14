@@ -287,7 +287,7 @@ def write_file_head(file_path, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat,
 s = {s} g_hat = {g_hat} Sh = {Sh} Ga = {Ga}\n
 variables = {variables}\n""")
 		elif "stdd" in dia_name:
-			file.write(f"""uStar = {uStar} dia1 = {dia1} stdd = {dia2} rho = {rho} rhoP = {rhoP}\n
+			file.write(f"""uStar = {uStar} dia = {dia1} stdd = {dia2} rho = {rho} rhoP = {rhoP}\n
 s = {s} g_hat = {g_hat} Sh = {Sh} Ga = {Ga}\n
 variables = {variables}\n""")
 		else:
