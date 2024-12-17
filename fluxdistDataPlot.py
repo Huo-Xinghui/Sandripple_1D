@@ -1,5 +1,5 @@
 # -*-*-*- Author: EkalHxH -*-*-*-
-# version: 1.0 (2024-11-7)
+# version: 1.0 (2024-12-17)
 #
 #      ___           ___           ___           ___       ___           __            ___
 #     /  /\         /  /\         /  /\         /  /\     /  /\         |  |\         /  /\
@@ -15,7 +15,7 @@
 
 # ********************************************************************************************************
 
-# 用于画床面波浪的时空图，相关性图，波长、波高、波速随时间的变化图，波长、波高、波速随x的变化图
+"""读取数据并画床面通量分布图"""
 
 # ********************************************************************************************************
 
@@ -67,22 +67,6 @@ def read_data_file1(folder_path, file_name) -> Dict[int, List[file_data]]:
 			if point_count == point_num:
 				time_step_data_dict[current_time] = data_list
 	return time_step_data_dict
-
-# 读取时间序列文件内容, 并将其存储到一个列表中
-def read_data_file2(folder_path, file_name) -> List[file_data]:
-	file_path = os.path.join(folder_path, file_name) # 拼接文件路径
-	all_lines = read_file(file_path)
-
-	data_list = [] # 定义一个列表，用于存储数据
-	for line in all_lines:
-		if "vs" not in line:
-			columns = line.split()
-			columns_float = [float(column) for column in columns]
-			current_data = file_data(
-				data=columns_float
-			)
-			data_list.append(current_data)
-	return data_list
 
 # 主程序
 if __name__ == "__main__":
@@ -166,155 +150,3 @@ if __name__ == "__main__":
 		42: "uStar060_300stdd100_0_2650_3600",
 		43: "uStar065_300stdd100_0_2650_3600",
 	}
-
-	# 定义读取文件名字典
-	output_file_dict = {
-		0: "surfProfile.dat",
-		1: "autoCorr.dat",
-		2: "surfTopology.dat",
-		3: "surfTopology.dat",
-		4: "surfTopology.dat",
-		5: "surfDiameter.dat",
-	}
-
-	output_file = output_file_dict[output_num]
-	# 画时空图
-	if output_num == 0 or output_num == 1 or output_num == 5:
-		# 读取数据
-		folder_name = case_dict[case_num]
-		folder_path = f"{working_dir}/{folder_name}"
-		all_plot_data = read_data_file1(folder_path, output_file)
-
-		offset = 0
-		plt.figure(figsize=(10, 3))  # 宽度为10，高度为3
-		# 遍历时间序列，画图
-		for t in range(start, end+1, interval):
-			current_plot_data = all_plot_data[t] # 获取当前时间的数据
-			x = [point.data[0] for point in current_plot_data] # 获取x坐标
-			y = [point.data[1]+offset for point in current_plot_data] # 获取y坐标
-			# 针对不同廓线，设置不同的偏移
-			if output_num == 0:
-				offset += profile_offset
-			elif output_num == 1:
-				offset += corr_offset
-			elif output_num == 5:
-				offset += diameter_offset
-			plt.plot(x, y, color='black', linewidth=0.5)  # 画图，设置线的颜色为黑色，线的粗细为0.5
-
-		plt.xlabel('x') # 设置横坐标标签
-		plt.ylabel('t') # 设置纵坐标标签
-		plt.gca().yaxis.set_ticks([])  # 移除纵坐标刻度
-		plt.xlim(min(x), max(x))  # 设置横坐标范围为数据的最小值和最大值
-		plt.show() # 显示图像
-	# 画不同算例的波长、波高、波速随时间的变化图
-	elif output_num >= 2 and output_num <= 4:
-		y_list = []
-		y_max = 0
-		y_min = 1000
-		# 遍历不同算例
-		for case in case_dict.values():
-			# 通过文件名获取参数
-			folder_name = case
-			folder_path = f"{working_dir}/{folder_name}"
-			parts = folder_name.split("_")
-			ustar_name = parts[0]
-			ustar_str = ustar_name[6:]
-			ustar_int = int(ustar_str)
-			ustar = ustar_int / 100
-			dia_name = parts[1]
-			if "and" in dia_name:
-				dia_name_list = dia_name.split("and")
-				dia1 = float(dia_name_list[0])/1e6
-				dia2 = float(dia_name_list[1])/1e6
-				dia =  (dia1 + dia2) / 2
-				stdd = dia2 - dia1
-			elif "stdd" in dia_name:
-				dia_name_list = dia_name.split("stdd")
-				dia1 = float(dia_name_list[0])/1e6 - 3*float(dia_name_list[1])/1e6
-				dia2 = float(dia_name_list[0])/1e6 + 3*float(dia_name_list[1])/1e6
-				dia =  (dia1 + dia2) / 2
-				stdd = float(dia_name_list[1])/1e6
-			else:
-				dia_name_list = [dia_name, dia_name]
-				dia1 = float(dia_name_list[0])/1e6
-				dia2 = float(dia_name_list[1])/1e6
-				dia =  (dia1 + dia2) / 2
-				stdd = 0
-			rho_name = parts[2]
-			if rho_name == "0":
-				rho = 1.263
-			else:
-				rho = float(rho_name)
-			rhoP = float(parts[3])
-
-			# 计算s,Sh和Ga
-			s = rhoP/rho
-			g_hat = 9.8 * (1 - 1/s)
-			Sh = rho*ustar**2/(rhoP*g_hat*dia)
-			Ga = (s*g_hat*dia**3)**0.5/nu
-
-			# 读取数据
-			all_plot_data = read_data_file2(folder_path, output_file)
-			x = [point.data[0] for point in all_plot_data] # 时间
-			if output_num == 2:
-				y = [point.data[1] for point in all_plot_data] # 波长
-			elif output_num == 3:
-				y = [point.data[2] for point in all_plot_data] # 波高
-			elif output_num == 4:
-				y = [point.data[3] for point in all_plot_data] # 波速
-
-			# 确定起始和结束索引并确定y的最大值和最小值
-			i_start = start // interval - 1
-			i_end = end // interval - 1
-			y_max = max(y_max, max(y[i_start:i_end]))
-			y_min = min(y_min, min(y[i_start:i_end]))
-
-			# 对y进行3点平均滤波
-			y_filtered = np.convolve(y, np.ones(3)/3, mode='same')
-			y = y_filtered
-
-			# 计算时间范围内y的平均值, 并将数据存储到y_list中
-			i_start = average_start // interval - 1
-			i_end = average_end // interval - 1
-			average_y = np.mean(y[i_start:i_end])
-			y_list.append((ustar, dia1, dia2, dia, stdd, Sh, Ga, average_y))
-
-			# 画第一副图为波长、波高、波速随时间的变化图
-			plt.figure(1)
-			if dia1 == dia2:
-				plt.plot(x, y, label=f"$u*={ustar:.2f}$, $d={dia:.6f}$") # 画图, 设置图例内容
-			else:
-				plt.plot(x, y, label=f"$u*={ustar:.2f}$, $d_1={dia1:.6f}$, $d_2={dia2:.6f}$") # 画图, 设置图例内容
-		plt.xlabel('$t$') # 设置横坐标标签
-		# 设置纵坐标标签和范围
-		if output_num == 2:
-			plt.ylabel('$\lambda$')
-			plt.ylim(0, y_max)
-		elif output_num == 3:
-			plt.yscale('log')
-			plt.ylabel('$A$')
-			plt.ylim(y_min, y_max)
-		elif output_num == 4:
-			plt.ylabel('$c$')
-			plt.ylim(0, y_max)
-		plt.legend(loc='upper left') # 设置图例位置
-		plt.xlim(start, end) # 设置横坐标范围
-		plt.show() # 显示图像
-
-		# 画第二副图为波长、波高、波速随x的变化图
-		plt.figure(2)
-		x = [item[x_type] for item in y_list]
-		y = [item[7] for item in y_list]
-		plt.plot(x, y, 'o')
-		label_list = ["$u*$", "$d_{min}$", "$d_{max}$", "$d$", "$stddev$", "$Sh$", "$Ga$"]
-		plt.xlabel(label_list[x_type]) # 设置横坐标标签
-		if x_type >= 1 and x_type <= 4:
-			plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-		# 设置纵坐标标签
-		if output_num == 2:
-			plt.ylabel('$\lambda$')
-		elif output_num == 3:
-			plt.ylabel('$A$')
-		elif output_num == 4:
-			plt.ylabel('$c$')
-		plt.show() # 显示图像
