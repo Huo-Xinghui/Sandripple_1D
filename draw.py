@@ -10,7 +10,7 @@ import chardet
 
 # 输出欢迎信息, 居中对齐
 print('\n')
-print('欢迎使用能源与动力工程系随机抽签程序v1.0 by: 火兴辉'.center(80))
+print('欢迎使用能源与动力工程系随机抽签程序v1.0'.center(80))
 print('\n')
 
 file_name = 'students.txt'

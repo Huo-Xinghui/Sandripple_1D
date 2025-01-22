@@ -105,8 +105,8 @@ if __name__ == "__main__":
 	x_type = 0 # 算例对比图中x轴的类型：0为u*, 1为d_min, 2为d_max, 3为d, 4为stddev, 5为Sh, 6为Ga
 	start = 30 # 时空图的起始时间或者变量随时间变化的起始时间
 	end = 3000 # 时空图的结束时间或者变量随时间变化的结束时间
-	average_start = 300 # 开始计算平均值的时间
-	average_end = 600 # 结束计算平均值的时间
+	average_start = 1000 # 开始计算平均值的时间
+	average_end = 1500 # 结束计算平均值的时间
 	profile_offset = 2e-4 # 廓线图的纵向偏移
 	corr_offset = 1e-8 # 相关性图的纵向偏移
 	diameter_offset = 2e-5 # 廓线图的纵向偏移
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 	if linux_flag:
 		working_dir = "/home/ekalhxh/ripple/coll1"
 	else:
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/nocoll1"
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
 
 	# 定义文件名字典
 	case_dict = {
@@ -143,14 +143,14 @@ if __name__ == "__main__":
 		#19: "uStar050_150and350_0_2650_3600",
 		#20: "uStar055_150and350_0_2650_3600",
 		#21: "uStar060_150and350_0_2650_3600",
-		#22: "uStar050_150and450_0_2650_3600",
+		22: "uStar050_150and450_0_2650_3600",
 		#23: "uStar050_150and550_0_2650_3600",
-		#24: "uStar050_200and400_0_2650_3600",
-		#25: "uStar050_250and350_0_2650_3600",
-		#26: "uStar050_300stdd5_0_2650_3600",
-		#27: "uStar050_300stdd10_0_2650_3600",
-		#28: "uStar050_300stdd20_0_2650_3600",
-		#29: "uStar050_300stdd50_0_2650_3600",
+		24: "uStar050_200and400_0_2650_3600",
+		25: "uStar050_250and350_0_2650_3600",
+		26: "uStar050_300stdd5_0_2650_3600",
+		27: "uStar050_300stdd10_0_2650_3600",
+		28: "uStar050_300stdd20_0_2650_3600",
+		29: "uStar050_300stdd50_0_2650_3600",
 		#30: "uStar035_300_0_2650_3600",
 		#31: "uStar040_300_0_2650_3600",
 		#32: "uStar045_300_0_2650_3600",
@@ -159,11 +159,11 @@ if __name__ == "__main__":
 		#35: "uStar060_300_0_2650_3600",
 		#36: "uStar065_300_0_2650_3600",
 		#37: "uStar035_300stdd100_0_2650_3600",
-		38: "uStar040_300stdd100_0_2650_3600",
-		39: "uStar045_300stdd100_0_2650_3600",
+		#38: "uStar040_300stdd100_0_2650_3600",
+		#39: "uStar045_300stdd100_0_2650_3600",
 		40: "uStar050_300stdd100_0_2650_3600",
-		41: "uStar055_300stdd100_0_2650_3600",
-		42: "uStar060_300stdd100_0_2650_3600",
+		#41: "uStar055_300stdd100_0_2650_3600",
+		#42: "uStar060_300stdd100_0_2650_3600",
 		#43: "uStar065_300stdd100_0_2650_3600",
 	}
 
@@ -228,18 +228,21 @@ if __name__ == "__main__":
 				dia2 = float(dia_name_list[1])/1e6
 				dia =  (dia1 + dia2) / 2
 				stdd = dia2 - dia1
+				output_flag = 'and'
 			elif "stdd" in dia_name:
 				dia_name_list = dia_name.split("stdd")
 				dia1 = float(dia_name_list[0])/1e6 - 3*float(dia_name_list[1])/1e6
 				dia2 = float(dia_name_list[0])/1e6 + 3*float(dia_name_list[1])/1e6
 				dia =  (dia1 + dia2) / 2
 				stdd = float(dia_name_list[1])/1e6
+				output_flag = 'stdd'
 			else:
 				dia_name_list = [dia_name, dia_name]
 				dia1 = float(dia_name_list[0])/1e6
 				dia2 = float(dia_name_list[1])/1e6
 				dia =  (dia1 + dia2) / 2
 				stdd = 0
+				output_flag = 'single'
 			rho_name = parts[2]
 			if rho_name == "0":
 				rho = 1.263
@@ -281,10 +284,16 @@ if __name__ == "__main__":
 
 			# 画第一副图为波长、波高、波速随时间的变化图
 			plt.figure(1)
-			if dia1 == dia2:
-				plt.plot(x, y, label=f"$u*={ustar:.2f}$, $d={dia:.6f}$") # 画图, 设置图例内容
+			if output_flag == 'single':
+				plt.plot(x, y, label=f"$u*={ustar:.2f}$, $d={dia:.2e}$") # 画图, 设置图例内容
+			elif output_flag == 'and':
+				plt.plot(x, y, label=f"$u*={ustar:.2f}$, $d_1={dia1:.2e}$, $d_2={dia2:.2e}$")
+			elif output_flag == 'stdd':
+				plt.plot(x, y, label=f"$u*={ustar:.2f}$, $d={dia:.2e}$, $stddev={stdd:.2e}$")
 			else:
-				plt.plot(x, y, label=f"$u*={ustar:.2f}$, $d_1={dia1:.6f}$, $d_2={dia2:.6f}$") # 画图, 设置图例内容
+				print("Invalid output_flag!")
+				exit()
+
 		plt.xlabel('$t$') # 设置横坐标标签
 		# 设置纵坐标标签和范围
 		if output_num == 2:
