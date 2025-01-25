@@ -7,131 +7,131 @@ module public_val
     real(kind=dbPc), parameter :: xMax = 0.5 ! x size
     real(kind=dbPc), parameter :: yMax = 0.01 ! y sizw
     real(kind=dbPc), parameter :: zMax = 0.3 ! z size
-    real(kind=dbPc), parameter :: area = xMax*yMax
+    real(kind=dbPc), parameter :: area = xMax*yMax ! bottom area of the computational domain
     integer, parameter :: mx = 502 ! x grid num +2
     integer, parameter :: my = 12 ! y grid num +2
     integer, parameter :: mz = 150 ! z grid num
     integer, parameter :: mzUni = 30 ! z grid number above which zDiff becomes uniform
-    real(kind=dbPc), parameter :: xDiff = xMax/(mx - 2)
-    real(kind=dbPc), parameter :: yDiff = yMax/(my - 2)
+    real(kind=dbPc), parameter :: xDiff = xMax/(mx - 2) ! x grid size
+    real(kind=dbPc), parameter :: yDiff = yMax/(my - 2) ! y grid size
     integer, parameter :: nNodes = 5 ! num of subdomain
     integer, parameter :: mxNode = (mx - 2)/nNodes + 2 ! x direction grid num for every subdomain
     ! particle
-    logical, parameter :: midairCollision = .true.
+    logical, parameter :: midairCollision = .true. ! whether to consider midair collision
     ! particle diameter: whichDiameterDist = 0: normal distribution, 1: uniform diameter, 2: Bernoulli distribution
     ! whichDiameterDist=0: npdf must >= 3, mu=dpa, sigma=dpStddDev, range:mu-3*sigma ~ mu+3*sigma
     ! whichDiameterDist=1: npdf must = 1, d=dpa
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
-    integer, parameter :: whichDiameterDist = 2
+    integer, parameter :: whichDiameterDist = 2 ! particle diameter distribution type
     integer, parameter :: npdf = 2 ! bin num of particle distribution
     integer, parameter :: pNumInit = 10 ! initial particle num
     integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
     integer, parameter :: maxNum = 100000 ! max particle num in one subdomain
-    integer, parameter :: pNumInGridMax = maxNum/mxNode !/(my)
-    integer, parameter :: pNumExchMax = maxNum/10
+    integer, parameter :: pNumInGridMax = maxNum/mxNode !/(my) ! max particle num in one x-y grid
+    integer, parameter :: pNumExchMax = maxNum/10 ! max particle num for exchange between processors
     real(kind=dbPc), parameter :: dpa = 3.0e-4 ! average particle diameter
     real(kind=dbPc), parameter :: dpStddDev = 1.5e-4 ! particle diameter standard deviation
-    real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
+    real(kind=dbPc), parameter :: prob1 = 0.25 ! probability one of Bernoulli distribution
     real(kind=dbPc), parameter :: dpStddDevNum = 2.0 ! num of standard deviation, =2 when whichDiameterDist=2, =3 when whichDiameterDist=0
-    real(kind=dbPc), parameter :: binWidth = 2.0*dpStddDevNum*dpStddDev/npdf
-    real(kind=dbPc), parameter :: binStart = dpa - dpStddDevNum*dpStddDev
-    real(kind=dbPc), parameter :: binEnd = dpa + dpStddDevNum*dpStddDev
+    real(kind=dbPc), parameter :: binWidth = 2.0*dpStddDevNum*dpStddDev/npdf ! bin width of the particle diameter distribution
+    real(kind=dbPc), parameter :: binStart = dpa - dpStddDevNum*dpStddDev ! start of the particle diameter distribution
+    real(kind=dbPc), parameter :: binEnd = dpa + dpStddDevNum*dpStddDev ! end of the particle diameter distribution
     real(kind=dbPc), parameter :: resN = 0.9 ! normal restitution coefficient
     real(kind=dbPc), parameter :: resT = 0.0 ! tangential restitution coefficient
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
     ! bed surface
-    logical, parameter :: predefineSurface = .false.
+    logical, parameter :: predefineSurface = .false. ! whether to predefine the bed surface
     real(kind=dbPc), parameter :: initSurfElevation = 4.0e-2 ! initial bed height
     real(kind=dbPc), parameter :: amp = 0.005 ! amplitude of the predefined surface
     real(kind=dbPc), parameter :: omg = 32.0*pi ! wave number (friquence) of the predefined surface
     real(kind=dbPc), parameter :: z0 = dpa/30.0 ! roughness height
     real(kind=dbPc), parameter :: repostAngle = 35.0 ! repost angle
-    real(kind=dbPc), parameter :: tanRepostAngle = tan(repostAngle/180.0*pi)
-    real(kind=dbPc), parameter :: chunkHeight = 5.0e-4 ! height of sand bed chunk
+    real(kind=dbPc), parameter :: tanRepostAngle = tan(repostAngle/180.0*pi) ! tan of the repost angle
+    real(kind=dbPc), parameter :: chunkHeight = 5.0e-4 ! height of particle diameter grid
     integer, parameter :: zChkNum = floor(initSurfElevation/chunkHeight)*2 ! num of sand bed chunks in z direction
-    real(kind=dbPc), parameter :: chunkVol = xDiff*yDiff*chunkHeight*por
-    real(kind=dbPc), parameter :: blockHeight = dpa*4.0 ! height of the block, must>chunkHeight
-    real(kind=dbPc), parameter :: blockVol = xDiff*yDiff*blockHeight*por
+    real(kind=dbPc), parameter :: chunkVol = xDiff*yDiff*chunkHeight*por ! volume of a particle diameter grid
+    real(kind=dbPc), parameter :: blockHeight = dpa*4.0 ! height of the block, must>chunkHeight. block is a temporary grid on surface
+    real(kind=dbPc), parameter :: blockVol = xDiff*yDiff*blockHeight*por ! volume of a block
     ! fluid
-    real(kind=dbPc), parameter :: uStar = 0.35 ! fractional velocity
+    real(kind=dbPc), parameter :: uStar = 0.50 ! fractional velocity
     real(kind=dbPc), parameter :: rho = 1.263 ! fluid density
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.4 ! von Kaman's constant
     real(kind=dbPc), parameter :: zDiffMin = nu/uStar ! smallest z grid size
     ! iteration
-    integer, parameter :: parStart = 1 ! Iteration num when the particle calculation starts
-    integer, parameter :: oneSecond = 20000
-    integer, parameter :: intervalField = oneSecond*120
-    integer, parameter :: intervalProfile = oneSecond*60
-    integer, parameter :: intervalMonitor = oneSecond
-    integer, parameter :: intervalParticle = oneSecond*60
-    integer, parameter :: intervalSurface = oneSecond*30
-    integer, parameter :: intervalInside = oneSecond*120
-    integer, parameter :: intervalStatistics = oneSecond*60
-    integer, parameter :: intervalCreateFile = oneSecond*240
+    integer, parameter :: parStart = 1 ! iteration num when the particle calculation starts
+    integer, parameter :: oneSecond = 20000 ! iteration num of one second
+    integer, parameter :: intervalField = oneSecond*120 ! interval between fluid field outputs
+    integer, parameter :: intervalProfile = oneSecond*60 ! interval between profile outputs
+    integer, parameter :: intervalMonitor = oneSecond ! interval between monitor outputs
+    integer, parameter :: intervalParticle = oneSecond*60 ! interval between particle outputs
+    integer, parameter :: intervalSurface = oneSecond*30 ! interval between surface outputs
+    integer, parameter :: intervalInside = oneSecond*120 ! interval between inside outputs
+    integer, parameter :: intervalStatistics = oneSecond*60 ! interval between statistics outputs
+    integer, parameter :: intervalCreateFile = oneSecond*240 ! interval between creating output files
     real(kind=dbPc), parameter :: dt = 5.0e-5 ! time step
     real(kind=dbPc), parameter :: endTime = 3600.0 ! The time that the simulation lasts
 
     ! variables
     ! MPI
-    integer :: realtype
-    integer :: inttype
-    integer :: procs
-    integer :: comm
-    integer :: myID
-    integer :: sliceType
-    integer :: edgeType1, edgeType2
-    integer, dimension(2) :: neighbor
+    integer :: realtype ! MPI_DOUBLE
+    integer :: inttype ! MPI_INTEGER
+    integer :: procs ! number of processors
+    integer :: comm ! MPI communicator
+    integer :: myID ! current processor ID
+    integer :: sliceType ! MPI data type for a x-y slice
+    integer :: edgeType1, edgeType2 ! MPI data type for a edgeline of x-y plan, edgeType1: for data(i, j), edgeType2: for data(i, j, k)
+    integer, dimension(2) :: neighbor ! the index of the left and right neighbors
     ! Fluid field
-    real(kind=dbPc), dimension(mxNode) :: x
-    real(kind=dbPc), dimension(my) :: y
-    real(kind=dbPc), dimension(mz) :: zDiff
-    real(kind=dbPc), dimension(mz) :: z
-    real(kind=dbPc), dimension(mxNode, my, mz) :: zReal
-    real(kind=dbPc), dimension(mxNode) :: xu
-    real(kind=dbPc), dimension(my) :: yv
-    real(kind=dbPc), dimension(mz + 1) :: zw
-    real(kind=dbPc), dimension(mxNode, my, mz + 1) :: zwReal
-    real(kind=dbPc), dimension(mxNode, my, mz) :: pfrac
-    real(kind=dbPc), dimension(mz) :: gridVolume
-    real(kind=dbPc), dimension(mz) :: u
-    real(kind=dbPc), dimension(mz) :: tau_p
-    real(kind=dbPc), dimension(mz) :: tau_f
-    real(kind=dbPc), dimension(mz) :: phi_p
-    real(kind=dbPc), dimension(mz) :: F_p
-    real(kind=dbPc), dimension(mz) :: F_pNode
+    real(kind=dbPc), dimension(mxNode) :: x ! x coordinate
+    real(kind=dbPc), dimension(my) :: y ! y coordinate
+    real(kind=dbPc), dimension(mz) :: zDiff ! z grid size
+    real(kind=dbPc), dimension(mz) :: z ! z coordinate
+    real(kind=dbPc), dimension(mxNode, my, mz) :: zReal ! real z coordinate (z + zsf)
+    real(kind=dbPc), dimension(mxNode) :: xu ! x coordinate of u
+    real(kind=dbPc), dimension(my) :: yv ! y coordinate of v
+    real(kind=dbPc), dimension(mz + 1) :: zw ! z coordinate of w
+    real(kind=dbPc), dimension(mxNode, my, mz + 1) :: zwReal ! real z coordinate of w (zw + zsf)
+    real(kind=dbPc), dimension(mxNode, my, mz) :: pfrac ! particle volume fraction
+    real(kind=dbPc), dimension(mz) :: gridVolume ! grid volume
+    real(kind=dbPc), dimension(mz) :: u ! u velocity
+    real(kind=dbPc), dimension(mz) :: tau_p ! particle shear stress
+    real(kind=dbPc), dimension(mz) :: tau_f ! fluid shear stress
+    real(kind=dbPc), dimension(mz) :: phi_p ! particle volume fraction
+    real(kind=dbPc), dimension(mz) :: F_p ! total particle drag force
+    real(kind=dbPc), dimension(mz) :: F_pNode ! particle drag force per grid
     ! Particle bed
-    integer, dimension(mxNode, my) :: rollTo, rollFrom
-    integer, dimension(mxNode, my) :: kSurf
-    real(kind=dbPc), dimension(mxNode + 1) :: xsf
-    real(kind=dbPc), dimension(my) :: ysf
-    real(kind=dbPc), dimension(mxNode + 1, my) :: zsf
-    real(kind=dbPc), dimension(mxNode + 1, my) :: dsf
-    real(kind=dbPc), dimension(npdf) :: initDiameterDist
-    real(kind=dbPc), dimension(mxNode + 1, my, npdf) :: hist
-    real(kind=dbPc), dimension(mxNode + 1, my, npdf) :: binChange
-    real(kind=dbPc), dimension(zChkNum) :: zChk
-    real(kind=dbPc), dimension(mxNode, my) :: surfChkVol
-    real(kind=dbPc), dimension(mxNode, my, zChkNum) :: chunkDia
-    real(kind=dbPc), dimension(mxNode, my, zChkNum, npdf) :: chunkHist
+    integer, dimension(mxNode, my) :: rollTo, rollFrom ! the direction of particle rolling
+    integer, dimension(mxNode, my) :: kSurf ! the vertical index of the particle diameter grid on the bed surface
+    real(kind=dbPc), dimension(mxNode + 1) :: xsf ! x coordinate of the bed surface
+    real(kind=dbPc), dimension(my) :: ysf ! y coordinate of the bed surface
+    real(kind=dbPc), dimension(mxNode + 1, my) :: zsf ! z coordinate of the bed surface
+    real(kind=dbPc), dimension(mxNode + 1, my) :: dsf ! particle diameter on the bed surface
+    real(kind=dbPc), dimension(npdf) :: initDiameterDist ! initial particle diameter distribution
+    real(kind=dbPc), dimension(mxNode + 1, my, npdf) :: hist ! particle diameter distribution
+    real(kind=dbPc), dimension(mxNode + 1, my, npdf) :: binChange ! volume change of the particle diameter distribution bin
+    real(kind=dbPc), dimension(zChkNum) :: zChk ! the z coordinate of the particle diameter grid center
+    real(kind=dbPc), dimension(mxNode, my) :: surfChkVol ! the volume of a surface particle diameter grid
+    real(kind=dbPc), dimension(mxNode, my, zChkNum) :: chunkDia ! average diameter of a particle diameter grid
+    real(kind=dbPc), dimension(mxNode, my, zChkNum, npdf) :: chunkHist ! diameter distribution of a particle diameter grid
     ! particle
-    integer :: pNum
-    integer, dimension(maxNum, 3) :: pIndex
-    real(kind=dbPc) :: xflux, zflux
-    real(kind=dbPc), dimension(maxNum) :: xp, yp, zp
-    real(kind=dbPc), dimension(maxNum) :: up, vp, wp
-    real(kind=dbPc), dimension(maxNum) :: dp
-    real(kind=dbPc), dimension(maxNum) :: hp
-    real(kind=dbPc), dimension(maxNum) :: maxhp
-    real(kind=dbPc), dimension(maxNum) :: survTime
-    real(kind=dbPc), dimension(maxNum) :: survLength
-    real(kind=dbPc), dimension(maxNum) :: collCount
-    real(kind=dbPc), dimension(mz) :: xfluxPf
-    real(kind=dbPc), dimension(mz) :: zfluxPf
+    integer :: pNum ! particle number
+    integer, dimension(maxNum, 3) :: pIndex ! the indices of the grid that the particle is in
+    real(kind=dbPc) :: xflux, zflux ! the flux of the particle in x and z direction
+    real(kind=dbPc), dimension(maxNum) :: xp, yp, zp ! particle position
+    real(kind=dbPc), dimension(maxNum) :: up, vp, wp ! particle velocity
+    real(kind=dbPc), dimension(maxNum) :: dp ! particle diameter
+    real(kind=dbPc), dimension(maxNum) :: hp ! particle height
+    real(kind=dbPc), dimension(maxNum) :: maxhp ! max particle height
+    real(kind=dbPc), dimension(maxNum) :: survTime ! particle survival time
+    real(kind=dbPc), dimension(maxNum) :: survLength ! particle survival length
+    real(kind=dbPc), dimension(maxNum) :: collCount ! particle collision count
+    real(kind=dbPc), dimension(mz) :: xfluxPf ! the x flux density of the particle
+    real(kind=dbPc), dimension(mz) :: zfluxPf ! the z flux density of the particle
     ! iteration
-    integer :: iter
-    real(kind=dbPc) :: time
+    integer :: iter ! iteration number
+    real(kind=dbPc) :: time ! current time
 end module public_val
 
 module vector_cal
@@ -1716,13 +1716,19 @@ subroutine updateSurfGrid
     use public_val
     implicit none
 
-    integer :: i, j, k, kk, kBottom, n
-    real(kind=dbPc) :: blkBottom, currentBlkHight
-    real(kind=dbPc) :: vChange
-    real(kind=dbPc) :: bottomChkfrac, bottomChkVol, bottomChkVolRst, currentBlkVol
-    real(kind=dbPc), dimension(npdf) :: currentBlkHist
-    real(kind=dbPc), dimension(npdf) :: bin
-    real(kind=dbPc), dimension(zChkNum, npdf) :: chunkBin
+    integer :: i, j, k, n
+    integer :: kk ! = kSurf(i, j), the k of the particle diameter grid on surface and at (i, j)
+    integer :: kBottom ! the k of the grid beneath the block, may not be a complete grid
+    real(kind=dbPc) :: vChange ! volume change at (i, j)
+    real(kind=dbPc) :: blkBottom ! the bottom of the block
+    real(kind=dbPc) :: currentBlkHight ! the height of the block after adding the volume change
+    real(kind=dbPc) :: currentBlkVol ! the volume of the block after adding the volume change
+    real(kind=dbPc) :: bottomChkfrac ! the volume fraction of the above blkBottom part in grid(kBottom)
+    real(kind=dbPc) :: bottomChkVol ! the volume of the above blkBottom part in grid(kBottom)
+    real(kind=dbPc) :: bottomChkVolRst ! the volume of the rest part in grid(kBottom)
+    real(kind=dbPc), dimension(npdf) :: currentBlkHist ! the histogram of the block after adding the volume change
+    real(kind=dbPc), dimension(npdf) :: bin ! the bin volumes of the block after adding the volume change
+    real(kind=dbPc), dimension(zChkNum, npdf) :: chunkBin ! the bin volumes of the particle diameter grid
 
     call addGhostData
     if (whichDiameterDist /= 1) then
@@ -1731,7 +1737,7 @@ subroutine updateSurfGrid
                 vChange = sum(binChange(i, j, :))
                 if (vChange == 0.0) cycle
                 kk = kSurf(i, j)
-                currentBlkHight = max(blockHeight, -vChange/(xDiff*yDiff*por))
+                currentBlkHight = max(blockHeight, -vChange/(xDiff*yDiff*por)) ! together with zsf, they are used to define blkBottom
                 blkBottom = zsf(i, j) - currentBlkHight
                 kBottom = floor(blkBottom/chunkHeight) + 1
                 bottomChkfrac = (kBottom*chunkHeight - blkBottom)/chunkHeight
@@ -1740,7 +1746,7 @@ subroutine updateSurfGrid
                 currentBlkVol = blockVol + vChange
 
                 if (currentBlkVol <= bottomChkVol) then
-                    if (currentBlkVol <= 0.0) then
+                    if (currentBlkVol <= 0.0) then ! when -vChange > blockVol
                         surfChkVol(i, j) = bottomChkVolRst
                         chunkDia(i, j, kBottom) = 0.0
                         do n = 1, npdf
