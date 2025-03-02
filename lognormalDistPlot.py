@@ -22,11 +22,11 @@ def get_normal_params(log_mean, log_std):
     return mu, sigma
 
 
-log_mean = 3e-4
-log_std = 2e-4
-xmin = 0.3e-4
-xmax = 1e-3
-xnum = 25
+log_mean = 3.0e-4
+log_std = 1.0e-4
+xmin = 1e-4
+xmax = 7e-4
+xnum = 20
 dx = xmax / xnum
 ddx = dx * 0.5
 mu, sigma = get_normal_params(log_mean, log_std)

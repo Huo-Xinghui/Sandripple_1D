@@ -114,7 +114,7 @@ if __name__ == "__main__":
 	if linux_flag:
 		working_dir = "/home/ekalhxh/ripple/coll1"
 	else:
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll1"
 
 	# 删除已存在的cases.dat文件
 	cases_file = os.path.join(working_dir, "cases.dat")
@@ -161,12 +161,12 @@ if __name__ == "__main__":
 		#35: "uStar060_300_0_2650_3600",
 		#36: "uStar065_300_0_2650_3600",
 		#37: "uStar035_300stdd100_0_2650_3600",
-		38: "uStar040_300stdd100_0_2650_3600",
-		39: "uStar045_300stdd100_0_2650_3600",
-		40: "uStar050_300stdd100_0_2650_3600",
-		41: "uStar055_300stdd100_0_2650_3600",
-		42: "uStar060_300stdd100_0_2650_3600",
-		43: "uStar065_300stdd100_0_2650_3600",
+		#38: "uStar040_300stdd100_0_2650_3600",
+		#39: "uStar045_300stdd100_0_2650_3600",
+		#40: "uStar050_300stdd100_0_2650_3600",
+		#41: "uStar055_300stdd100_0_2650_3600",
+		#42: "uStar060_300stdd100_0_2650_3600",
+		#43: "uStar065_300stdd100_0_2650_3600",
 	}
 
 	# 遍历字典中的每个case

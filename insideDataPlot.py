@@ -28,6 +28,8 @@ import matplotlib.pyplot as plt # 用于绘图
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes # 用于绘制放大图
 from typing import Dict # 用于类型提示
 
+pd.set_option('future.no_silent_downcasting', True) # 设置pandas不显示警告
+
 # 定义一个函数来读取任意文件
 def read_file(file_path):
 	if not os.path.exists(file_path):
@@ -81,16 +83,16 @@ if __name__ == "__main__":
 	# 定义常数
 	interval = 120 #源文件时间间隔
 	file_interval = 240 #两个源文件之间的时间间隔
-	start = interval*20 #求平均的起始时间，若average_on_time为False，则表示所显示的瞬时时刻
-	end = interval*23 #求平均的终止时间，若average_on_time为False，则无效
-	plot_case = 19 #对照case_dict的键值
+	start = interval*29 #求平均的起始时间，若average_on_time为False，则表示所显示的瞬时时刻
+	end = interval*30 #求平均的终止时间，若average_on_time为False，则无效
+	plot_case = 8 #对照case_dict的键值
 	plot_section = 1 #从0开始，在average_on_y为False时表示所显示的截面在y方向的位置
 	average_on_time = False #是否对时间求平均
 	average_on_y = True #是否对y方向求平均
 	remove_zero = True #是否在求平均前将0值替换为None，以保障平均后不出现不真实表面
 	bed_profile = False #是否绘制床面廓线
 	correct_d = True #是否对d值进行修正
-	plot_type = 0 #绘图方式 0: pcolormesh, 1: contourf
+	plot_type = 1 #绘图方式 0: pcolormesh, 1: contourf
 # ----------------------------------------------------------------------------------------
 
 	# 定义文件路径
@@ -181,7 +183,7 @@ if __name__ == "__main__":
 			plot_df = pd.concat(y_ave_section_time_step_dict.values()).groupby(['x', 'z']).mean().reset_index()
 		else:
 			plot_df = pd.concat(y_section_time_step_dict.values()).groupby(['x', 'z']).mean().reset_index()
-	plot_df['d'] = plot_df['d'].replace(np.nan, 0) #将None值替换回0
+	plot_df['d'] = plot_df['d'].replace(np.nan, 0).infer_objects(copy=False) #将None值替换回0
 
 	# 对d值进行修正
 	if correct_d:
@@ -305,24 +307,26 @@ if __name__ == "__main__":
 	ax.set_ylabel("z")
 
 	# 设置坐标轴纵横比和图形大小
-	#ax.set_aspect(3, 'box')
+	ax.set_aspect(3, 'box')
 
-	# 插入放大图
+	# 插入放大图,并设置放大区域的颜色范围
 	axins = inset_axes(ax, width="50%", height="30%", loc='upper right')
 	if plot_type == 0:
-		axins.pcolormesh(X, Z, d_grid_masked, shading='auto', cmap='viridis')
+		c_inset = axins.pcolormesh(X, Z, d_grid_masked, shading='auto', cmap='viridis')
 	elif plot_type == 1:
-		axins.contourf(X, Z, d_grid_masked, cmap='viridis')
-		axins.contour(X, Z, d_grid_masked, colors='black', linewidths=0.5)
-	axins.set_xlim(0.17, 0.26)
-	axins.set_ylim(0.0175, 0.0225)
+		c_inset = axins.contourf(X, Z, d_grid_masked, cmap='viridis')
+		c_inset = axins.contour(X, Z, d_grid_masked, colors='black', linewidths=0.5)
+	axins.set_xlim(0.2, 0.3)
+	axins.set_ylim(0.0175, 0.025)
 	axins.set_xticklabels('')
 	axins.set_yticklabels('')
+	axins.set_aspect(1, 'box')
+
+	# 设置颜色映射范围
+	c.set_clim(dia1, dia2)
+	c_inset.set_clim(dia1, dia2) #设置放大区域的颜色范围
 
 	# 添加放大区域的边框
 	ax.indicate_inset_zoom(axins, edgecolor="black")
-
-	# 设置颜色映射范围
-	#c.set_clim(dia1, dia2)
 
 	plt.show()

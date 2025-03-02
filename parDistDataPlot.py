@@ -249,7 +249,7 @@ if __name__ == "__main__":
 	end_time = 300 # 终止时间
 	bin_num = 50 # 直方图的柱数
 	output_flag = 'survL' # 'h', 'hMax', 'dia', 'vMag', 'survL', 'survT', 'kEng', 'collNum'
-	plot_type_flag = 'box' # 'dist' for distribution, 'box' for box plot
+	plot_type_flag = 'violin' # 'dist' for distribution, 'box' for box plot, 'violin' for violin plot
 	y_label_flag = 'pdf' # 'n' for number, 'pdf' for probability density
 	if start_time % interval != 0 or end_time % interval != 0:
 		print("Invalid start/end time.")
@@ -263,13 +263,13 @@ if __name__ == "__main__":
 
 	# 定义文件名字典, key为case编号，value为文件夹名字和碰撞信息的标志, 'c' for collision, 'nc' for no collision
 	case_dict = {
-		0: ["uStar035_300_0_2650_3600", 'nc'],
-		1: ["uStar040_300_0_2650_3600", 'nc'],
-		2: ["uStar045_300_0_2650_3600", 'nc'],
-		3: ["uStar050_300_0_2650_3600", 'nc'],
-		4: ["uStar055_300_0_2650_3600", 'nc'],
-		5: ["uStar060_300_0_2650_3600", 'nc'],
-		6: ["uStar065_300_0_2650_3600", 'nc']
+		0: ["uStar035_300stdd100_0_2650_3600", 'tot'],
+		1: ["uStar040_300stdd100_0_2650_3600", 'tot'],
+		2: ["uStar045_300stdd100_0_2650_3600", 'tot'],
+		3: ["uStar050_300stdd100_0_2650_3600", 'tot'],
+		4: ["uStar055_300stdd100_0_2650_3600", 'tot'],
+		5: ["uStar060_300stdd100_0_2650_3600", 'tot'],
+		6: ["uStar065_300stdd100_0_2650_3600", 'tot']
 	}
 
 	# 定义横坐标字典
@@ -368,11 +368,15 @@ if __name__ == "__main__":
 			x_plot = distribution_dict[output_flag]
 			y_plot = distribution_dict[y_label_flag]
 			plt.loglog(x_plot, y_plot, 'o', label=f"$u^*={uStar}$")
-		elif plot_type_flag == 'box':
+		elif plot_type_flag == 'box' or plot_type_flag == 'violin':
 			analyzed_data = [getattr(particle, output_flag) for particle in analyzed_particles]
-			#analyzed_data = [math.log(data) for data in analyzed_data]
-			analyzed_data = np.array([data**0.1 for data in analyzed_data])
-			plt.boxplot(analyzed_data, positions=[uStar], widths=0.03, showfliers=True)
+			if plot_type_flag == 'box':
+				#analyzed_data = [math.log(data) for data in analyzed_data]
+				analyzed_data = np.array([data**0.1 for data in analyzed_data])
+				plt.boxplot(analyzed_data, positions=[uStar], widths=0.03, showfliers=True)
+			elif plot_type_flag == 'violin':
+				analyzed_data = np.array([data**0.1 for data in analyzed_data])
+				plt.violinplot(analyzed_data, positions=[uStar], widths=0.03, showmedians=True)
 			x_plot.append(uStar)
 			y_plot.append(np.mean(analyzed_data))
 		else:
@@ -383,6 +387,11 @@ if __name__ == "__main__":
 		plt.xlabel(x_label_dict[output_flag])
 		plt.ylabel(y_label_flag)
 	elif plot_type_flag == 'box':
+		plt.xlabel("$u^*$")
+		plt.ylabel(x_label_dict[output_flag])
+		plt.xlim(0.3, 0.7)
+		plt.plot(x_plot, y_plot, 'ro-')
+	elif plot_type_flag == 'violin':
 		plt.xlabel("$u^*$")
 		plt.ylabel(x_label_dict[output_flag])
 		plt.xlim(0.3, 0.7)
