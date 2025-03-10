@@ -155,7 +155,8 @@ class ParticleNumData:
 		self.iterNum.append(iterNum)
 
 # 定义一个函数来读取任意文件
-def read_file(file_path):
+def read_file(file_path) -> List[str]:
+	"""读取文件"""
 	if not os.path.exists(file_path):
 		print(f"文件 {file_path} 不存在。")
 		return None
@@ -322,12 +323,13 @@ if __name__ == "__main__":
 
 	# 定义文件路径
 	if linux_flag:
-		working_dir = "/home/ekalhxh/ripple/coll12"
+		working_dir = "/home/ekalhxh/ripple/coll11"
 	else:
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll12"
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll11"
 
 	# 定义文件名字典
 	case_dict = {
+		0: "uStar035_300_0_2650_600",
 		1: "uStar040_300_0_2650_600",
 		2: "uStar045_300_0_2650_600",
 		3: "uStar050_300_0_2650_600",
@@ -336,15 +338,20 @@ if __name__ == "__main__":
 		6: "uStar050_200_0_2650_600",
 		7: "uStar050_400_0_2650_600",
 		8: "uStar050_500_0_2650_600",
-		9: "uStar050_300_2_2650_600",
-		10: "uStar050_300_0_1000_600",
-		11: "uStar050_300_0_4000_600",
+		9: "uStar050_600_0_2650_600",
+		10: "uStar050_300_2_2650_600",
+		11: "uStar050_300_3_2650_600",
+		12: "uStar050_300_0_1000_600",
+		13: "uStar050_300_0_1500_600",
+		14: "uStar050_300_0_2000_600",
+		15: "uStar050_300_0_3000_600",
+		16: "uStar050_300_0_4000_600",
 	}
 
 	for folder_name in tqdm(case_dict.values(), desc="Processing", unit="case"):
 		# 从文件夹名字中提取参数
 		parts = folder_name.split("_")
-		uStar = int(parts[0][6:])/100
+		uStar = float(parts[0][6:])/100
 		dia_name = parts[1]
 		if "and" in dia_name:
 			dia_name_list = dia_name.split("and")
