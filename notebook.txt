@@ -1,0 +1,47 @@
+已知(sqrt(vz^2/g^2-2*zb/g)+vz/g)*vx=(d1+d2)/2*cos(psi)，zb=(1-sin(psi))*(d1+d2)/2，其中g, d1,d2，psi为常量，如果E*=v^2/(g*d1)/2，v=sqrt(vx^2+vz^2)。是否可以得到E*的最小值的表达式
+
+deepseek: 为了求 \( E^* \) 的最小值，我们通过变量替换和优化分析，得到以下结果：
+
+### 已知条件与目标函数
+- **约束条件**：
+  \[
+  \left( \sqrt{\frac{v_z^2}{g^2} - \frac{2 z_b}{g}} + \frac{v_z}{g} \right) v_x = \frac{d_1 + d_2}{2} \cos \psi,
+  \]
+  其中 \( z_b = (1 - \sin \psi) \frac{d_1 + d_2}{2} \)。
+
+- **目标函数**：
+  \[
+  E^* = \frac{v^2}{2 g d_1}, \quad v = \sqrt{v_x^2 + v_z^2}.
+  \]
+
+### 关键推导步骤
+1. **代入 \( z_b \) 表达式**：
+   将 \( z_b = (1 - \sin \psi) \frac{d_1 + d_2}{2} \) 代入约束条件，化简得到：
+   \[
+   \sqrt{v_z^2 - g(d_1 + d_2)(1 - \sin \psi)} + v_z = \frac{(d_1 + d_2) g \cos \psi}{2 v_x}.
+   \]
+
+2. **变量替换**：
+   引入 \( u = \sqrt{v_z^2 - g(d_1 + d_2)(1 - \sin \psi)} + v_z \)，解得 \( v_x = \frac{(d_1 + d_2) g \cos \psi}{2 u} \)。
+
+3. **优化目标函数**：
+   将 \( v_x \) 代入 \( E^* \)，得到：
+   \[
+   E^* = \frac{v_x^2 + v_z^2}{2 g d_1} = \frac{\left( \frac{(d_1 + d_2) g \cos \psi}{2 u} \right)^2 + v_z^2}{2 g d_1}.
+   \]
+   通过变量替换 \( u = \sqrt{v_z^2 - C} + v_z \)（其中 \( C = g(d_1 + d_2)(1 - \sin \psi) \)），进一步化简目标函数为关于 \( u \) 的表达式。
+
+4. **极值分析**：
+   通过求导并解方程，发现当 \( u = \sqrt{C^2 + 4 D^2 g^2} \) 时（其中 \( D = \frac{(d_1 + d_2) \cos \psi}{2} \)），\( E^* \) 取得极小值。
+
+5. **最终表达式**：
+   经过代数化简，最小值为：
+   \[
+   E^*_{\text{min}} = \frac{(d_1 + d_2) \left( \sqrt{2(1 - \sin \psi)} + (1 - \sin \psi) \right)}{4 d_1}.
+   \]
+
+### 答案
+\( E^* \) 的最小值表达式为：
+\[
+\boxed{E^*_{\text{min}} = \frac{(d_1 + d_2) \left( \sqrt{2(1 - \sin \psi)} + (1 - \sin \psi) \right)}{4 d_1}}
+\]
