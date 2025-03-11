@@ -23,14 +23,14 @@ module public_val
     ! whichDiameterDist=1: npdf must = 1, d=dpa
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
     ! whichDiameterDist=3: npdf must >= 3, mu=logMu, sigma=logSigma
-    integer, parameter :: whichDiameterDist = 3 ! particle diameter distribution type
-    integer, parameter :: npdf = 20 ! bin num of particle distribution
+    integer, parameter :: whichDiameterDist = 1 ! particle diameter distribution type
+    integer, parameter :: npdf = 1 ! bin num of particle distribution
     integer, parameter :: pNumInit = 10 ! initial particle num
     integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
     integer, parameter :: maxNum = 100000 ! max particle num in one subdomain
     integer, parameter :: pNumInGridMax = maxNum/200 !mxNode !/(my) ! max particle num in one x-y grid
     integer, parameter :: pNumExchMax = maxNum/10 ! max particle num for exchange between processors
-    real(kind=dbPc), parameter :: dpa = 4.0e-4 ! average particle diameter
+    real(kind=dbPc), parameter :: dpa = 3.0e-4 ! average particle diameter
     real(kind=dbPc), parameter :: dpStddDev = 1.2e-4 ! particle diameter standard deviation
     real(kind=dbPc), parameter :: logMu = -7.8671 ! mu of lognormal distribution
     real(kind=dbPc), parameter :: logSigma = 0.2936 ! sigma of lognormal distribution
@@ -40,6 +40,7 @@ module public_val
     real(kind=dbPc), parameter :: binWidth = (binEnd - binStart)/npdf ! bin width of the particle diameter distribution
     real(kind=dbPc), parameter :: resN = 0.78 ! normal restitution coefficient
     real(kind=dbPc), parameter :: resT = -0.13 ! tangential restitution coefficient
+    real(kind=dbPc), parameter :: resN2 = 0.9 ! normal restitution coefficient for midair collision
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
     ! bed surface
@@ -1818,9 +1819,9 @@ subroutine calculateMidAirColl
                     rv12T = sqrt(norm_2(rv12)**2 - rv12N**2)
                     eta1 = d1**3/d2**3
                     eta2 = 1.0/eta1
-                    alpha1 = (1.0 + resN)/(1.0 + eta1)
-                    alpha2 = (1.0 + resN)/(1.0 + eta2)
-                    resTMidAir = 1.0 - 0.4*(1.0 + resN)/(2.0/7.0)*rv12N/rv12T
+                    alpha1 = (1.0 + resN2)/(1.0 + eta1)
+                    alpha2 = (1.0 + resN2)/(1.0 + eta2)
+                    resTMidAir = 1.0 - 0.4*(1.0 + resN2)/(2.0/7.0)*rv12N/rv12T
                     resTMidAir = max(0.0, resTMidAir)
                     beta1 = (2.0/7.0)*(1.0 - resTMidAir)/(1.0 + eta1)
                     beta2 = (2.0/7.0)*(1.0 - resTMidAir)/(1.0 + eta2)
