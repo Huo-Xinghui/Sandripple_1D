@@ -85,7 +85,7 @@ if __name__ == "__main__":
 	file_interval = 240 #两个源文件之间的时间间隔
 	start = interval*29 #求平均的起始时间，若average_on_time为False，则表示所显示的瞬时时刻
 	end = interval*30 #求平均的终止时间，若average_on_time为False，则无效
-	plot_case = 8 #对照case_dict的键值
+	plot_case = 1 #对照case_dict的键值
 	plot_section = 1 #从0开始，在average_on_y为False时表示所显示的截面在y方向的位置
 	average_on_time = False #是否对时间求平均
 	average_on_y = True #是否对y方向求平均
@@ -97,32 +97,18 @@ if __name__ == "__main__":
 
 	# 定义文件路径
 	if linux_flag:
-		working_dir = "/home/ekalhxh/ripple/coll"
+		working_dir = "/home/ekalhxh/ripple/coll11"
 	else:
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll"
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll11"
 
 	# 定义文件名字典
 	case_dict = {
-		1: "uStar040_150and350_0_2650_3600",
-		2: "uStar045_150and350_0_2650_3600",
-		3: "uStar050_150and350_0_2650_3600",
-		4: "uStar055_150and350_0_2650_3600",
-		5: "uStar060_150and350_0_2650_3600",
-		6: "uStar050_150and450_0_2650_3600",
-		7: "uStar050_150and550_0_2650_3600",
-		8: "uStar050_200and400_0_2650_3600",
-		9: "uStar050_250and350_0_2650_3600",
-		10: "uStar050_300stdd5_0_2650_3600",
-		11: "uStar050_300stdd10_0_2650_3600",
-		12: "uStar050_300stdd20_0_2650_3600",
-		13: "uStar050_300stdd50_0_2650_3600",
-		14: "uStar035_300stdd100_0_2650_3600",
-		15: "uStar040_300stdd100_0_2650_3600",
-		16: "uStar045_300stdd100_0_2650_3600",
-		17: "uStar050_300stdd100_0_2650_3600",
-		18: "uStar055_300stdd100_0_2650_3600",
-		19: "uStar060_300stdd100_0_2650_3600",
-		20: "uStar065_300stdd100_0_2650_3600",
+		1: "uStar040_300log80_0_2650_3600",
+		2: "uStar050_300log80_0_2650_3600",
+		3: "uStar060_300log80_0_2650_3600",
+		4: "uStar050_400log80_0_2650_3600",
+		5: "uStar050_400log100_0_2650_3600",
+		6: "uStar050_400log120_0_2650_3600",
 	}
 
 	folder_name = case_dict[plot_case] #工作目录名
@@ -136,6 +122,10 @@ if __name__ == "__main__":
 		dia2 = float(dia_name_list[1])/1e6
 	elif "stdd" in dia_name:
 		dia_name_list = dia_name.split("stdd")
+		dia1 = (float(dia_name_list[0])-1*float(dia_name_list[1]))/1e6
+		dia2 = (float(dia_name_list[0])+1*float(dia_name_list[1]))/1e6
+	elif "log" in dia_name:
+		dia_name_list = dia_name.split("log")
 		dia1 = (float(dia_name_list[0])-1*float(dia_name_list[1]))/1e6
 		dia2 = (float(dia_name_list[0])+1*float(dia_name_list[1]))/1e6
 	dia = (dia1+dia2)/2
