@@ -188,7 +188,7 @@ def smooth_data(data) -> list:
 if __name__ == '__main__':
 	# 控制参数
 	x_axis = 2 # x轴类型：0为time，1为u*, 2为Sh, 3为Ga, 4为s, 5为d，6为stdd, 7为delta_d
-	y_axis = 4 # y轴类型：0为空中颗粒数，1为颗粒通量，2为颗粒总能量，3为空中颗粒粒径，4为空中颗粒承载量
+	y_axis = 1 # y轴类型：0为空中颗粒数，1为颗粒通量，2为颗粒总能量，3为空中颗粒粒径，4为空中颗粒承载量
 	direction = 0 # 统计量方向：0为x方向，1为y方向，2为z方向
 	collision = 0 # 输出何种颗粒的统计量：0为全部颗粒，1为碰撞颗粒，2为未碰撞颗粒
 	nondim = True # 是否无量纲化
@@ -202,34 +202,63 @@ if __name__ == '__main__':
 	sys_OS = "w" # "w" for Windows, "l" for Linux
 	if sys_OS == "w":
 		# Windows
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll11"
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll12"
 	elif sys_OS == "l":
 		# Linux
-		working_dir = "/home/ekalhxh/ripple/coll11"
+		working_dir = "/home/ekalhxh/ripple/coll12"
 	else:
 		print("Invalid OS system!")
 		exit()
 
 	# 定义文件名字典
 	case_dict = {
-		0: "uStar035_300_0_2650_600",
-		1: "uStar040_300_0_2650_600",
-		2: "uStar045_300_0_2650_600",
-		3: "uStar050_300_0_2650_600",
-		4: "uStar055_300_0_2650_600",
-		5: "uStar060_300_0_2650_600",
-		6: "uStar050_200_0_2650_600",
-		7: "uStar050_400_0_2650_600",
-		8: "uStar050_500_0_2650_600",
-		9: "uStar050_600_0_2650_600",
-		10: "uStar050_300_2_2650_600",
-		11: "uStar050_300_3_2650_600",
-		12: "uStar050_300_0_1000_600",
-		13: "uStar050_300_0_1500_600",
-		14: "uStar050_300_0_2000_600",
-		15: "uStar050_300_0_3000_600",
-		16: "uStar050_300_0_4000_600",
+		0: "uStar035_300_0_2650_300",
+		1: "uStar040_300_0_2650_300",
+		2: "uStar045_300_0_2650_300",
+		3: "uStar050_300_0_2650_300",
+		4: "uStar055_300_0_2650_300",
+		5: "uStar060_300_0_2650_300",
+		6: "uStar065_300_0_2650_300",
+		7: "uStar030_200_0_2650_300",
+		8: "uStar040_200_0_2650_300",
+		9: "uStar050_200_0_2650_300",
+		10: "uStar060_200_0_2650_300",
+		11: "uStar040_400_0_2650_300",
+		12: "uStar050_400_0_2650_300",
+		13: "uStar060_400_0_2650_300",
+		14: "uStar050_500_0_2650_300",
+		15: "uStar050_600_0_2650_300",
+		16: "uStar030_300_2_2650_300",
+		17: "uStar040_300_2_2650_300",
+		18: "uStar050_300_2_2650_300",
+		19: "uStar060_300_2_2650_300",
+		20: "uStar050_300_3_2650_300",
+		21: "uStar050_300_0_500_180",
+		22: "uStar050_300_0_1000_300",
+		23: "uStar050_300_0_2000_300",
+		24: "uStar050_300_0_3000_300",
+		25: "uStar050_300_0_4000_300",
 	}
+
+	# Creyssels et al. (2009)的数据
+	Cr09_Sh = [0.012, 0.022, 0.035, 0.05, 0.068, 0.098]
+	Cr09_delta_Sh = [2*0.05*Sh for Sh in Cr09_Sh]
+	Cr09_Q_star = [0.00396, 0.00984, 0.0163, 0.02464, 0.0376, 0.06144]
+	Cr09_delta_Q_star = [0.05*Q_star for Q_star in Cr09_Q_star]
+	Cr09_data = {
+		"Sh": Cr09_Sh,
+		"delta_Sh": Cr09_delta_Sh,
+		"Q_star": Cr09_Q_star,
+		"delta_Q_star": Cr09_delta_Q_star
+	}
+
+	# 定义参照量字典
+	others_case_dict = {
+		"Cr09": Cr09_data
+	}
+
+	# 参照字典中的条目数
+	other_case_num = len(others_case_dict)
 
 	label_dict = {
 		"t": r"$t \, (\mathrm{s})$",
@@ -310,6 +339,13 @@ if __name__ == '__main__':
 			plot_y_point = sum(plot_y_list) / len(plot_y_list)
 			plot_x_points.append(plot_x_point)
 			plot_y_points.append(plot_y_point)
+	if other_case_num > 0 and x_axis == 2 and y_axis == 1 and nondim:
+		for case_name, case_data in others_case_dict.items():
+			plot_x_list = case_data["Sh"]
+			plot_x_error = case_data["delta_Sh"]
+			plot_y_list = case_data["Q_star"]
+			plot_y_error = case_data["delta_Q_star"]
+			plt.errorbar(plot_x_list, plot_y_list, xerr=plot_x_error, yerr=plot_y_error, fmt='ro', label=case_name)
 	if x_entry != "t" and x_entry != "t_star":
 		plt.scatter(plot_x_points, plot_y_points)
 		if (x_axis == 2 and fit) and (y_axis == 1 or y_axis == 4):

@@ -83,32 +83,33 @@ if __name__ == "__main__":
 	# 定义常数
 	interval = 120 #源文件时间间隔
 	file_interval = 240 #两个源文件之间的时间间隔
-	start = interval*29 #求平均的起始时间，若average_on_time为False，则表示所显示的瞬时时刻
-	end = interval*30 #求平均的终止时间，若average_on_time为False，则无效
-	plot_case = 1 #对照case_dict的键值
+	start = interval*3 #求平均的起始时间，若average_on_time为False，则表示所显示的瞬时时刻
+	end = interval*2 #求平均的终止时间，若average_on_time为False，则无效
+	plot_case = 7 #对照case_dict的键值
 	plot_section = 1 #从0开始，在average_on_y为False时表示所显示的截面在y方向的位置
 	average_on_time = False #是否对时间求平均
-	average_on_y = True #是否对y方向求平均
+	average_on_y = False #是否对y方向求平均
 	remove_zero = True #是否在求平均前将0值替换为None，以保障平均后不出现不真实表面
 	bed_profile = False #是否绘制床面廓线
-	correct_d = True #是否对d值进行修正
+	correct_d = False #是否对d值进行修正
 	plot_type = 1 #绘图方式 0: pcolormesh, 1: contourf
 # ----------------------------------------------------------------------------------------
 
 	# 定义文件路径
 	if linux_flag:
-		working_dir = "/home/ekalhxh/ripple/coll11"
+		working_dir = "/home/ekalhxh/ripple/coll13"
 	else:
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll11"
+		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll13"
 
 	# 定义文件名字典
 	case_dict = {
-		1: "uStar040_300log80_0_2650_3600",
-		2: "uStar050_300log80_0_2650_3600",
-		3: "uStar060_300log80_0_2650_3600",
-		4: "uStar050_400log80_0_2650_3600",
-		5: "uStar050_400log100_0_2650_3600",
-		6: "uStar050_400log120_0_2650_3600",
+		#1: "uStar040_300log80_0_2650_3600",
+		#2: "uStar050_300log80_0_2650_3600",
+		#3: "uStar060_300log80_0_2650_3600",
+		#4: "uStar050_400log80_0_2650_3600",
+		#5: "uStar050_400log100_0_2650_3600",
+		#6: "uStar050_400log120_0_2650_3600",
+		7: "uStar050_381log598_0_2650_3600",
 	}
 
 	folder_name = case_dict[plot_case] #工作目录名

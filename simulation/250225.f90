@@ -23,20 +23,20 @@ module public_val
     ! whichDiameterDist=1: npdf must = 1, d=dpa
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
     ! whichDiameterDist=3: npdf must >= 3, mu=logMu, sigma=logSigma
-    integer, parameter :: whichDiameterDist = 1 ! particle diameter distribution type
-    integer, parameter :: npdf = 1 ! bin num of particle distribution
+    integer, parameter :: whichDiameterDist = 2 ! particle diameter distribution type
+    integer, parameter :: npdf = 2 ! bin num of particle distribution
     integer, parameter :: pNumInit = 10 ! initial particle num
     integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
     integer, parameter :: maxNum = 100000 ! max particle num in one subdomain
-    integer, parameter :: pNumInGridMax = maxNum/200 !mxNode !/(my) ! max particle num in one x-y grid
+    integer, parameter :: pNumInGridMax = maxNum/mxNode !/(my) ! max particle num in one x-y grid
     integer, parameter :: pNumExchMax = maxNum/10 ! max particle num for exchange between processors
-    real(kind=dbPc), parameter :: dpa = 3.0e-4 ! average particle diameter
-    real(kind=dbPc), parameter :: dpStddDev = 1.2e-4 ! particle diameter standard deviation
-    real(kind=dbPc), parameter :: logMu = -7.8671 ! mu of lognormal distribution
-    real(kind=dbPc), parameter :: logSigma = 0.2936 ! sigma of lognormal distribution
+    real(kind=dbPc), parameter :: dpa = 4.0e-4 ! average particle diameter
+    real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
+    real(kind=dbPc), parameter :: logMu = -7.9356 ! mu of lognormal distribution
+    real(kind=dbPc), parameter :: logSigma = 0.4724 ! sigma of lognormal distribution
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
-    real(kind=dbPc), parameter :: binStart = 1.0e-4 ! start of the particle diameter distribution
-    real(kind=dbPc), parameter :: binEnd = 9.0e-4 ! end of the particle diameter distribution
+    real(kind=dbPc), parameter :: binStart = -1.0e-4 ! start of the particle diameter distribution
+    real(kind=dbPc), parameter :: binEnd = 11.0e-4 ! end of the particle diameter distribution
     real(kind=dbPc), parameter :: binWidth = (binEnd - binStart)/npdf ! bin width of the particle diameter distribution
     real(kind=dbPc), parameter :: resN = 0.78 ! normal restitution coefficient
     real(kind=dbPc), parameter :: resT = -0.13 ! tangential restitution coefficient
@@ -51,10 +51,10 @@ module public_val
     real(kind=dbPc), parameter :: z0 = dpa/30.0 ! roughness height
     real(kind=dbPc), parameter :: repostAngle = 35.0 ! repost angle
     real(kind=dbPc), parameter :: tanRepostAngle = tan(repostAngle/180.0*pi) ! tan of the repost angle
-    real(kind=dbPc), parameter :: chunkHeight = 5.0e-4 ! height of particle diameter grid
+    real(kind=dbPc), parameter :: chunkHeight = dpa ! height of particle diameter grid
     integer, parameter :: zChkNum = floor(initSurfElevation/chunkHeight)*2 ! num of sand bed chunks in z direction
     real(kind=dbPc), parameter :: chunkVol = xDiff*yDiff*chunkHeight ! volume of a particle diameter grid
-    real(kind=dbPc), parameter :: blockHeight = dpa*4.0 ! height of the block, must>chunkHeight. block is a temporary grid on surface
+    real(kind=dbPc), parameter :: blockHeight = dpa*3.0 ! height of the block, must>chunkHeight. block is a temporary grid on surface
     real(kind=dbPc), parameter :: blockVol = xDiff*yDiff*blockHeight ! volume of a block
     ! fluid
     real(kind=dbPc), parameter :: uStar = 0.50 ! fractional velocity
@@ -75,7 +75,7 @@ module public_val
     integer, parameter :: intervalStatistics = oneSecond*60 ! interval between statistics outputs
     integer, parameter :: intervalCreateFile = oneSecond*240 ! interval between creating output files
     real(kind=dbPc), parameter :: dt = 5.0e-5 ! time step
-    real(kind=dbPc), parameter :: endTime = 3600.0 ! The time that the simulation lasts
+    real(kind=dbPc), parameter :: endTime = 300.0 ! The time that the simulation lasts
 
     ! variables
     ! MPI
@@ -1008,7 +1008,7 @@ subroutine calculateSplash
     logical :: rebound
     integer :: ii, jj
     integer :: iBin
-    integer :: ejectNum
+    integer :: ejectNum, ejectNumMax
     integer :: nadd
     integer :: nxMax
     integer :: nAng
@@ -1214,10 +1214,7 @@ subroutine calculateSplash
             if (whichDiameterDist == 1) then
                 d2 = dpa
             else
-                do nn = 1, npdf
-                    currentHist(nn) = max(hist(ipp, jpp, nn), 0.0)
-                end do
-                currentHist = currentHist/sum(currentHist)
+                currentHist = hist(ipp, jpp, :)
                 d2 = valObeyCertainPDF(currentHist)
             end if
             dd1 = d1/(0.5*(d1 + d2))
@@ -1366,19 +1363,13 @@ subroutine calculateSplash
             if (whichDiameterDist == 1) then
                 d2 = dpa
             else
-                d2 = 0.0
-                do nn = 1, npdf
-                    d2 = d2 + currentHist(nn)*currentDia(nn)**3
-                end do
-                d2 = d2**(1.0/3.0)
+                d2 = dsf(ipp, jpp)
             end if
             m2 = (pi*d2**3)/6.0*rhoP
             Ed2 = m2*gHat*d2
-            !Ec = 0.326*Ed2
-            Ec = Ed2
             tau_s = rho*0.0123*(rhoP/rho*gHat*d2 + 3.0e-4/(rho*d2))
-            Eeff = Ec*(1.0 - tau_f(1)/tau_s)
-            Eeff = max(Eeff, 0.1*Ec)
+            Ec = Ed2*(1.0 - tau_f(1)/tau_s)
+            Eeff = max(Ec, 0.1*Ed2)
             if (Ed1 > Eeff) then
                 lambda = 2.0*log((1.0 - eBar**2)*E1/Eeff)
                 sigma = sqrt(lambda)*log(2.0)
@@ -1389,10 +1380,12 @@ subroutine calculateSplash
             else
                 ejectNum = 0
             end if
+            vch = (pi*d2**3)/6.0
+            ejectNumMax = blockVol/vch
+            ejectNum = min(ejectNum, ejectNumMax)
             if (ejectNum > 0) then
                 ejectVol = 0.0
                 do nadd = 1, ejectNum
-                    nAddGlobal = nAddGlobal + 1
                     if (whichDiameterDist /= 1) then
                         d2 = valObeyCertainPDF(currentHist)
                     else
@@ -1400,6 +1393,7 @@ subroutine calculateSplash
                     end if
                     E2 = exp(valObeyNormalDist(mu, sigma))
                     vch = (pi*d2**3)/6.0
+                    !if (E2 < Eeff) cycle
                     m2 = vch*rhoP
                     v2 = sqrt(2.0*E2/m2)
                     rr3 = -1.0
@@ -1408,6 +1402,7 @@ subroutine calculateSplash
                         call random_number(rr2)
                         rr3 = 1.0 - rr1 - rr2
                     end do
+                    nAddGlobal = nAddGlobal + 1
                     tempx(nAddGlobal) = rr1*point1(1) + rr2*point2(1) + rr3*point3(1)
                     tempy(nAddGlobal) = rr1*point1(2) + rr2*point2(2) + rr3*point3(2)
                     tempz(nAddGlobal) = rr1*point1(3) + rr2*point2(3) + rr3*point3(3)
@@ -1780,7 +1775,11 @@ subroutine calculateMidAirColl
     do globalN1 = 1, pNum
         i = pIndex(globalN1, 1)
         j = pIndex(globalN1, 2)
-        pNumInGrid(i, j) = pNumInGrid(i, j) + 1
+        if (pNumInGrid(i, j) < pNumInGridMax) then
+            pNumInGrid(i, j) = pNumInGrid(i, j) + 1
+        else
+            pNumInGrid(i, j) = pNumInGridMax
+        end if
         localN1 = pNumInGrid(i, j)
         globalN(i, j, localN1) = globalN1
     end do
@@ -1892,169 +1891,22 @@ subroutine addGhostData
     end do
 end subroutine addGhostData
 
-!subroutine updateSurfGrid
-!    use public_val
-!    implicit none
-!
-!    integer :: i, j, k, n
-!    integer :: ks, ks0
-!    integer :: kBottom ! the k of the grid beneath the block, may not be a complete grid
-!    real(kind=dbPc) :: zsf0 ! the old surface height
-!    real(kind=dbPc) :: surfChkVol ! the volume of the surface grid
-!    real(kind=dbPc) :: surfChkVol0 ! the old volume of the surface grid
-!    real(kind=dbPc) :: vChange ! volume change at (i, j)
-!    real(kind=dbPc) :: changeHeight ! the change of the surface height at (i, j)
-!    real(kind=dbPc) :: blkBottom ! the bottom of the block
-!    real(kind=dbPc) :: bottomChkVol ! the volume of the above blkBottom part in grid(kBottom)
-!    real(kind=dbPc), dimension(npdf) :: currentBlkHist ! the histogram of the block after adding the volume change
-!    real(kind=dbPc), dimension(npdf) :: bin ! the bin volumes of the block after adding the volume change
-!    real(kind=dbPc), dimension(npdf) :: tempHist
-!    real(kind=dbPc), dimension(npdf) :: currentDia
-!
-!    call addGhostData
-!    if (whichDiameterDist /= 1) then
-!        do n = 1, npdf
-!            currentDia(n) = binStart + (real(n, kind=dbPc) - 0.5)*binWidth
-!        end do
-!        do j = 2, my - 1
-!            do i = 2, mxNode - 1
-!                vChange = sum(binChange(i, j, :))
-!                if (vChange == 0.0) cycle
-!                changeHeight = vChange/(xDiff*yDiff)
-!                zsf0 = zsf(i, j)
-!                ks0 = floor(zsf0/chunkHeight) + 1 ! the old surface grid k
-!                surfChkVol0 = (zsf0 - (ks0 - 1)*chunkHeight)*xDiff*yDiff
-!                zsf(i, j) = zsf(i, j) + changeHeight
-!                if (zsf(i, j) > zMax) then
-!                    print *, 'Error: zsf reach the upper boundary', iter
-!                    stop
-!                else if (zsf(i, j) < blockHeight) then
-!                    print *, 'Error: zsf reach the lower boundary', iter
-!                    stop
-!                end if
-!                ks = floor(zsf(i, j)/chunkHeight) + 1 ! the new surface grid k
-!                surfChkVol = (zsf(i, j) - (ks - 1)*chunkHeight)*xDiff*yDiff
-!
-!                if (changeHeight > 0.0) then
-!                    if (ks == ks0) then
-!                        chunkDia(i, j, ks) = 0.0
-!                        do n = 1, npdf
-!                            bin(n) = surfChkVol0*chunkHist(i, j, ks, n) + binChange(i, j, n)
-!                            chunkHist(i, j, ks, n) = bin(n)/surfChkVol
-!                            chunkDia(i, j, ks) = chunkDia(i, j, ks) + chunkHist(i, j, ks, n)*currentDia(n)
-!                        end do
-!                    else if (ks > ks0) then
-!                        chunkDia(i, j, ks0) = 0.0
-!                        do n = 1, npdf
-!                            currentBlkHist(n) = binChange(i, j, n)/vChange
-!                            bin(n) = surfChkVol0*chunkHist(i, j, ks0, n) + currentBlkHist(n)*(chunkVol - surfChkVol0)
-!                            chunkHist(i, j, ks0, n) = bin(n)/chunkVol
-!                            chunkDia(i, j, ks0) = chunkDia(i, j, ks0) + chunkHist(i, j, ks0, n)*currentDia(n)
-!                        end do
-!                        do k = ks0 + 1, ks
-!                            chunkDia(i, j, k) = 0.0
-!                            do n = 1, npdf
-!                                chunkHist(i, j, k, n) = currentBlkHist(n)
-!                                chunkDia(i, j, k) = chunkDia(i, j, k) + chunkHist(i, j, k, n)*currentDia(n)
-!                            end do
-!                        end do
-!                    else
-!                        print *, 'Error: ks < ks0', ks, ks0, iter
-!                        stop
-!                    end if
-!                else
-!                    if (ks == ks0) then
-!                        chunkDia(i, j, ks) = 0.0
-!                        do n = 1, npdf
-!                            bin(n) = surfChkVol0*chunkHist(i, j, ks, n) + binChange(i, j, n)
-!                            chunkHist(i, j, ks, n) = bin(n)/surfChkVol
-!                            chunkDia(i, j, ks) = chunkDia(i, j, ks) + chunkHist(i, j, ks, n)*currentDia(n)
-!                        end do
-!                    else if (ks < ks0) then
-!                        do n = 1, npdf
-!                            bin(n) = surfChkVol0*chunkHist(i, j, ks0, n)
-!                            chunkHist(i, j, ks0, n) = 0.0
-!                            chunkDia(i, j, ks0) = 0.0
-!                        end do
-!                        do k = ks, ks0 - 1
-!                            do n = 1, npdf
-!                                bin(n) = bin(n) + chunkHist(i, j, k, n)*chunkVol
-!                                chunkHist(i, j, k, n) = 0.0
-!                            end do
-!                            chunkDia(i, j, k) = 0.0
-!                        end do
-!                        do n = 1, npdf
-!                            bin(n) = bin(n) + binChange(i, j, n)
-!                            chunkHist(i, j, ks, n) = bin(n)/surfChkVol
-!                            chunkDia(i, j, ks) = chunkDia(i, j, ks) + chunkHist(i, j, ks, n)*currentDia(n)
-!                        end do
-!                    end if
-!                end if
-!
-!                blkBottom = zsf(i, j) - blockHeight
-!                kBottom = floor(blkBottom/chunkHeight) + 1
-!                bottomChkVol = (kBottom*chunkHeight - blkBottom)*xDiff*yDiff
-!                dsf(i, j) = 0.0
-!                do n = 1, npdf
-!                    bin(n) = surfChkVol*chunkHist(i, j, ks, n) + bottomChkVol*chunkHist(i, j, kBottom, n)
-!                    if (kBottom + 1 < ks) then
-!                        do k = kBottom + 1, ks - 1
-!                            bin(n) = bin(n) + chunkHist(i, j, k, n)*chunkVol
-!                        end do
-!                    end if
-!                    hist(i, j, n) = bin(n)/blockVol
-!                    tempHist(n) = max(0.0, hist(i, j, n))
-!                end do
-!                tempHist = tempHist/sum(tempHist)
-!                do n = 1, npdf
-!                    !dsf(i, j) = dsf(i, j) + tempHist(n)*currentDia(n)
-!                    dsf(i, j) = dsf(i, j) + tempHist(n)*currentDia(n)**3
-!                end do
-!                dsf(i, j) = dsf(i, j)**(1.0/3.0)
-!
-!                if (dsf(i, j) > binEnd .or. dsf(i, j) < binStart) then
-!                    do n = 1, npdf
-!                        print *, 'hist', n, hist(i, j, n), binChange(i, j, n)/vChange
-!                    end do
-!                    print *, 'dsf', i, j, dsf(i, j), changeHeight/dpa, ks, ks0, surfChkVol, surfChkVol0
-!                    stop
-!                end if
-!            end do
-!        end do
-!    else
-!        do j = 2, my - 1
-!            do i = 2, mxNode - 1
-!                vChange = sum(binChange(i, j, :))
-!                zsf(i, j) = zsf(i, j) + vChange/(xDiff*yDiff)
-!                if (zsf(i, j) < 0.0 .or. zsf(i, j) > zMax) then
-!                    print *, 'Error: zsf reach the lower/upper boundary', iter
-!                    stop
-!                end if
-!                do n = 1, npdf
-!                    hist(i, j, n) = initDiameterDist(n)
-!                end do
-!            end do
-!        end do
-!        dsf = dpa
-!    end if
-!    call edgeExch1(zsf)
-!    call edgeExch1(dsf)
-!    call edgeExch2(hist)
-!end subroutine updateSurfGrid
-
 subroutine updateSurfGrid
     use public_val
     implicit none
 
     integer :: i, j, k, ks, ks0, kb, n
+    !real(kind=dbPc) :: floatKs
     real(kind=dbPc) :: blkBottom
-    real(kind=dbPc) :: vChange
-    real(kind=dbPc) :: bottomChkVol, bottomChkVolRst, currentBlkVol
-    real(kind=dbPc) :: surfChkVol
-    real(kind=dbPc), dimension(npdf) :: currentBlkHist, currentDia
+    real(kind=dbPc) :: vChange, zChange
+    real(kind=dbPc) :: bottomChkVol
+    real(kind=dbPc) :: surfChkVolOld, surfChkVolNew
+    real(kind=dbPc) :: zsfOld, zsfNew
+    !real(kind=dbPc) :: fixHist
+    real(kind=dbPc), dimension(npdf) :: currentDia
     real(kind=dbPc), dimension(npdf) :: bin
-    real(kind=dbPc), dimension(npdf) :: chunkBin
     real(kind=dbPc), dimension(npdf) :: tempHist
+    !real(kind=dbPc) :: check, check1, check2
 
     call addGhostData
     if (whichDiameterDist /= 1) then
@@ -2065,87 +1917,82 @@ subroutine updateSurfGrid
             do i = 2, mxNode - 1
                 vChange = sum(binChange(i, j, :))
                 if (vChange == 0.0) cycle
-                ks0 = floor(zsf(i, j)/chunkHeight) + 1
-                blkBottom = zsf(i, j) - blockHeight
-                kb = floor(blkBottom/chunkHeight) + 1
-                bottomChkVol = (kb*chunkHeight - blkBottom)*xDiff*yDiff
-                bottomChkVolRst = chunkVol - bottomChkVol
-                currentBlkVol = blockVol + vChange
-                zsf(i, j) = zsf(i, j) + vChange/(xDiff*yDiff)
-                if (zsf(i, j) - blockHeight < 0.0 .or. zsf(i, j) > zMax) then
-                    print *, 'Error: zsf reach the lower/upper boundary', iter
+                zChange = vChange/(xDiff*yDiff)
+                zsfOld = zsf(i, j)
+                ks0 = floor(zsfOld/chunkHeight) + 1
+                !floatKs = real(ks0 - 1, kind=dbPc)
+                surfChkVolOld = (zsfOld - (ks0 - 1)*chunkHeight)*xDiff*yDiff
+                zsfNew = zsfOld + zChange
+                if (zsfNew - blockHeight < 0.0 .or. zsf(i, j) > zMax) then
+                    print *, 'Error: zsf reach the lower/upper boundary', zsfOld, zsfNew, zChange, dsf(i, j)
                     stop
                 end if
-                ks = floor(zsf(i, j)/chunkHeight) + 1
-                surfChkVol = (zsf(i, j) - (ks - 1)*chunkHeight)*xDiff*yDiff
+                ks = floor(zsfNew/chunkHeight) + 1
+                !floatKs = real(ks - 1, kind=dbPc)
+                surfChkVolNew = (zsfNew - (ks - 1)*chunkHeight)*xDiff*yDiff
 
-                if (ks <= kb) then
-                    if (currentBlkVol <= 0.0) then
-                        bin = 0.0
-                        if (kb > ks + 1) then
-                            do n = 1, npdf
-                                do k = ks + 1, kb - 1
-                                    bin(n) = bin(n) + chunkHist(i, j, k, n)*chunkVol
-                                end do
-                                bin(n) = bin(n) + chunkHist(i, j, kb, n)*bottomChkVolRst
-                            end do
-                        else if (kb == ks + 1) then
-                            do n = 1, npdf
-                                bin(n) = chunkHist(i, j, kb, n)*bottomChkVolRst
-                            end do
-                        end if
-                        chunkDia(i, j, ks) = 0.0
-                        do n = 1, npdf
-                            bin(n) = bin(n) + blockVol*hist(i, j, n) + binChange(i, j, n)
-                            chunkBin(n) = chunkHist(i, j, ks, n)*chunkVol + bin(n)
-                            chunkHist(i, j, ks, n) = chunkBin(n)/surfChkVol
-                            chunkDia(i, j, ks) = chunkDia(i, j, ks) + chunkHist(i, j, ks, n)*currentDia(n)
+                if (zChange < 0.0) then
+                    chunkDia(i, j, ks) = 0.0
+                    do n = 1, npdf
+                        bin(n) = chunkHist(i, j, ks0, n)*surfChkVolOld
+                        do k = ks - 1, ks0 - 1
+                            bin(n) = bin(n) + chunkHist(i, j, k, n)*chunkVol
                         end do
-                    else
-                        if (ks /= kb) print *, 'Error: ks /= kb', ks, kb, blkBottom, zsf(i, j)
-                        chunkDia(i, j, ks) = 0.0
-                        do n = 1, npdf
-                            bin(n) = blockVol*hist(i, j, n) + binChange(i, j, n)
-                            chunkBin(n) = bin(n) + chunkHist(i, j, kb, n)*bottomChkVolRst
-                            chunkHist(i, j, ks, n) = chunkBin(n)/surfChkVol
-                            chunkDia(i, j, ks) = chunkDia(i, j, ks) + chunkHist(i, j, ks, n)*currentDia(n)
+                        bin(n) = bin(n) + binChange(i, j, n)
+                        chunkHist(i, j, ks, n) = bin(n)/(surfChkVolNew + chunkVol)
+                        chunkHist(i, j, ks - 1, n) = chunkHist(i, j, ks, n)
+                        chunkDia(i, j, ks) = chunkDia(i, j, ks) + chunkHist(i, j, ks, n)*currentDia(n)
+                    end do
+                    chunkDia(i, j, ks - 1) = chunkDia(i, j, ks)
+                    !fixHist = sum(chunkHist(i, j, ks, :)) - 1.0
+                    !chunkHist(i, j, ks, :) = chunkHist(i, j, ks, :) - fixHist/npdf
+                    !chunkHist(i, j, ks - 1, :) = chunkHist(i, j, ks - 1, :) - fixHist/npdf
+                    if (ks0 > ks) then
+                        do k = ks + 1, ks0
+                            chunkDia(i, j, k) = 0.0
+                            do n = 1, npdf
+                                chunkHist(i, j, k, n) = 0.0
+                            end do
                         end do
                     end if
-                    do k = ks + 1, ks0
-                        do n = 1, npdf
-                            chunkHist(i, j, k, n) = 0.0
-                        end do
-                        chunkDia(i, j, k) = 0.0
-                    end do
+                    !floatKs = real(ks - 2, kind=dbPc)
+                    !zsf(i, j) = (ks - 2)*chunkHeight + sum(bin)/(xDiff*yDiff)
+                    zsf(i, j) = zsfNew
+                    !check = sum(bin) - surfChkVolNew - chunkVol
+                    !if (abs(check) > 1.0e-10 .or. zsf(i, j) - blockHeight < 0.0) then
+                    !    print *, 'Error1', zsf(i, j), zsfOld, zsfNew, zChange, check, fixHist/npdf, chunkDia(i, j, ks), vchange, chunkVol, surfChkVolNew
+                    !    stop
+                    !end if
                 else
-                    chunkDia(i, j, kb) = 0.0
+                    chunkDia(i, j, ks) = 0.0
                     do n = 1, npdf
-                        bin(n) = blockVol*hist(i, j, n) + binChange(i, j, n)
-                        currentBlkHist(n) = bin(n)/currentBlkVol
-                        chunkBin(n) = currentBlkHist(n)*bottomChkVol + chunkHist(i, j, kb, n)*bottomChkVolRst
-                        chunkHist(i, j, kb, n) = chunkBin(n)/chunkVol
-                        chunkDia(i, j, kb) = chunkDia(i, j, kb) + chunkHist(i, j, kb, n)*currentDia(n)
+                        bin(n) = chunkHist(i, j, ks0, n)*surfChkVolOld + chunkHist(i, j, ks0 - 1, n)*chunkVol
+                        bin(n) = bin(n) + binChange(i, j, n)
+                        chunkHist(i, j, ks, n) = bin(n)/(surfChkVolOld + chunkVol + vChange)
+                        chunkDia(i, j, ks) = chunkDia(i, j, ks) + chunkHist(i, j, ks, n)*currentDia(n)
                     end do
-                    do k = kb + 1, ks0
+                    !fixHist = sum(chunkHist(i, j, ks, :)) - 1.0
+                    do k = ks0 - 1, ks - 1
                         do n = 1, npdf
-                            chunkHist(i, j, k, n) = 0.0
+                            chunkHist(i, j, k, n) = chunkHist(i, j, ks, n)
                         end do
-                        chunkDia(i, j, k) = 0.0
+                        chunkDia(i, j, k) = chunkDia(i, j, ks)
                     end do
-                    do k = kb + 1, ks
-                        chunkDia(i, j, k) = 0.0
-                        do n = 1, npdf
-                            chunkHist(i, j, k, n) = currentBlkHist(n)
-                            chunkDia(i, j, k) = chunkDia(i, j, k) + chunkHist(i, j, k, n)*currentDia(n)
-                        end do
-                    end do
+                    !floatKs = real(ks0 - 2, kind=dbPc)
+                    !zsf(i, j) = (ks0 - 2)*chunkHeight + sum(bin)/(xDiff*yDiff)
+                    zsf(i, j) = zsfNew
+                    !check = sum(bin) - surfChkVolOld - chunkVol - vChange
+                    !if (abs(check) > 1.0e-10 .or. zsf(i, j) - blockHeight < 0.0) then
+                    !    print *, 'Error2', zsf(i, j), zsfOld, zsfNew, zChange, sum(bin)/(xDiff*yDiff), check, fixHist/npdf, chunkDia(i, j, ks)
+                    !    stop
+                    !end if
                 end if
 
                 blkBottom = zsf(i, j) - blockHeight
                 kb = floor(blkBottom/chunkHeight) + 1
                 bottomChkVol = (kb*chunkHeight - blkBottom)*xDiff*yDiff
                 do n = 1, npdf
-                    bin(n) = surfChkVol*chunkHist(i, j, ks, n) + bottomChkVol*chunkHist(i, j, kb, n)
+                    bin(n) = surfChkVolNew*chunkHist(i, j, ks, n) + bottomChkVol*chunkHist(i, j, kb, n)
                     if (kb + 1 < ks) then
                         do k = kb + 1, ks - 1
                             bin(n) = bin(n) + chunkHist(i, j, k, n)*chunkVol

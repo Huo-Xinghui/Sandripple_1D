@@ -64,7 +64,7 @@ def generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, dmin, dmax, size):
 
 #-------------------------------------------------------------------
 distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
-plot_type = 0 # 0: Ec, 1: d
+plot_type = 0 # 0: Ec
 d_min = 1e-4
 d_max = 7e-4
 normal_E = 4e-4
