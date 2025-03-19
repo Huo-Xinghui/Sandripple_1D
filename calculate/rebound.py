@@ -21,16 +21,6 @@ def get_normal_params(log_mean, log_std):
     mu = np.log(log_mean) - 0.5 * sigma ** 2
     return mu, sigma
 
-def E_out_min(d1, d2, d3, rho, g):
-    v1 = np.pi * d1**3 / 6
-    m1 = rho * v1
-    x = d2*(d1+d2+d3) - d1*d3
-    y = (d1 + d2)*(d2 + d3)
-    theta = np.arccos(x/y)
-    E_min_norm = (d1 + d2)*(np.sqrt(2*(1 - np.sin(theta))) + (1 - np.sin(theta)))/4/d1
-    E_min = E_min_norm*m1*g*d1
-    return E_min_norm, E_min
-
 def E_out(E_in, E_min_mean, e):
     lamb = 2*np.log((1 - e**2)*E_in/E_min_mean)
     sigma = np.sqrt(lamb)*np.log(2)
@@ -62,6 +52,76 @@ def generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, dmin, dmax, size):
     np.random.shuffle(combined)
     return combined
 
+def calculate_e_bar(d2_hat, theta1, alpha, beta):
+    csc_theta1 = 1/np.sin(theta1)
+    cot_theta1 = 1/np.tan(theta1)
+    if 2*np.sin(theta1) < d2_hat:
+        x_hat_min = csc_theta1 - d2_hat
+    else:
+        x_hat_min = cot_theta1 * np.sqrt(1 - (d2_hat/2)**2) - d2_hat/2
+    x0 = x_hat_min
+    x_hat_max = 1/np.sin(theta1)
+    # no secondary collision
+    attempt_num = 100
+    delta_x_hat = (x_hat_max - x_hat_min)/attempt_num
+    for n in range(attempt_num):
+        x1 = x_hat_min + n*delta_x_hat
+        neq_LHS = 1 / (1 + beta/alpha)
+        x1_sin_square = x1**2*np.sin(theta1)**2
+        x1_cos = x1*np.cos(theta1)
+        neq_RHS = x1_sin_square - x1_cos*np.sqrt(1 - x1_sin_square)
+        if neq_LHS < neq_RHS:
+            break
+    x0_sin_square = x0**2*np.sin(theta1)**2
+    x0_cos = x0*np.cos(theta1)
+    eqx_x0 = -(alpha + beta)*(1 - x0_sin_square)**(3/2) + x0_cos*(-3*alpha + (alpha + beta)*x0_sin_square)
+    eqx_x1 = -(alpha + beta)*(1 - x1_sin_square)**(3/2) + x1_cos*(-3*alpha + (alpha + beta)*x1_sin_square)
+    e_x_bar = (eqx_x1 - eqx_x0)/(x1 - x0)/3
+    x0_sin_32 = x0**3*np.sin(theta1)**2
+    eqz_x0 = -alpha*x0 - 1/3*(alpha + beta)*(x0_sin_32 + cot_theta1*csc_theta1*(1 - x0_sin_square)**(3/2))
+    x1_sin_32 = x1**3*np.sin(theta1)**2
+    eqz_x1 = -alpha*x1 - 1/3*(alpha + beta)*(x1_sin_32 + cot_theta1*csc_theta1*(1 - x1_sin_square)**(3/2))
+    e_z_bar = (eqz_x1 - eqz_x0)/(x1 - x0)*np.sin(theta1)
+    e_bar = np.sqrt(e_x_bar**2 + e_z_bar**2)
+    return e_bar
+
+def calculate_rebound_angle(d2_hat, theta1, alpha, beta):
+    gama = 4.0/9.0*beta**2/(alpha + beta)**2/d2_hat
+    theta2_min = -theta1
+    theta2_max = np.sqrt(theta1/gama)*2.0 - theta1
+    theta2_max = min(theta2_max, np.pi)
+    theta2_bin = (theta2_max - theta2_min)/theta2_num
+    theta2_hist = np.zeros(theta2_num)
+    for i in range(theta2_num):
+        x = theta2_min + theta2_bin*(i + 0.5)
+        theta2_hist[i] = gama*(x + theta1)/theta1*np.log(2.0*theta1/gama/(x + theta1)**2)
+        theta2_hist[i] = max(theta2_hist[i], 0.0)
+    theta2_hist = theta2_hist/sum(theta2_hist)
+    random_number = np.random.rand()
+    cumulative_prob = 0.0
+    for i in range(theta2_num):
+        cumulative_prob += theta2_hist[i]
+        if random_number <= cumulative_prob:
+            cumulative_prob -= theta2_hist[i]
+            theta2 = theta2_bin*(i + 0.5) + (random_number - cumulative_prob)/theta2_hist[i]*theta2_bin
+            break
+    return theta2
+
+def calculate_survive(d1, d2, d3, g, v2_x, v2_z, e):
+    x = d2*(d1+d2+d3) - d1*d3
+    y = (d1 + d2)*(d2 + d3)
+    psi = np.arccos(x/y)
+    zb = (1.0 - np.sin(psi))*d2
+    if v2_z**2/(2.0*g) > zb:
+        res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - 0.5*d2
+    else:
+        res_x = -1
+    if res_x <= 0.0 or e <= 0.0:
+        is_survive = False
+    else:
+        is_survive = True
+    return is_survive
+
 #-------------------------------------------------------------------
 distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
 plot_type = 0 # 0: Ec
@@ -76,7 +136,17 @@ sigma2 = (d_max - d_min) * 0.1
 weight1 = 0.5 # 第一个峰的权重
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-e = 0.5
+restitution_N = 0.78
+restitution_T = -0.13
+v1_hat_single = 100
+theta1_single = np.pi/4
+v1_hat_start = 0
+v1_hat_end = 200
+v1_hat_num = 1000
+theta1_start = 0
+theta1_end = np.pi/2
+theta1_num = 1000
+theta2_num = 60
 num_samples = 10000
 d_mid = (d_min + d_max) / 2
 m_in = np.pi * d_mid**3 / 6 * rho
@@ -148,19 +218,36 @@ while len(d3_list) < num_samples and attempts < max_attempts:
             d2_list.append(d2)
             d3_list.append(d3)
 
-    Ec_norm, Ec = E_out_min(d1, d2, d3, rho, g)
-    Ec_list1.append(Ec)
-    Ec_norm_list1.append(Ec_norm)
+    # normalize d1, d2
+    d = (d1 + d2) / 2
+    d1_hat = d1 / d
+    d2_hat = d2 / d
+    # impact velocity
+    #v1_hat = np.linspace(v1_hat_start, v1_hat_end, v1_hat_num)
+    v1_hat = v1_hat_single
+    v1 = v1_hat * np.sqrt(g * d1)
+    # impact angle
+    #theta1 = np.linspace(theta1_start, theta1_end, theta1_num)
+    theta1 = theta1_single
+    # restitution coefficient
+    mu = restitution_N*d1_hat**3/(d1_hat**3 + restitution_N*d2_hat**3)
+    alpha = (1 + restitution_N)/(1 + mu) - 1
+    beta = 1 - (2/7)*(1 - restitution_T)/(1 + mu)
+    e = calculate_e_bar(d2_hat, theta1, alpha, beta)
+    v2 = v1*e
+    # rebound angle
+    theta2 = calculate_rebound_angle(d2_hat, theta1, alpha, beta)
+    v2_z = v2*np.sin(theta2)
+    v2_x = np.sqrt(v2**2 - v2_z**2)
+    # survive or not
+    is_survive = calculate_survive(d1, d2, d3, g, v2_x, v2_z, e)
+    rebound_num = 0
+    if is_survive:
+        rebound_num += 1
+rebound_ratio = rebound_num/num_samples
+print(f'rebound ratio: {rebound_ratio}')
 
-    d3 = d2
-    Ec_norm2, Ec = E_out_min(d1, d2, d3, rho, g)
-    Ec_list2.append(Ec)
-    Ec_norm_list2.append(Ec_norm2)
-
-    d1 = d2
-    Ec_norm3, Ec = E_out_min(d1, d2, d3, rho, g)
-    Ec_list3.append(Ec)
-    Ec_norm_list3.append(Ec_norm3)
+# TODO: 计算不同入射速度、入射角度以及不同粒径分布下的反弹概率分布
 
 Ec_norm_mean = [np.mean(Ec_norm_list1), np.mean(Ec_norm_list2), np.mean(Ec_norm_list3)]
 d2_list_cubed = np.array(d2_list)**3
