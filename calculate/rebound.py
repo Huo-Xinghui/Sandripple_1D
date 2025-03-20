@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.stats import truncnorm
+from tqdm import tqdm
 
 # 根据对数正态分布的均值和标准差求正态分布的参数
 def get_normal_params(log_mean, log_std):
@@ -29,7 +30,7 @@ def E_out(E_in, E_min_mean, e):
     E_out_sigma = np.exp(2*mu + sigma**2)*(np.exp(sigma**2) - 1)
     return E_out_mean, E_out_sigma
 
-def generate_truncated_lognormal(mu, sigma, dmin, dmax, size = 1):
+def generate_truncated_lognormal(mu, sigma, dmin, dmax, size):
     a = (np.log(dmin) - mu) / sigma
     b = (np.log(dmax) - mu) / sigma
     samples = truncnorm.rvs(a, b, loc=mu, scale=sigma, size=size)
@@ -64,15 +65,17 @@ def calculate_e_bar(d2_hat, theta1, alpha, beta):
     # no secondary collision
     attempt_num = 100
     delta_x_hat = (x_hat_max - x_hat_min)/attempt_num
-    for n in range(attempt_num):
+    for n in range(1, attempt_num + 1):
         x1 = x_hat_min + n*delta_x_hat
         neq_LHS = 1 / (1 + beta/alpha)
         x1_sin_square = x1**2*np.sin(theta1)**2
+        x1_sin_square = min(x1_sin_square, 1)
         x1_cos = x1*np.cos(theta1)
         neq_RHS = x1_sin_square - x1_cos*np.sqrt(1 - x1_sin_square)
         if neq_LHS < neq_RHS:
             break
     x0_sin_square = x0**2*np.sin(theta1)**2
+    x0_sin_square = min(x0_sin_square, 1)
     x0_cos = x0*np.cos(theta1)
     eqx_x0 = -(alpha + beta)*(1 - x0_sin_square)**(3/2) + x0_cos*(-3*alpha + (alpha + beta)*x0_sin_square)
     eqx_x1 = -(alpha + beta)*(1 - x1_sin_square)**(3/2) + x1_cos*(-3*alpha + (alpha + beta)*x1_sin_square)
@@ -125,10 +128,11 @@ def calculate_survive(d1, d2, d3, g, v2_x, v2_z, e):
 #-------------------------------------------------------------------
 distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
 plot_type = 0 # 0: Ec
+d1 = 0.0001
 d_min = 1e-4
-d_max = 7e-4
+d_max = 10e-4
 normal_E = 4e-4
-normal_D = 1e-4
+normal_D = 2e-4
 mu1 = (d_min + d_max) * 0.3  # 第一个峰靠左
 mu2 = (d_min + d_max) * 0.7  # 第二个峰靠右
 sigma1 = (d_max - d_min) * 0.1
@@ -139,170 +143,150 @@ g = 9.8*(1 - 1.263/rho)
 restitution_N = 0.78
 restitution_T = -0.13
 v1_hat_single = 100
-theta1_single = np.pi/4
+theta1_single = np.pi/12
 v1_hat_start = 0
-v1_hat_end = 200
-v1_hat_num = 1000
-theta1_start = 0
+v1_hat_end = 10
+case_num = 100
+theta1_start = np.pi/180
 theta1_end = np.pi/2
-theta1_num = 1000
 theta2_num = 60
-num_samples = 10000
+num_samples = 100
 d_mid = (d_min + d_max) / 2
 m_in = np.pi * d_mid**3 / 6 * rho
 E_in = m_in * g * d_mid * 10
 max_attempts = num_samples + 1
 #------------------------------------------------------------------
+# impact velocity
+#x_array = np.linspace(v1_hat_start, v1_hat_end, case_num)
+v1_hat = v1_hat_single
+# impact angle
+x_array = np.linspace(theta1_start, theta1_end, case_num)
+#theta1 = theta1_single
 
-Ec_list1 = []
-Ec_list2 = []
-Ec_list3 = []
-Ec_norm_list1 = []
-Ec_norm_list2 = []
-Ec_norm_list3 = []
-d1_list = []
+mu, sigma = get_normal_params(normal_E, normal_D)
+d1_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, num_samples)
+d1 = np.percentile(d1_array, 50)
+#d1 = np.percentile(d1_array, 90)
+
 d2_list = []
-d3_list = []
+rebound_ratio_list = []
+rebound_ratio_list_1 = []
+rebound_ratio_list_2 = []
 
-attempts = 0
-
-while len(d3_list) < num_samples and attempts < max_attempts:
-    attempts += 1
-    if distribution == 0:
-        d1 = np.random.uniform(d_min, d_max)
-        d3 = np.random.uniform(d_min, d_max)
-        d2_min = (-(d1+d3)+np.sqrt((d1+d3)**2+4*d1*d3))/2
-        d2_min = max(d_min, d2_min)
-        d2 = np.random.uniform(d2_min, d_max)
-        d1_list.append(d1)
-        d2_list.append(d2)
-        d3_list.append(d3)
-    elif distribution == 1:
-        mu, sigma = get_normal_params(normal_E, normal_D)
-        d1 = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
-        d3 = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
-        d2_min = (-(d1+d3)+np.sqrt((d1+d3)**2+4*d1*d3))/2
-        d2_min = max(d_min, d2_min)
-        d2 = generate_truncated_lognormal(mu, sigma, d2_min, d_max, 1)[0]
-        d1_list.append(d1)
-        d2_list.append(d2)
-        d3_list.append(d3)
-    elif distribution == 2:
-        r = np.random.uniform(0.5,1.5,size=3)
-        rr = np.floor(r)
-        d_bin = d_max - d_min
-        d1 = d_min + rr[0]*d_bin
-        d2 = d_min + rr[1]*d_bin
-        d3 = d_min + rr[2]*d_bin
-        d1_list.append(d1)
-        d2_list.append(d2)
-        d3_list.append(d3)
-    elif distribution == 3:
-        d1, d3 = np.random.choice(
-            generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, d_min, d_max, 1000),
-            size=2, replace=False
-        )
-        d2_min = (-(d1+d3)+np.sqrt((d1+d3)**2+4*d1*d3))/2
-        d2_min = max(d_min, d2_min)
-        if d2_min > d_max:
-            continue
-        d2_candidates = generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, d2_min, d_max, 100)
-        if len(d2_candidates) == 0:
-            continue
-        d2 = np.random.choice(d2_candidates)
-        if (d_min <= d1 <= d_max and
-            d_min <= d2 <= d_max and
-            d2 >= d2_min
-            ):
-            d1_list.append(d1)
+for x in tqdm(x_array):
+    #v1_hat = x
+    theta1 = x
+    attempts = 0
+    rebound_num = 0
+    rebound_num_1 = 0
+    rebound_num_2 = 0
+    d3_list = []
+    while len(d3_list) < num_samples and attempts < max_attempts:
+        attempts += 1
+        if distribution == 0:
+            d3 = np.random.uniform(d_min, d_max)
+            d2_min = (-(d1+d3)+np.sqrt((d1+d3)**2+4*d1*d3))/2
+            d2_min = max(d_min, d2_min)
+            d2 = np.random.uniform(d2_min, d_max)
             d2_list.append(d2)
             d3_list.append(d3)
+        elif distribution == 1:
+            mu, sigma = get_normal_params(normal_E, normal_D)
+            #d1 = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
+            d3 = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
+            d2_1 = d3
+            d2_2 = d1
+            d3_2 = d1
+            d2_min = (-(d1+d3)+np.sqrt((d1+d3)**2+4*d1*d3))/2
+            d2_min = max(d_min, d2_min)
+            d2 = generate_truncated_lognormal(mu, sigma, d2_min, d_max, 1)[0]
+            d2_list.append(d2)
+            d3_list.append(d3)
+        elif distribution == 2:
+            r = np.random.uniform(0.5,1.5,size=2)
+            rr = np.floor(r)
+            d_bin = d_max - d_min
+            d2 = d_min + rr[0]*d_bin
+            d3 = d_min + rr[1]*d_bin
+            d2_list.append(d2)
+            d3_list.append(d3)
+        elif distribution == 3:
+            d3 = np.random.choice(
+                generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, d_min, d_max, 1000),
+                size=1, replace=False
+            )
+            d2_min = (-(d1+d3)+np.sqrt((d1+d3)**2+4*d1*d3))/2
+            d2_min = max(d_min, d2_min)
+            if d2_min > d_max:
+                continue
+            d2_candidates = generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, d2_min, d_max, 100)
+            if len(d2_candidates) == 0:
+                continue
+            d2 = np.random.choice(d2_candidates)
+            if (d_min <= d1 <= d_max and
+                d_min <= d2 <= d_max and
+                d2 >= d2_min
+                ):
+                d2_list.append(d2)
+                d3_list.append(d3)
 
-    # normalize d1, d2
-    d = (d1 + d2) / 2
-    d1_hat = d1 / d
-    d2_hat = d2 / d
-    # impact velocity
-    #v1_hat = np.linspace(v1_hat_start, v1_hat_end, v1_hat_num)
-    v1_hat = v1_hat_single
-    v1 = v1_hat * np.sqrt(g * d1)
-    # impact angle
-    #theta1 = np.linspace(theta1_start, theta1_end, theta1_num)
-    theta1 = theta1_single
-    # restitution coefficient
-    mu = restitution_N*d1_hat**3/(d1_hat**3 + restitution_N*d2_hat**3)
-    alpha = (1 + restitution_N)/(1 + mu) - 1
-    beta = 1 - (2/7)*(1 - restitution_T)/(1 + mu)
-    e = calculate_e_bar(d2_hat, theta1, alpha, beta)
-    v2 = v1*e
-    # rebound angle
-    theta2 = calculate_rebound_angle(d2_hat, theta1, alpha, beta)
-    v2_z = v2*np.sin(theta2)
-    v2_x = np.sqrt(v2**2 - v2_z**2)
-    # survive or not
-    is_survive = calculate_survive(d1, d2, d3, g, v2_x, v2_z, e)
-    rebound_num = 0
-    if is_survive:
-        rebound_num += 1
-rebound_ratio = rebound_num/num_samples
-print(f'rebound ratio: {rebound_ratio}')
-
-# TODO: 计算不同入射速度、入射角度以及不同粒径分布下的反弹概率分布
-
-Ec_norm_mean = [np.mean(Ec_norm_list1), np.mean(Ec_norm_list2), np.mean(Ec_norm_list3)]
-d2_list_cubed = np.array(d2_list)**3
-d_mean_cubed = (np.mean(d2_list_cubed))**(1/3)
-d_mean = np.mean(d2_list)
-d50 = np.percentile(d2_list, 50)
-d90 = np.percentile(d2_list, 90)
-m1 = np.pi*d_mean**3/6*rho
-m1_cubed = np.pi*d_mean_cubed**3/6*rho
-m1_50 = np.pi*d50**3/6*rho
-m1_90 = np.pi*d90**3/6*rho
-Ec0 = Ec_norm_mean[2]*m1*g*d_mean
-Ec0_cubed = Ec_norm_mean[2]*m1_cubed*g*d_mean_cubed
-Ec0_50 = Ec_norm_mean[2]*m1_50*g*d50
-Ec0_90 = Ec_norm_mean[2]*m1_90*g*d90
-Ec_mean = [np.mean(Ec_list2), np.mean(Ec_list3), Ec0_cubed, Ec0_50, Ec0_90, Ec0, np.mean(Ec_list1)]
-Ec_mean_uni = Ec_mean/Ec_mean[6]
-Eout_E = []
-Eout_D = []
-for i in range(7):
-    Eout_mean, Eout_sigma = E_out(E_in, Ec_mean[i], e)
-    Eout_E.append(Eout_mean)
-    Eout_D.append(Eout_sigma)
-Eout_E_uni = Eout_E/Eout_E[6]
-Eout_D_uni = Eout_D/Eout_D[6]
-
-if plot_type == 0:
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.hist(Ec_norm_list1, bins=50, density=True, alpha=1.0, label='d1, d2, d3', color='r')
-    ax.hist(Ec_norm_list2, bins=50, density=True, alpha=0.5, label='d1, d2=d3', color='g')
-    ax.axvline(Ec_norm_mean[0], color='r', linestyle='dashed', linewidth=2, label='d1, d2, d3')
-    ax.axvline(Ec_norm_mean[1], color='g', linestyle='dashed', linewidth=2, label='d1, d2 = d3')
-    ax.axvline(Ec_norm_mean[2], color='b', linestyle='dashed', linewidth=2, label='d1 = d2 = d3')
-    ax.set_xlabel('Ec*')
-    #ax.set_ylim(0,3000)
-    ax.legend()
-
-    # 插入插图
-    inax = inset_axes(ax, width="50%", height="50%", loc='right')
-    colors = ['k', 'g', 'b', 'c', 'm', 'y']
-    labels = ['d1, d2=d3', 'd1=d2=d3', 'cubed', 'd50', 'd90', 'averaged']
-    for i in range(len(Ec_mean_uni[:-1])):
-        inax.plot(Ec_mean_uni[i], Eout_E_uni[i], marker='o', color=colors[i], linestyle='', label=labels[i])
-        inax.plot(Ec_mean_uni[i], Eout_D_uni[i], marker='*', color=colors[i], linestyle='', label=labels[i])
-    inax.plot(Ec_mean_uni[-1], Eout_E_uni[-1], marker='o', color='r', fillstyle='none', linestyle='', label='d1, d2, d3')
-    inax.plot(Ec_mean_uni[-1], Eout_D_uni[-1], marker='*', color='r', fillstyle='none', linestyle='', label='d1, d2, d3')
-    inax.set_xlabel('Unified Ec_mean')
-    inax.set_ylabel('Unified Eout_mean/std')
-    inax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-elif plot_type == 1:
-    plt.hist(d1_list, bins=50, density=True, alpha=0.5, label='d1', color='r')
-    plt.hist(d2_list, bins=50, density=True, alpha=0.5, label='d2', color='g')
-    plt.hist(d3_list, bins=50, density=True, alpha=0.5, label='d3', color='b')
-    plt.xlabel('d')
-    plt.xlim(d_min, d_max)
-    plt.legend()
-
+        # normalize d1, d2
+        d = (d1 + d2) / 2
+        d_1 = (d1 + d2_1) / 2
+        d_2 = (d1 + d2_2) / 2
+        d1_hat = d1 / d
+        d1_hat_1 = d1 / d_1
+        d1_hat_2 = d1 / d_2
+        d2_hat = d2 / d
+        d2_hat_1 = d2 / d_1
+        d2_hat_2 = d2 / d_2
+        v1 = v1_hat * np.sqrt(g * d1)
+        # restitution coefficient
+        mu = restitution_N*d1_hat**3/(d1_hat**3 + restitution_N*d2_hat**3)
+        mu_1 = restitution_N*d1_hat_1**3/(d1_hat_1**3 + restitution_N*d2_hat_1**3)
+        mu_2 = restitution_N*d1_hat_2**3/(d1_hat_2**3 + restitution_N*d2_hat_2**3)
+        alpha = (1 + restitution_N)/(1 + mu) - 1
+        alpha_1 = (1 + restitution_N)/(1 + mu_1) - 1
+        alpha_2 = (1 + restitution_N)/(1 + mu_2) - 1
+        beta = 1 - (2/7)*(1 - restitution_T)/(1 + mu)
+        beta_1 = 1 - (2/7)*(1 - restitution_T)/(1 + mu_1)
+        beta_2 = 1 - (2/7)*(1 - restitution_T)/(1 + mu_2)
+        e = calculate_e_bar(d2_hat, theta1, alpha, beta)
+        e_1 = calculate_e_bar(d2_hat_1, theta1, alpha_1, beta_1)
+        e_2 = calculate_e_bar(d2_hat_2, theta1, alpha_2, beta_2)
+        v2 = v1*e
+        v2_1 = v1*e_1
+        v2_2 = v1*e_2
+        # rebound angle
+        theta2 = calculate_rebound_angle(d2_hat, theta1, alpha, beta)
+        theta2_1 = calculate_rebound_angle(d2_hat_1, theta1, alpha_1, beta_1)
+        theta2_2 = calculate_rebound_angle(d2_hat_2, theta1, alpha_2, beta_2)
+        v2_z = v2*np.sin(theta2)
+        v2_z_1 = v2_1*np.sin(theta2_1)
+        v2_z_2 = v2_2*np.sin(theta2_2)
+        v2_x = np.sqrt(v2**2 - v2_z**2)
+        v2_x_1 = np.sqrt(v2_1**2 - v2_z_1**2)
+        v2_x_2 = np.sqrt(v2_2**2 - v2_z_2**2)
+        # survive or not
+        is_survive = calculate_survive(d1, d2, d3, g, v2_x, v2_z, e)
+        is_survive_1 = calculate_survive(d1, d2_1, d3, g, v2_x_1, v2_z_1, e_1)
+        is_survive_2 = calculate_survive(d1, d2_2, d3, g, v2_x_2, v2_z_2, e_2)
+        if is_survive:
+            rebound_num += 1
+        if is_survive_1:
+            rebound_num_1 += 1
+        if is_survive_2:
+            rebound_num_2 += 1
+    rebound_ratio = rebound_num/num_samples
+    rebound_ratio_1 = rebound_num_1/num_samples
+    rebound_ratio_2 = rebound_num_2/num_samples
+    rebound_ratio_list.append(rebound_ratio)
+    rebound_ratio_list_1.append(rebound_ratio_1)
+    rebound_ratio_list_2.append(rebound_ratio_2)
+plt.plot(x_array, rebound_ratio_list, 'ro-', label='d1, d2, d3')
+plt.plot(x_array, rebound_ratio_list_1, 'bo-', label='d1, d2=d3')
+plt.plot(x_array, rebound_ratio_list_2, 'go-', label='d1=d2=d3')
+plt.xlabel('Impact Angle (rad)')
+plt.ylabel('Rebound Ratio')
+plt.legend()
 plt.show()
