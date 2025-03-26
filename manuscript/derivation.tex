@@ -187,37 +187,63 @@ With the solution of $\Delta V$, $V_s$ can be derived as
 \end{equation}
 Note that $v_s^-$ is distinct from $v_s$, which obeys a modified version of Eq. \ref{eq:Vs} with $\mu_b = 1$ (Camenen, 2007).
 
+\section{反弹模型}
+\subsection{颗粒弹性碰撞}
+Define the microscorpic restitution coefficient as $\epsilon$ and $\nu$ for the normal and tangential of the relative velocity of a particle collision pair. The inelastic collision model between two particles in terms of these restitution coefficients can be expressed as
+
+Then, the effective restitution coefficients $\alpha$ and $\beta$ are defined as
+\begin{equation}
+    \alpha = \frac{1 + \epsilon}{1 + \mu} - 1,
+\end{equation}
+
+\begin{equation}
+    \beta = 1 - \frac{(2/7)(1 - \nu)}{1 + \mu},
+\end{equation}
+
+with
+\begin{equation}
+    \mu = \frac{\epsilon d_1^3}{d_1^3 + \epsilon d_2^3}.
+\end{equation}
+
+Study a collision pair of sphere particles with diameters $d_1$ and $d_2$. Their velocities are $v_1$ and $v_2$ before collision and $v_1'$ and $v_2'$ after collision. Define $\overrightarrow{n}$ as the unit vector pointing from particle 1 to particle 2, after ommiting the particle rolling and spinning, the after-collision velocity of particle 1 can be expressed as
+\begin{equation}
+    v_1' = v_1 - \alpha \left ( \overrightarrow{n} \cdot \overrightarrow{v_{12}} \right ) \overrightarrow{n} - \beta \left [ \overrightarrow{v_{12}} - \left ( \overrightarrow{n} \cdot \overrightarrow{v_{12}} \right ) \overrightarrow{n} \right ],
+\end{equation}
+where $\overrightarrow{v_{12}} = \overrightarrow{v_1} - \overrightarrow{v_2}$. The after-collision velocity of particle 2 can be derived similarly. This equation can be directly applied to the simulation of the mid-air collision of particles, since the location and velocities of the collison pair particles are explicitly known before the collision. However, for the collision between a particle and the grain bed, more effect should be taken into account.
+
+\subsection{颗粒与床面的碰撞}
+A theoretical rebound model for the collision between a impactor with diameter $d_1$ and a grain bed with diameter $d_2$ was proposed by L\"ammel et al. (2017).
 % 示例：多行公式对齐
-\begin{align}
-    \frac{\pdiff f}{\pdiff t} &= \frac{\pdiff}{\pdiff t}\int_a^b g(x,t)\diff x \\
-    &= \int_a^b \frac{\pdiff g}{\pdiff t}\diff x
-\end{align}
-
-% 示例：分段函数
-\[
-    f(x) = \begin{cases}
-        x^2, & x \geq 0 \\
-        -x^2, & x < 0
-    \end{cases}
-\]
-
-% 示例：矩阵
-\[
-    \begin{bmatrix}
-        a_{11} & a_{12} \\
-        a_{21} & a_{22}
-    \end{bmatrix}
-    \begin{bmatrix}
-        x_1 \\
-        x_2
-    \end{bmatrix} =
-    \begin{bmatrix}
-        b_1 \\
-        b_2
-    \end{bmatrix}
-\]
-
-\section{推导过程}
-% 这里可以继续您的推导...
+%\begin{align}
+%    \frac{\pdiff f}{\pdiff t} &= \frac{\pdiff}{\pdiff t}\int_a^b g(x,t)\diff x \\
+%    &= \int_a^b \frac{\pdiff g}{\pdiff t}\diff x
+%\end{align}
+%
+%% 示例：分段函数
+%\[
+%    f(x) = \begin{cases}
+%        x^2, & x \geq 0 \\
+%        -x^2, & x < 0
+%    \end{cases}
+%\]
+%
+%% 示例：矩阵
+%\[
+%    \begin{bmatrix}
+%        a_{11} & a_{12} \\
+%        a_{21} & a_{22}
+%    \end{bmatrix}
+%    \begin{bmatrix}
+%        x_1 \\
+%        x_2
+%    \end{bmatrix} =
+%    \begin{bmatrix}
+%        b_1 \\
+%        b_2
+%    \end{bmatrix}
+%\]
+%
+%\section{推导过程}
+%% 这里可以继续您的推导...
 
 \end{document} 

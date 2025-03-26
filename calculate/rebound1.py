@@ -53,29 +53,36 @@ def generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, dmin, dmax, size):
     np.random.shuffle(combined)
     return combined
 
-def calculate_e_bar(d2_hat, theta1, alpha, beta):
+def calculate_e_bar(d1, d2, d3, d, theta1, alpha, beta):
     csc_theta1 = 1/np.sin(theta1)
     cot_theta1 = 1/np.tan(theta1)
-    if 2*np.sin(theta1) < d2_hat:
-        x_hat_min = csc_theta1 - d2_hat
+    temp1 = ((d1 + d2)**2 + (d1 + d3)**2 - (d2 + d3)**2)/(2*(d1 + d2)*(d1 + d3))
+    temp2 = ((d1 + d2)**2 + (d2 + d3)**2 - (d1 + d3)**2)/(2*(d1 + d2)*(d2 + d3))
+    temp1 = np.arccos(temp1)
+    temp2 = np.arccos(temp2)
+    temp1 = np.pi/2 - temp1
+    temp2 = np.pi - temp2
+    theta_c = np.pi - temp1 - temp2
+    if theta1 < theta_c:
+        x_min = (d1 + d3)/2/np.sin(theta1) - (d1 + d2)/2
     else:
-        x_hat_min = cot_theta1 * np.sqrt(1 - (d2_hat/2)**2) - d2_hat/2
-    x0 = x_hat_min
+        x_min = (d1 + d3)/2/np.sin(theta_c) - (d1 + d2)/2
+    x0 = x_min/d
     x_hat_max = 1/np.sin(theta1)
     # no secondary collision
     attempt_num = 100
-    delta_x_hat = (x_hat_max - x_hat_min)/attempt_num
+    delta_x_hat = (x_hat_max - x0)/attempt_num
     for n in range(1, attempt_num + 1):
-        x1 = x_hat_min + n*delta_x_hat
+        x1 = x0 + n*delta_x_hat
         neq_LHS = 1 / (1 + beta/alpha)
         x1_sin_square = x1**2*np.sin(theta1)**2
-        x1_sin_square = min(x1_sin_square, 1)
+        #x1_sin_square = min(x1_sin_square, 1)
         x1_cos = x1*np.cos(theta1)
         neq_RHS = x1_sin_square - x1_cos*np.sqrt(1 - x1_sin_square)
         if neq_LHS < neq_RHS:
             break
     x0_sin_square = x0**2*np.sin(theta1)**2
-    x0_sin_square = min(x0_sin_square, 1)
+    #x0_sin_square = min(x0_sin_square, 1)
     x0_cos = x0*np.cos(theta1)
     eqx_x0 = -(alpha + beta)*(1 - x0_sin_square)**(3/2) + x0_cos*(-3*alpha + (alpha + beta)*x0_sin_square)
     eqx_x1 = -(alpha + beta)*(1 - x1_sin_square)**(3/2) + x1_cos*(-3*alpha + (alpha + beta)*x1_sin_square)
@@ -116,10 +123,11 @@ def calculate_rebound_angle(d2_hat, theta1, alpha, beta):
             break
     return theta2
 
-def calculate_survive(d1, d2, d3, g, v2_x, v2_z, e):
+def calculate_survive(d1, d2, d3, theta1, g, v2_x, v2_z, e):
     x = d2*(d1+d2+d3) - d1*d3
     y = (d1 + d2)*(d2 + d3)
     psi = np.arccos(x/y)
+    psi = min(psi, theta1)
     zb = (1.0 - np.sin(psi))*0.5*(d1 + d2)
     z_final = v2_z**2/(2.0*g)
     if z_final > zb:
@@ -133,9 +141,9 @@ def calculate_survive(d1, d2, d3, g, v2_x, v2_z, e):
     return is_survive
 
 #-------------------------------------------------------------------
-distribution = 2 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
+distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
 variation_param = 0 # 0: v1, 1: theta1
-theta2_cal = True # True: calculate via distribution, False: calculate via average
+theta2_cal = False # True: calculate via distribution, False: calculate via average
 d_min = 1e-4
 d_max = 10e-4
 normal_E = 4e-4
@@ -152,10 +160,10 @@ restitution_T = -0.13
 v1_hat_single = 5
 theta1_single = np.pi/12
 v1_hat_start = 0
-v1_hat_end = 10
+v1_hat_end = 100
 case_num = 100
 theta1_start = np.pi/180
-theta1_end = np.pi/2
+theta1_end = np.pi/1.9
 theta2_num = 60
 num_samples = 200
 d_mid = (d_min + d_max) / 2
@@ -208,7 +216,7 @@ for x in tqdm(x_array):
         elif distribution == 1:
             mu, sigma = get_normal_params(normal_E, normal_D)
             d_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, 3)
-            #d1 = d_array[0]
+            d1 = d_array[0]
             d3 = d_array[1]
             d2_min = (-(d1+d3)+np.sqrt((d1+d3)**2+4*d1*d3))/2
             d2_min = max(d_min, d2_min)
@@ -270,9 +278,9 @@ for x in tqdm(x_array):
         beta = 1 - (2/7)*(1 - restitution_T)/(1 + mu)
         beta_1 = 1 - (2/7)*(1 - restitution_T)/(1 + mu_1)
         beta_2 = 1 - (2/7)*(1 - restitution_T)/(1 + mu_2)
-        e, ez = calculate_e_bar(d2_hat, theta1, alpha, beta)
-        e_1, ez_1 = calculate_e_bar(d2_hat_1, theta1, alpha_1, beta_1)
-        e_2, ez_2 = calculate_e_bar(d2_hat_2, theta1, alpha_2, beta_2)
+        e, ez = calculate_e_bar(d1, d2, d3, d, theta1, alpha, beta)
+        e_1, ez_1 = calculate_e_bar(d1, d2_1, d3_1, d_1, theta1, alpha_1, beta_1)
+        e_2, ez_2 = calculate_e_bar(d1_2, d2_2, d3_2, d_2, theta1, alpha_2, beta_2)
         #e, ez = calculate_e_bar_simple(d2_hat, theta1, alpha, beta)
         #e_1, ez_1 = calculate_e_bar_simple(d2_hat_1, theta1, alpha_1, beta_1)
         #e_2, ez_2 = calculate_e_bar_simple(d2_hat_2, theta1, alpha_2, beta_2)
@@ -295,9 +303,9 @@ for x in tqdm(x_array):
         v2_x_1 = np.sqrt(v2_1**2 - v2_z_1**2)
         v2_x_2 = np.sqrt(v2_2**2 - v2_z_2**2)
         # survive or not
-        is_survive = calculate_survive(d1, d2, d3, g, v2_x, v2_z, e)
-        is_survive_1 = calculate_survive(d1, d2_1, d3_1, g, v2_x_1, v2_z_1, e_1)
-        is_survive_2 = calculate_survive(d1_2, d2_2, d3_2, g, v2_x_2, v2_z_2, e_2)
+        is_survive = calculate_survive(d1, d2, d3, theta1, g, v2_x, v2_z, e)
+        is_survive_1 = calculate_survive(d1, d2_1, d3_1, theta1, g, v2_x_1, v2_z_1, e_1)
+        is_survive_2 = calculate_survive(d1_2, d2_2, d3_2, theta1, g, v2_x_2, v2_z_2, e_2)
         if is_survive:
             rebound_num += 1
         if is_survive_1:
