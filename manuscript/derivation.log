@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999995 (TeX Live 2023) (preloaded format=xelatex 2023.12.12)  27 MAR 2025 00:08
+This is XeTeX, Version 3.141592653-2.6-0.999995 (TeX Live 2023) (preloaded format=xelatex 2023.12.12)  30 MAR 2025 21:30
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -474,14 +474,17 @@ LaTeX Font Info:    Trying to load font information for U+rsfs on input line 36.
 File: ursfs.fd 1998/03/24 rsfs font definition file (jk)
 ) [1
 
-] [2] [3] [4] [5] (./derivation.aux) ) 
+] [2] [3] [4] [5]
+File: fig1.pdf Graphic file (type pdf)
+<use fig1.pdf>
+ [6] [7] (./derivation.aux) ) 
 Here is how much of TeX's memory you used:
- 10102 strings out of 476683
- 250467 string characters out of 5807574
- 1859012 words of memory out of 5000000
- 30211 multiletter control sequences out of 15000+600000
- 527880 words of font info for 111 fonts, out of 8000000 for 9000
+ 10124 strings out of 476683
+ 250804 string characters out of 5807574
+ 1861012 words of memory out of 5000000
+ 30230 multiletter control sequences out of 15000+600000
+ 527888 words of font info for 112 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 89i,15n,97p,728b,274s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 89i,15n,97p,728b,370s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on derivation.pdf (5 pages).
+Output written on derivation.pdf (7 pages).

@@ -205,14 +205,43 @@ with
     \mu = \frac{\epsilon d_1^3}{d_1^3 + \epsilon d_2^3}.
 \end{equation}
 
-Study a collision pair of sphere particles with diameters $d_1$ and $d_2$. Their velocities are $v_1$ and $v_2$ before collision and $v_1'$ and $v_2'$ after collision. Define $\overrightarrow{n}$ as the unit vector pointing from particle 1 to particle 2, after ommiting the particle rolling and spinning, the after-collision velocity of particle 1 can be expressed as
+Study a collision pair of sphere particles with diameters $d_1$ and $d_2$. Their velocities are $v_1$ and $v_2$ before collision and $v_1'$ and $v_2'$ after collision. Define $\overrightarrow{n}$ as the unit vector parallel to the line connecting the centers of particle 1 and 2, after ommiting the particle rolling and spinning, the after-collision velocity of particle 1 can be expressed as
 \begin{equation}
-    v_1' = v_1 - \alpha \left ( \overrightarrow{n} \cdot \overrightarrow{v_{12}} \right ) \overrightarrow{n} - \beta \left [ \overrightarrow{v_{12}} - \left ( \overrightarrow{n} \cdot \overrightarrow{v_{12}} \right ) \overrightarrow{n} \right ],
+    \overrightarrow{v_1}' = - \alpha \left ( \overrightarrow{n} \cdot \overrightarrow{v_{12}} \right ) \overrightarrow{n} + \beta \left [ \overrightarrow{v_{12}} - \left ( \overrightarrow{n} \cdot \overrightarrow{v_{12}} \right ) \overrightarrow{n} \right ],
 \end{equation}
-where $\overrightarrow{v_{12}} = \overrightarrow{v_1} - \overrightarrow{v_2}$. The after-collision velocity of particle 2 can be derived similarly. This equation can be directly applied to the simulation of the mid-air collision of particles, since the location and velocities of the collison pair particles are explicitly known before the collision. However, for the collision between a particle and the grain bed, more effect should be taken into account.
+where $\overrightarrow{v_{12}} = \overrightarrow{v_1} - \overrightarrow{v_2}$. The after-collision velocity of particle 2 can be derived similarly. This equation is derived from the momentum conservation, and the energy dissipation is taken into account as well. It can be directly applied to the simulation of the mid-air collision of particles, since the location and velocities of the collison pair particles are explicitly known before the collision. However, for the collision between a particle and the grain bed, more effect should be taken into account.
 
 \subsection{颗粒与床面的碰撞}
-A theoretical rebound model for the collision between a impactor with diameter $d_1$ and a grain bed with diameter $d_2$ was proposed by L\"ammel et al. (2017).
+A rebound model for the collision between a impactor with diameter $d_1$ and a grain bed with diameter $d_2$ was proposed by L\"ammel et al. (2017). The model is based on the assumption that all the particles in the bed have the same diameter, which is the average diameter of the bed particles. However, for a bed pack with a wide range of particle sizes, the average diameter was shown to be a poor approximation while discussing the dynamic threshold of particle transport (Zhu et al., 2019).
+
+This work try to derive a more general model for the collision between a particle and the bed. As a begining of the derivation, the basic assumptions of the L\"ammel et al. (2017) model are inherited, which is that the center of the bed particle is lie on the same horizontal plane, and the bed particle is fixed during the collision process. With these assumptions, a two-dimensional particle-bed collision model can be established.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{fig1.pdf}
+    \caption{Illustration of the collision between a particle and the bed.}
+    \label{fig1}
+\end{figure}
+
+As shown in \ref{fig1}, a impactor with diameter $d_1$ collides with a bed particle with diameter $d_2$. The impact velocity of the impactor is $\overrightarrow{v_1}$, and the rebound velocity is $\overrightarrow{v_1}'$. The angle between the impact velocity and the horizontal plane is $\theta_1$. After locating the center of the bed particle $d_2$ at the origin of the coordinate system, a vector $\overrightarrow{x_i}$ from the origin to the location $(x_i, 0)$ is defined to denote the impact location. With this impact location, the components of the rebound velocity $\overrightarrow{v_1}'$ can be expressed as (L\"ammel et al., 2017)
+\begin{equation}
+    \frac{v_{1x}'}{\overrightarrow{v_1}} = - \alpha \cos\theta_1 + (\alpha + \beta) x_i^2 \sin^2\theta_1\cos\theta_1 + (\alpha + \beta) x_i \sin^2\theta_1 \sqrt{1 - x_i^2\sin^2\theta_1}, \label{eq:v1x}
+\end{equation}
+\begin{equation}
+    \frac{v_{1z}'}{\overrightarrow{v_1}} = \alpha \sin\theta_1 - (\alpha + \beta) x_i^2 \sin^3\theta_1 + (\alpha + \beta) x_i \sin\theta_1\cos\theta_1 \sqrt{1 - x_i^2\sin^2\theta_1}. \label{eq:v1z}
+\end{equation}
+Obviously, for a specific impact velocity $\overrightarrow{v_1}$, the function $F(\overrightarrow{v_1}')$ of the particle rebound velocity is determined by $x_i$. Forthermore, the average of $F$ over all possible impact locations can be expressed as
+\begin{equation}
+    \overline{F} = \frac{1}{x_{i, max} - x_{i, min}} \int_{x_{i,min}}^{x_{i,max}} F \diff x_i,
+\end{equation}
+where the integration limits are determined by the diameters of the impactor and the bed particles. The leftmost limit corresponds to two pausible cases: a) the impactor moves tangentially through the left neighbor of the centering particle; b) the impactor impact the centering particle and the left neighbor at the same time. Then the leftmost limit $x_{i,min}$ can be expressed as
+\begin{equation}
+    x_{i, min} = \begin{cases}
+        d_{13}\csc\theta_1 - d_{12}, & \theta \leq \theta_c \\
+        \frac{d_2}{2}, & \text{if } d_1 > d_2
+    \end{cases}
+\end{equation}
+
 % 示例：多行公式对齐
 %\begin{align}
 %    \frac{\pdiff f}{\pdiff t} &= \frac{\pdiff}{\pdiff t}\int_a^b g(x,t)\diff x \\
