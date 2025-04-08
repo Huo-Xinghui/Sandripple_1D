@@ -1014,29 +1014,26 @@ subroutine calculateSplash
     integer :: nAng
     real(kind=dbPc) :: estimateAltitude
     real(kind=dbPc) :: localXP, localYP
-    real(kind=dbPc) :: d1, d2, dRoll
-    real(kind=dbPc) :: dd1, dd2
+    real(kind=dbPc) :: d1, d2, d3, dRoll
+    real(kind=dbPc) :: d13, d23
+    real(kind=dbPc) :: gamma, psi, angleC, xc
     real(kind=dbPc) :: m1, m2
     real(kind=dbPc) :: v1, v2, v2z, v2x
-    real(kind=dbPc) :: eta, alpha, beta, gama, lambda, sigma, mu
-    real(kind=dbPc) :: eBar, eBarVx, eBarVz
+    real(kind=dbPc) :: eta, alpha, beta, lambda, sigma, mu
+    real(kind=dbPc) :: e, eVx, eVz
     real(kind=dbPc) :: angin1
-    real(kind=dbPc) :: remH
     real(kind=dbPc) :: cscAngin1, cotAngin1
-    real(kind=dbPc) :: rhs, dxin, xinMaxMax
-    real(kind=dbPc) :: eq, eqMin, eqMax
-    real(kind=dbPc) :: xinMin, xinMax
-    real(kind=dbPc) :: angout1, angout1Min, angout1Max, angoutBin, psi
-    real(kind=dbPc) :: zb
+    real(kind=dbPc) :: rhs, dxin, xinMaxMax, xinMaxMin, xinMaxTemp, xsin, xcos
+    real(kind=dbPc) :: eq
+    real(kind=dbPc) :: xinMin, xinMax, xin
+    real(kind=dbPc) :: tt, v1t, zb, remx
     real(kind=dbPc) :: rr1, rr2, rr3
-    real(kind=dbPc) :: xPDF
     real(kind=dbPc) :: E1, E2, Ed1, Ed2, Eeff, Ec
     real(kind=dbPc) :: tau_s
     real(kind=dbPc) :: E2Bar
     real(kind=dbPc) :: merfc
     real(kind=dbPc) :: ejectVol, rollVol
     real(kind=dbPc) :: vch
-    real(kind=dbPc) :: cumulativeProb
     real(kind=dbPc), dimension(npdf) :: currentHist, currentDia
     real(kind=dbPc), dimension(maxEjectNum) :: tempx, tempy, tempz
     real(kind=dbPc), dimension(maxEjectNum) :: tempu, tempv, tempw
@@ -1213,93 +1210,67 @@ subroutine calculateSplash
             d1 = dp(n)
             if (whichDiameterDist == 1) then
                 d2 = dpa
+                d3 = dpa
             else
                 currentHist = hist(ipp, jpp, :)
                 d2 = valObeyCertainPDF(currentHist)
+                d3 = valObeyCertainPDF(currentHist)
             end if
-            dd1 = d1/(0.5*(d1 + d2))
-            dd2 = d2/(0.5*(d1 + d2))
+            d13 = 0.5*(d1 + d3)/(0.5*(d1 + d2))
+            d23 = 0.5*(d2 + d3)/(0.5*(d1 + d2))
             m1 = (pi*d1**3)/6.0*rhoP
             v1 = norm_2(pVol1)
-            eta = resN*dd1**3/(dd1**3 + resN*dd2**3)
+            eta = resN*d1**3/(d1**3 + resN*d2**3)
             alpha = (1.0 + resN)/(1.0 + eta) - 1.0
             beta = 1.0 - (2.0/7.0)*(1.0 - resT)/(1.0 + eta)
             angin1 = atan(abs(vin(3)/vin(1)))
-            !eBar = beta - (beta**2 - alpha**2)*dd2*angin1/(2.0*beta)
+            gamma = acos((1.0 + d13**2 - d23**2)/(2.0*d13))
+            psi = acos((1.0 + d23**2 - d13**2)/(2.0*d23))
+            angleC = gamma + psi - 0.5*pi
+            xc = (1.0 + d23**2 - d13**2)/(2.0*d23)
             cscAngin1 = 1.0/sin(angin1)
             cotAngin1 = 1.0/tan(angin1)
-            if (2.0*sin(angin1) < dd2) then
-                xinMin = cscAngin1 - dd2
+            if (angin1 < angleC) then
+                xinMin = d13*cscAngin1 - d23
             else
-                xinMin = cotAngin1*sqrt(1.0 - (dd2/2.0)**2) - dd2/2.0
+                xinMin = cotAngin1*sqrt(1.0 - xc**2) - xc
             end if
             rhs = 1.0/(1.0 + beta/alpha)
             xinMaxMax = 1.0/sin(angin1)
-            dxin = (xinMaxMax - xinMin)/real(nxMax, kind=dbPc)
+            xinMaxMin = 1.0/tan(angin1)
+            dxin = (xinMaxMax - xinMaxMin)/real(nxMax, kind=dbPc)
+            xinMax = xinMaxMin
             do nn = 1, nxMax
-                xinMax = xinMin + dxin*real(nn, kind=dbPc)
-                eq = (xinMax*sin(angin1))**2 - xinMax*cos(angin1)*sqrt(1.0 - (xinMax*sin(angin1))**2) - rhs
-                if (eq > 0.0) exit
+                xinMaxTemp = xinMaxMin + dxin*real(nn, kind=dbPc)
+                xsin = xinMaxTemp*sin(angin1)
+                xcos = xinMaxTemp*cos(angin1)
+                eq = xsin**2 - xcos*sqrt(1.0 - xsin**2)
+                if (eq > rhs) exit
+                xinMax = xinMaxTemp
             end do
-            eqMin = -(alpha + beta)*(1.0 - (xinMin*sin(angin1))**2)**(3.0/2.0) + &
-                    xinMin*cos(angin1)*(-3.0*alpha + (alpha + beta)*(xinMin*sin(angin1))**2)
-            eqMax = -(alpha + beta)*(1.0 - (xinMax*sin(angin1))**2)**(3.0/2.0) + &
-                    xinMax*cos(angin1)*(-3.0*alpha + (alpha + beta)*(xinMax*sin(angin1))**2)
-            eBarVx = 1.0/(xinMax - xinMin)/3.0*(eqMax - eqMin)
-            eqMin = alpha*xinMin - 1.0/3.0*(alpha + beta)*(xinMin**3*(sin(angin1))**2 + &
-                                                           cotAngin1*cscAngin1*(1.0 - (xinMin*sin(angin1))**2)**(3.0/2.0))
-            eqMax = alpha*xinMax - 1.0/3.0*(alpha + beta)*(xinMax**3*(sin(angin1))**2 + &
-                                                           cotAngin1*cscAngin1*(1.0 - (xinMax*sin(angin1))**2)**(3.0/2.0))
-            eBarVz = sin(angin1)/(xinMax - xinMin)*(eqMax - eqMin)
-            eBar = sqrt(eBarVx**2 + eBarVz**2)
-            v2 = eBar*v1
-            !v2z = eBarVz*v1
-            !v2x = sqrt(v2**2 - v2z**2)
-            gama = 4.0/9.0*beta**2/(alpha + beta)**2/dd2
-            angout1Min = -angin1
-            angout1Max = sqrt(angin1/gama)*2.0 - angin1
-            if (angout1Max > pi) angout1Max = pi
-            angoutBin = (angout1Max - angout1Min)/real(nAng, kind=dbPc)
-            do nn = 1, nAng
-                xPDF = angout1Min + angoutBin*(real(nn, kind=dbPc) - 0.5)
-                angoutHist(nn) = gama*(xPDF + angin1)/angin1*log(2.0*angin1/gama/(xPDF + angin1)**2)
-                angoutHist(nn) = max(angoutHist(nn), 0.0)
-            end do
-            angoutHist = angoutHist/sum(angoutHist)
-            cumulativeProb = 0.0
-            angout1 = angin1
             call random_number(rr1)
-            if (flag2) then
-                do nn = 1, nAng
-                    cumulativeProb = cumulativeProb + angoutHist(nn)
-                    if (rr1 <= cumulativeProb) then
-                        cumulativeProb = cumulativeProb - angoutHist(nn)
-                        angout1 = angoutBin*(real(nn - 1, kind=dbPc) - 0.5) + (rr1 - cumulativeProb)/angoutHist(nn)*angoutBin !+ angout1Min
-                        exit
-                    end if
-                end do
-                flag2 = .false.
-            else
-                do nn = nAng, 1, -1
-                    cumulativeProb = cumulativeProb + angoutHist(nn)
-                    if (rr1 <= cumulativeProb) then
-                        cumulativeProb = cumulativeProb - angoutHist(nn)
-                        angout1 = angoutBin*(real(nn, kind=dbPc) - 0.5) - (rr1 - cumulativeProb)/angoutHist(nn)*angoutBin !+ angout1Min
-                        exit
-                    end if
-                end do
-                flag2 = .true.
-            end if
-            v2z = v2*sin(angout1)
+            xin = xinMin + (xinMax - xinMin)*rr1
+            xsin = xin*sin(angin1)
+            xcos = xin*cos(angin1)
+            eVx = -alpha*cos(angin1) + (alpha + beta)*xsin**2*cos(angin1) + &
+                  (alpha + beta)*xsin*sin(angin1)*sqrt(1.0 - xsin**2)
+            eVz = alpha*sin(angin1) - (alpha + beta)*xsin**2*sin(angin1) + &
+                  (alpha + beta)*xsin*cos(angin1)*sqrt(1.0 - xsin**2)
+            e = sqrt(eVx**2 + eVz**2)
+            v2 = e*v1
+            v2z = eVz*v1
             v2x = sqrt(v2**2 - v2z**2)
-            psi = acos(d2/(d1 + d2))
-            zb = (1.0 - sin(psi))*d2
+            tt = xin*v1*cos(angin1)/(v1**2) + (1.0/v1**2)*sqrt((1.0-xin**2)*v1**2 + &
+                (xin*v1*cos(angin1))**2)
+            v1t = v1*tt
+            zb = (1.0 - v1t*sin(angin1))*0.5*(d1 + d2)
             if (v2z**2/(2.0*gHat) > zb) then
-                remH = (sqrt((v2z/gHat)**2 - (2.0*zb)/gHat) + v2z/gHat)*v2x - 0.5*d2
+                xc = (v1t*cos(angin1) - xin)*0.5*(d1 + d2)
+                remx = (sqrt((v2z/gHat)**2 - (2.0*zb)/gHat) + v2z/gHat)*v2x - xc
             else
-                remH = -1.0
+                remx = -1.0
             end if
-            if (remH <= 0.0 .or. eBar <= 0.0) then
+            if (remx <= 0.0 .or. e <= 0.0) then
                 rebound = .false.
             else
                 rebound = .true.
@@ -1359,7 +1330,7 @@ subroutine calculateSplash
                 binChange(ii, jj, iBin) = binChange(ii, jj, iBin) + vch
             end if
             E1 = 0.5*m1*v1**2
-            Ed1 = 0.06*(1.0 - eBar**2)*E1
+            Ed1 = 0.06*(1.0 - e**2)*E1
             if (whichDiameterDist == 1) then
                 d2 = dpa
             else
@@ -1371,10 +1342,10 @@ subroutine calculateSplash
             Ec = Ed2*(1.0 - tau_f(1)/tau_s)
             Eeff = max(Ec, 0.1*Ed2)
             if (Ed1 > Eeff) then
-                lambda = 2.0*log((1.0 - eBar**2)*E1/Eeff)
+                lambda = 2.0*log((1.0 - e**2)*E1/Eeff)
                 sigma = sqrt(lambda)*log(2.0)
-                mu = log((1.0 - eBar**2)*E1) - lambda*log(2.0)
-                E2Bar = Eeff*((1.0 - eBar**2)*E1/Eeff)**(1.0 - (2.0 - log(2.0))*log(2.0))
+                mu = log((1.0 - e**2)*E1) - lambda*log(2.0)
+                E2Bar = Eeff*((1.0 - e**2)*E1/Eeff)**(1.0 - (2.0 - log(2.0))*log(2.0))
                 merfc = erfc((log(Eeff) - mu)/(sqrt(2.0)*sigma))
                 ejectNum = floor(Ed1/(2.0*E2Bar)*merfc)
             else

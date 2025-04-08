@@ -58,19 +58,22 @@ def calculate_x_min(d1, d2, d3, theta1):
     d23 = (d2 + d3)/2
     cos1 = (1 + d13**2 - d23**2)/(2*d13)
     cos2 = (1 + d23**2 - d13**2)/(2*d23)
-    theta_c = np.arccos(cos1) + np.arccos(cos2) - np.pi/2
+    gamma = np.arccos(cos1)
+    delta = np.arccos(cos2)
+    theta_c = gamma + delta - np.pi/2
     l_r = (1 + d23**2 - d13**2)/(2*d23)
     if theta1 <= theta_c:
         x_min = d13/np.sin(theta1) - d23
     else:
         x_min = np.sqrt(1 - l_r**2)/np.tan(theta1) - l_r
-    return x_min
+    return x_min, delta
 
 def calculate_x_max(alpha, beta, theta1):
     x_max_try = 1/np.sin(theta1)
     x_min_try = 1/np.tan(theta1)
     attempt_num = 100
     delta_x = (x_max_try - x_min_try)/attempt_num
+    xx = x_min_try
     for n in range(1, attempt_num + 1):
         x = x_min_try + n*delta_x
         x_sin_square = x**2*np.sin(theta1)**2
@@ -79,7 +82,8 @@ def calculate_x_max(alpha, beta, theta1):
         neq_RHS = x_sin_square - x_cos*np.sqrt(1 - x_sin_square)
         if neq_LHS < neq_RHS:
             break
-    x_max = x
+        xx = x
+    x_max = xx
     return x_max
 
 
@@ -100,6 +104,12 @@ def calculate_e_bar(alpha, beta, x_min, x_max, theta1):
     e_vz = (eqz_xmax - eqz_xmin)/(x_max - x_min)*np.sin(theta1)
     e_bar = np.sqrt(e_vx**2 + e_vz**2)
     return e_bar, e_vz
+
+def calculate_e(alpha, beta, x, theta1):
+    e_vx = -alpha*np.cos(theta1) + (alpha + beta)*x**2*np.sin(theta1)**2*np.cos(theta1) + (alpha + beta)*x*np.sin(theta1)**2*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    e_vz = alpha*np.sin(theta1) - (alpha + beta)*x**2*np.sin(theta1)**3 + (alpha + beta)*x*np.sin(theta1)*np.cos(theta1)*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    e = np.sqrt(e_vx**2 + e_vz**2)
+    return e, e_vz
 
 def calculate_e_bar_simple(d2_hat, theta1, alpha, beta):
     e_bar = beta - (beta**2 - alpha**2)*d2_hat*theta1/(2*beta)
@@ -129,15 +139,29 @@ def calculate_rebound_angle(d2_hat, theta1, alpha, beta):
             break
     return theta2
 
-def calculate_survive(d1, d2, d3, theta1, g, v2_x, v2_z, e):
-    x = d2*(d1+d2+d3) - d1*d3
-    y = (d1 + d2)*(d2 + d3)
-    psi = np.arccos(x/y)
-    psi = min(psi, theta1)
+def calculate_survive(d1, d2, psi, g, v2_x, v2_z, e):
     zb = (1.0 - np.sin(psi))*0.5*(d1 + d2)
     z_final = v2_z**2/(2.0*g)
     if z_final > zb:
-        res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - 0.5*d2
+        res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - 0.5*(d1 + d2)*np.cos(psi)
+    else:
+        res_x = -1
+    if res_x <= 0.0 or e <= 0.0:
+        is_survive = False
+    else:
+        is_survive = True
+    return is_survive
+
+def calculate_survive1(d1, d2, v1, theta1, x, g, v2_x, v2_z, e):
+    v1_vec = np.array([v1*np.cos(theta1), v1*np.sin(theta1)])
+    x_vec = np.array([x, 0])
+    t = x_vec @ v1_vec / (v1**2) + (1/v1**2)*np.sqrt((1-x**2)*v1**2 + (x_vec @ v1_vec)**2)
+    v1t = v1 * t
+    zb = (1 - v1t*np.sin(theta1))*0.5*(d1 + d2)
+    z_final = v2_z**2/(2.0*g)
+    if z_final > zb:
+        x_distance = (v1t*np.cos(theta1) - x)*0.5*(d1 + d2)
+        res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - x_distance
     else:
         res_x = -1
     if res_x <= 0.0 or e <= 0.0:
@@ -147,8 +171,8 @@ def calculate_survive(d1, d2, d3, theta1, g, v2_x, v2_z, e):
     return is_survive
 
 #-------------------------------------------------------------------
-distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
-variation_param = 0 # 0: v1, 1: theta1
+distribution = 2 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
+variation_param = 1 # 0: v1, 1: theta1
 d_min = 1e-4
 d_max = 10e-4
 normal_E = 4e-4
@@ -164,13 +188,13 @@ epsilon = 0.78
 nu = -0.13
 v1_hat_single = 5
 theta1_single = np.pi/12
-v1_hat_start = 0
-v1_hat_end = 100
+v1_hat_start = 1
+v1_hat_end = 10
 case_num = 100
 theta1_start = np.pi/180
-theta1_end = np.pi/1.9
+theta1_end = np.pi/2
 theta2_num = 60
-num_samples = 200
+num_samples = 100
 #------------------------------------------------------------------
 # impact velocity
 if variation_param == 0:
@@ -189,19 +213,25 @@ if distribution == 0:
 elif distribution == 1:
     mu, sigma = get_normal_params(normal_E, normal_D)
     d1_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, num_samples)
-    d_mid = np.percentile(d1_array, 50)
-    #d_mid = np.percentile(d1_array, 90)
+    #d_mid = np.percentile(d1_array, 50)
+    d_mid = np.percentile(d1_array, 90)
 elif distribution == 2:
-    d1_mid = d_min
-    #d_mid = (d_min + d_max) * 0.5
+    #d_mid = d_min
+    d_mid = (d_min + d_max) * 0.5
 d1 = d_mid
 m_in = np.pi * d1**3 / 6 * rho
 E_in = m_in * g * d1 * 10
 
 d2_list = []
-rebound_ratio_list = []
+rebound_ratio_list_0 = []
 rebound_ratio_list_1 = []
 rebound_ratio_list_2 = []
+e_bar_list_0 = []
+e_bar_list_1 = []
+e_bar_list_2 = []
+e_z_bar_list_0 = []
+e_z_bar_list_1 = []
+e_z_bar_list_2 = []
 
 for x in tqdm(x_array):
     if variation_param == 0:
@@ -209,7 +239,14 @@ for x in tqdm(x_array):
     elif variation_param == 1:
         theta1 = x
     rebound_num_array = [0, 0, 0]
+    rebound_ratio_array = [0, 0, 0]
     d3_list = []
+    e_list_0 = []
+    e_list_1 = []
+    e_list_2 = []
+    ez_list_0 = []
+    ez_list_1 = []
+    ez_list_2 = []
     while len(d3_list) < num_samples:
         if distribution == 0:
             d_array = np.random.uniform(d_min, d_max, size=3)
@@ -223,7 +260,7 @@ for x in tqdm(x_array):
             d_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, 3)
             #d1 = d_array[0]
             d2 = d_array[1]
-            d3 = d_array[1]
+            d3 = d_array[2]
             d2_list.append(d2)
             d3_list.append(d3)
         elif distribution == 2:
@@ -256,7 +293,6 @@ for x in tqdm(x_array):
                 d3_list.append(d3)
         for i in range(3):
             if i == 1:
-                d2 = d2
                 d3 = d2
             elif i == 2:
                 d2 = d1
@@ -271,30 +307,98 @@ for x in tqdm(x_array):
             mu = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
             alpha = (1 + epsilon)/(1 + mu) - 1
             beta = 1 - (2/7)*(1 - nu)/(1 + mu)
-            x_min = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
+            x_min, psi = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
             x_max = calculate_x_max(alpha, beta, theta1)
-            e, evz = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
-            v2 = v1*e
-            v2_z = v1*evz
+            if x_min < x_max:
+                e, evz = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
+                x0_hat = np.random.uniform(x_min, x_max)
+                e0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+            else:
+                d_temp = d2
+                d2 = d3
+                d3 = d_temp
+                #d3 = d2
+                d = (d1 + d2)/2
+                d1_hat = d1/d
+                d2_hat = d2/d
+                d3_hat = d3/d
+                mu = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
+                alpha = (1 + epsilon)/(1 + mu) - 1
+                beta = 1 - (2/7)*(1 - nu)/(1 + mu)
+                x_min, psi = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
+                x_max = calculate_x_max(alpha, beta, theta1)
+                e, evz = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
+                x0_hat = np.random.uniform(x_min, x_max)
+                e0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+            ez = evz/np.sin(theta1)
+            if i == 0:
+                e_list_0.append(e)
+                ez_list_0.append(ez)
+            elif i == 1:
+                e_list_1.append(e)
+                ez_list_1.append(ez)
+            elif i == 2:
+                e_list_2.append(e)
+                ez_list_2.append(ez)
+            v2 = e0*v1
+            v2_z = v1*evz0
             v2_x = np.sqrt(v2**2 - v2_z**2)
-            # TODO: check function calculate_survive
-            # survive or not
-            is_survive = calculate_survive(d1, d2, d3, theta1, g, v2_x, v2_z, e)
+            #is_survive = calculate_survive(d1, d2, psi, g, v2_x, v2_z, e0)
+            is_survive = calculate_survive1(d1, d2, v1, theta1, x0_hat, g, v2_x, v2_z, e0)
             if is_survive:
                 rebound_num_array[i] += 1
-    rebound_ratio = rebound_num/num_samples
-    rebound_ratio_1 = rebound_num_1/num_samples
-    rebound_ratio_2 = rebound_num_2/num_samples
-    rebound_ratio_list.append(rebound_ratio)
-    rebound_ratio_list_1.append(rebound_ratio_1)
-    rebound_ratio_list_2.append(rebound_ratio_2)
-plt.plot(x_array, rebound_ratio_list, 'ro-', label='d1, d2, d3')
-plt.plot(x_array, rebound_ratio_list_1, 'bo-', label='d1, d2=d3')
-plt.plot(x_array, rebound_ratio_list_2, 'go-', label='d1=d2=d3')
+    e_bar_0 = np.mean(e_list_0)
+    e_bar_1 = np.mean(e_list_1)
+    e_bar_2 = np.mean(e_list_2)
+    ez_bar_0 = np.mean(ez_list_0)
+    ez_bar_1 = np.mean(ez_list_1)
+    ez_bar_2 = np.mean(ez_list_2)
+    e_bar_list_0.append(e_bar_0)
+    e_bar_list_1.append(e_bar_1)
+    e_bar_list_2.append(e_bar_2)
+    e_z_bar_list_0.append(ez_bar_0)
+    e_z_bar_list_1.append(ez_bar_1)
+    e_z_bar_list_2.append(ez_bar_2)
+    rebound_ratio_array = [rebound_num_array[i]/num_samples for i in range(3)]
+    rebound_ratio_list_0.append(rebound_ratio_array[0])
+    rebound_ratio_list_1.append(rebound_ratio_array[1])
+    rebound_ratio_list_2.append(rebound_ratio_array[2])
+
+plt.figure(1)
 if variation_param == 0:
     plt.xlabel('v1_hat')
 elif variation_param == 1:
-    plt.xlabel('Impact Angle (rad)')
+    plt.xlabel('Impact Angle (degrees)')
+    x_array = np.rad2deg(x_array)
+plt.plot(x_array, e_bar_list_0, 'r-', label='d1, d2, d3')
+plt.plot(x_array, e_bar_list_1, 'b-', label='d1, d2=d3')
+plt.plot(x_array, e_bar_list_2, 'g-', label='d1=d2=d3')
+plt.ylabel(r'$\bar{e}$')
+plt.legend()
+
+plt.figure(2)
+if variation_param == 0:
+    plt.xlabel('v1_hat')
+elif variation_param == 1:
+    plt.xlabel('Impact Angle (degrees)')
+plt.plot(x_array, e_z_bar_list_0, 'r-', label='d1, d2, d3')
+plt.plot(x_array, e_z_bar_list_1, 'b-', label='d1, d2=d3')
+plt.plot(x_array, e_z_bar_list_2, 'g-', label='d1=d2=d3')
+plt.ylabel(r'$\bar{e_z}$')
+plt.legend()
+
+plt.figure(3)
+if variation_param == 0:
+    plt.xlabel('v1_hat')
+    plt.semilogx(x_array, rebound_ratio_list_0, 'r-', label='d1, d2, d3')
+    plt.semilogx(x_array, rebound_ratio_list_1, 'b-', label='d1, d2=d3')
+    plt.semilogx(x_array, rebound_ratio_list_2, 'g-', label='d1=d2=d3')
+elif variation_param == 1:
+    plt.xlabel('Impact Angle (degrees)')
+    plt.plot(x_array, rebound_ratio_list_0, 'r-', label='d1, d2, d3')
+    plt.plot(x_array, rebound_ratio_list_1, 'b-', label='d1, d2=d3')
+    plt.plot(x_array, rebound_ratio_list_2, 'g-', label='d1=d2=d3')
 plt.ylabel('Rebound Ratio')
 plt.legend()
+
 plt.show()
