@@ -1260,12 +1260,14 @@ subroutine calculateSplash
             v2 = e*v1
             v2z = eVz*v1
             v2x = sqrt(v2**2 - v2z**2)
-            tt = xin*v1*cos(angin1)/(v1**2) + (1.0/v1**2)*sqrt((1.0-xin**2)*v1**2 + &
-                (xin*v1*cos(angin1))**2)
-            v1t = v1*tt
-            zb = (1.0 - v1t*sin(angin1))*0.5*(d1 + d2)
+            !tt = xin*v1*cos(angin1)/(v1**2) + (1.0/v1**2)*sqrt((1.0-xin**2)*v1**2 + &
+            !    (xin*v1*cos(angin1))**2)
+            !v1t = v1*tt
+            !zb = (1.0 - v1t*sin(angin1))*0.5*(d1 + d2)
+            zb = (1.0 - sin(psi))*0.5*(d1 + d2)
             if (v2z**2/(2.0*gHat) > zb) then
-                xc = (v1t*cos(angin1) - xin)*0.5*(d1 + d2)
+                !xc = (v1t*cos(angin1) - xin)*0.5*(d1 + d2)
+                xc = cos(psi)*0.5*(d1 + d2)
                 remx = (sqrt((v2z/gHat)**2 - (2.0*zb)/gHat) + v2z/gHat)*v2x - xc
             else
                 remx = -1.0

@@ -161,7 +161,11 @@ def calculate_survive1(d1, d2, v1, theta1, x, g, v2_x, v2_z, e):
     z_final = v2_z**2/(2.0*g)
     if z_final > zb:
         x_distance = (v1t*np.cos(theta1) - x)*0.5*(d1 + d2)
-        res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - x_distance
+        x_min_try = 1/np.tan(theta1)*0.5*(d1 + d2)
+        if x_distance < x_min_try:
+            res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - x_distance
+        else:
+            res_x = 1
     else:
         res_x = -1
     if res_x <= 0.0 or e <= 0.0:
@@ -171,8 +175,8 @@ def calculate_survive1(d1, d2, v1, theta1, x, g, v2_x, v2_z, e):
     return is_survive
 
 #-------------------------------------------------------------------
-distribution = 2 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
-variation_param = 1 # 0: v1, 1: theta1
+distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
+variation_param = 0 # 0: v1, 1: theta1
 d_min = 1e-4
 d_max = 10e-4
 normal_E = 4e-4
@@ -343,8 +347,8 @@ for x in tqdm(x_array):
             v2 = e0*v1
             v2_z = v1*evz0
             v2_x = np.sqrt(v2**2 - v2_z**2)
-            #is_survive = calculate_survive(d1, d2, psi, g, v2_x, v2_z, e0)
-            is_survive = calculate_survive1(d1, d2, v1, theta1, x0_hat, g, v2_x, v2_z, e0)
+            is_survive = calculate_survive(d1, d2, psi, g, v2_x, v2_z, e0)
+            #is_survive = calculate_survive1(d1, d2, v1, theta1, x0_hat, g, v2_x, v2_z, e0)
             if is_survive:
                 rebound_num_array[i] += 1
     e_bar_0 = np.mean(e_list_0)
