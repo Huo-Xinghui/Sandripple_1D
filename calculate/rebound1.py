@@ -86,7 +86,7 @@ def calculate_x_max(alpha, beta, theta1):
     x_max = xx
     return x_max
 
-
+#TODO: evx计算有问题？
 def calculate_e_bar(alpha, beta, x_min, x_max, theta1):
     xmin_sin_square = x_min**2*np.sin(theta1)**2
     xmax_sin_square = x_max**2*np.sin(theta1)**2
@@ -176,7 +176,7 @@ def calculate_survive1(d1, d2, v1, theta1, x, g, v2_x, v2_z, e):
 
 #-------------------------------------------------------------------
 distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
-variation_param = 0 # 0: v1, 1: theta1
+variation_param = 1 # 0: v1, 1: theta1
 d_min = 1e-4
 d_max = 10e-4
 normal_E = 4e-4
@@ -230,12 +230,21 @@ d2_list = []
 rebound_ratio_list_0 = []
 rebound_ratio_list_1 = []
 rebound_ratio_list_2 = []
+rebound_ratio0_list_0 = []
+rebound_ratio0_list_1 = []
+rebound_ratio0_list_2 = []
 e_bar_list_0 = []
 e_bar_list_1 = []
 e_bar_list_2 = []
-e_z_bar_list_0 = []
-e_z_bar_list_1 = []
-e_z_bar_list_2 = []
+e0_bar_list_0 = []
+e0_bar_list_1 = []
+e0_bar_list_2 = []
+ez_bar_list_0 = []
+ez_bar_list_1 = []
+ez_bar_list_2 = []
+ez0_bar_list_0 = []
+ez0_bar_list_1 = []
+ez0_bar_list_2 = []
 
 for x in tqdm(x_array):
     if variation_param == 0:
@@ -243,14 +252,28 @@ for x in tqdm(x_array):
     elif variation_param == 1:
         theta1 = x
     rebound_num_array = [0, 0, 0]
+    rebound_num_array0 = [0, 0, 0]
     rebound_ratio_array = [0, 0, 0]
+    rebound_ratio_array0 = [0, 0, 0]
     d3_list = []
     e_list_0 = []
     e_list_1 = []
     e_list_2 = []
+    e0_list_0 = []
+    e0_list_1 = []
+    e0_list_2 = []
     ez_list_0 = []
     ez_list_1 = []
     ez_list_2 = []
+    ez0_list_0 = []
+    ez0_list_1 = []
+    ez0_list_2 = []
+    theta2_list_0 = []
+    theta2_list_1 = []
+    theta2_list_2 = []
+    theta20_list_0 = []
+    theta20_list_1 = []
+    theta20_list_2 = []
     while len(d3_list) < num_samples:
         if distribution == 0:
             d_array = np.random.uniform(d_min, d_max, size=3)
@@ -335,38 +358,75 @@ for x in tqdm(x_array):
                 x0_hat = np.random.uniform(x_min, x_max)
                 e0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
             ez = evz/np.sin(theta1)
+            ez0 = evz0/np.sin(theta1)
+            theta2 = np.arcsin(evz/e)
+            theta20 = np.arcsin(evz0/e0)
             if i == 0:
                 e_list_0.append(e)
+                e0_list_0.append(e0)
                 ez_list_0.append(ez)
+                ez0_list_0.append(ez0)
+                theta2_list_0.append(theta2)
+                theta20_list_0.append(theta20)
             elif i == 1:
                 e_list_1.append(e)
+                e0_list_1.append(e0)
                 ez_list_1.append(ez)
+                ez0_list_1.append(ez0)
+                theta2_list_1.append(theta2)
+                theta20_list_1.append(theta20)
             elif i == 2:
                 e_list_2.append(e)
+                e0_list_2.append(e0)
                 ez_list_2.append(ez)
-            v2 = e0*v1
-            v2_z = v1*evz0
+                ez0_list_2.append(ez0)
+                theta2_list_2.append(theta2)
+                theta20_list_2.append(theta20)
+            v2 = e*v1
+            v20 = e0*v1
+            v2_z = v1*evz
+            v2_z0 = v1*evz0
             v2_x = np.sqrt(v2**2 - v2_z**2)
+            v2_x0 = np.sqrt(v20**2 - v2_z0**2)
             is_survive = calculate_survive(d1, d2, psi, g, v2_x, v2_z, e0)
+            is_survive0 = calculate_survive(d1, d2, psi, g, v2_x0, v2_z0, e0)
             #is_survive = calculate_survive1(d1, d2, v1, theta1, x0_hat, g, v2_x, v2_z, e0)
             if is_survive:
                 rebound_num_array[i] += 1
+            if is_survive0:
+                rebound_num_array0[i] += 1
     e_bar_0 = np.mean(e_list_0)
     e_bar_1 = np.mean(e_list_1)
     e_bar_2 = np.mean(e_list_2)
+    e0_bar_0 = np.mean(e0_list_0)
+    e0_bar_1 = np.mean(e0_list_1)
+    e0_bar_2 = np.mean(e0_list_2)
     ez_bar_0 = np.mean(ez_list_0)
     ez_bar_1 = np.mean(ez_list_1)
     ez_bar_2 = np.mean(ez_list_2)
+    ez0_bar_0 = np.mean(ez0_list_0)
+    ez0_bar_1 = np.mean(ez0_list_1)
+    ez0_bar_2 = np.mean(ez0_list_2)
     e_bar_list_0.append(e_bar_0)
     e_bar_list_1.append(e_bar_1)
     e_bar_list_2.append(e_bar_2)
-    e_z_bar_list_0.append(ez_bar_0)
-    e_z_bar_list_1.append(ez_bar_1)
-    e_z_bar_list_2.append(ez_bar_2)
+    e0_bar_list_0.append(e0_bar_0)
+    e0_bar_list_1.append(e0_bar_1)
+    e0_bar_list_2.append(e0_bar_2)
+    ez_bar_list_0.append(ez_bar_0)
+    ez_bar_list_1.append(ez_bar_1)
+    ez_bar_list_2.append(ez_bar_2)
+    ez0_bar_list_0.append(ez0_bar_0)
+    ez0_bar_list_1.append(ez0_bar_1)
+    ez0_bar_list_2.append(ez0_bar_2)
     rebound_ratio_array = [rebound_num_array[i]/num_samples for i in range(3)]
+    rebound_ratio_array0 = [rebound_num_array0[i]/num_samples for i in range(3)]
     rebound_ratio_list_0.append(rebound_ratio_array[0])
     rebound_ratio_list_1.append(rebound_ratio_array[1])
     rebound_ratio_list_2.append(rebound_ratio_array[2])
+    rebound_ratio0_list_0.append(rebound_ratio_array0[0])
+    rebound_ratio0_list_1.append(rebound_ratio_array0[1])
+    rebound_ratio0_list_2.append(rebound_ratio_array0[2])
 
 plt.figure(1)
 if variation_param == 0:
@@ -374,9 +434,12 @@ if variation_param == 0:
 elif variation_param == 1:
     plt.xlabel('Impact Angle (degrees)')
     x_array = np.rad2deg(x_array)
-plt.plot(x_array, e_bar_list_0, 'r-', label='d1, d2, d3')
-plt.plot(x_array, e_bar_list_1, 'b-', label='d1, d2=d3')
-plt.plot(x_array, e_bar_list_2, 'g-', label='d1=d2=d3')
+plt.plot(x_array, e_bar_list_0, 'r-', label='ebar: d1, d2, d3')
+plt.plot(x_array, e0_bar_list_0, 'r--', label='e: d1, d2, d3')
+plt.plot(x_array, e_bar_list_1, 'b-', label='ebar: d1, d2=d3')
+plt.plot(x_array, e0_bar_list_1, 'b--', label='e: d1, d2=d3')
+plt.plot(x_array, e_bar_list_2, 'g-', label='ebar: d1=d2=d3')
+plt.plot(x_array, e0_bar_list_2, 'g--', label='e: d1=d2=d3')
 plt.ylabel(r'$\bar{e}$')
 plt.legend()
 
@@ -385,23 +448,32 @@ if variation_param == 0:
     plt.xlabel('v1_hat')
 elif variation_param == 1:
     plt.xlabel('Impact Angle (degrees)')
-plt.plot(x_array, e_z_bar_list_0, 'r-', label='d1, d2, d3')
-plt.plot(x_array, e_z_bar_list_1, 'b-', label='d1, d2=d3')
-plt.plot(x_array, e_z_bar_list_2, 'g-', label='d1=d2=d3')
+plt.plot(x_array, ez_bar_list_0, 'r-', label='ebar: d1, d2, d3')
+plt.plot(x_array, ez0_bar_list_0, 'r--', label='e: d1, d2, d3')
+plt.plot(x_array, ez_bar_list_1, 'b-', label='ebar: d1, d2=d3')
+plt.plot(x_array, ez0_bar_list_1, 'b--', label='e: d1, d2=d3')
+plt.plot(x_array, ez_bar_list_2, 'g-', label='ebar: d1=d2=d3')
+plt.plot(x_array, ez0_bar_list_2, 'g--', label='e: d1=d2=d3')
 plt.ylabel(r'$\bar{e_z}$')
 plt.legend()
 
 plt.figure(3)
 if variation_param == 0:
     plt.xlabel('v1_hat')
-    plt.semilogx(x_array, rebound_ratio_list_0, 'r-', label='d1, d2, d3')
-    plt.semilogx(x_array, rebound_ratio_list_1, 'b-', label='d1, d2=d3')
-    plt.semilogx(x_array, rebound_ratio_list_2, 'g-', label='d1=d2=d3')
+    plt.semilogx(x_array, rebound_ratio_list_0, 'r-', label='ebar: d1, d2, d3')
+    plt.semilogx(x_array, rebound_ratio0_list_0, 'r--', label='e: d1, d2, d3')
+    plt.semilogx(x_array, rebound_ratio_list_1, 'b-', label='ebar: d1, d2=d3')
+    plt.semilogx(x_array, rebound_ratio0_list_1, 'b--', label='e: d1, d2=d3')
+    plt.semilogx(x_array, rebound_ratio_list_2, 'g-', label='ebar: d1=d2=d3')
+    plt.semilogx(x_array, rebound_ratio0_list_2, 'g--', label='e: d1=d2=d3')
 elif variation_param == 1:
     plt.xlabel('Impact Angle (degrees)')
-    plt.plot(x_array, rebound_ratio_list_0, 'r-', label='d1, d2, d3')
-    plt.plot(x_array, rebound_ratio_list_1, 'b-', label='d1, d2=d3')
-    plt.plot(x_array, rebound_ratio_list_2, 'g-', label='d1=d2=d3')
+    plt.plot(x_array, rebound_ratio_list_0, 'r-', label='ebar: d1, d2, d3')
+    plt.plot(x_array, rebound_ratio0_list_0, 'r--', label='e: d1, d2, d3')
+    plt.plot(x_array, rebound_ratio_list_1, 'b-', label='ebar: d1, d2=d3')
+    plt.plot(x_array, rebound_ratio0_list_1, 'b--', label='e: d1, d2=d3')
+    plt.plot(x_array, rebound_ratio_list_2, 'g-', label='ebar: d1=d2=d3')
+    plt.plot(x_array, rebound_ratio0_list_2, 'g--', label='e: d1=d2=d3')
 plt.ylabel('Rebound Ratio')
 plt.legend()
 
