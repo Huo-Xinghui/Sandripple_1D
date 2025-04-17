@@ -60,13 +60,14 @@ def calculate_x_min(d1, d2, d3, theta1):
     cos2 = (1 + d23**2 - d13**2)/(2*d23)
     gamma = np.arccos(cos1)
     delta = np.arccos(cos2)
+    epsilon = np.pi - gamma - delta
     theta_c = gamma + delta - np.pi/2
     l_r = (1 + d23**2 - d13**2)/(2*d23)
     if theta1 <= theta_c:
         x_min = d13/np.sin(theta1) - d23
     else:
         x_min = np.sqrt(1 - l_r**2)/np.tan(theta1) - l_r
-    return x_min, delta
+    return x_min, delta, epsilon
 
 def calculate_x_max(alpha, beta, theta1):
     x_max_try = 1/np.sin(theta1)
@@ -86,7 +87,6 @@ def calculate_x_max(alpha, beta, theta1):
     x_max = xx
     return x_max
 
-#TODO: evx计算有问题？
 def calculate_e_bar(alpha, beta, x_min, x_max, theta1):
     xmin_sin_square = x_min**2*np.sin(theta1)**2
     xmax_sin_square = x_max**2*np.sin(theta1)**2
@@ -102,14 +102,15 @@ def calculate_e_bar(alpha, beta, x_min, x_max, theta1):
     eqz_xmin = alpha*x_min - 1/3*(alpha + beta)*(xmin_3_sin_2 + cot_theta1*csc_theta1*(1 - xmin_sin_square)**(3/2))
     eqz_xmax = alpha*x_max - 1/3*(alpha + beta)*(xmax_3_sin_2 + cot_theta1*csc_theta1*(1 - xmax_sin_square)**(3/2))
     e_vz = (eqz_xmax - eqz_xmin)/(x_max - x_min)*np.sin(theta1)
-    e_bar = np.sqrt(e_vx**2 + e_vz**2)
-    return e_bar, e_vz
+    e = np.sqrt(e_vx**2 + e_vz**2)
+    return e, e_vx, e_vz
 
 def calculate_e(alpha, beta, x, theta1):
+    # 任意x位置上的e_vx可能出现小于0的情况，但其在xmin和xmax范围内的积分是正的
     e_vx = -alpha*np.cos(theta1) + (alpha + beta)*x**2*np.sin(theta1)**2*np.cos(theta1) + (alpha + beta)*x*np.sin(theta1)**2*np.sqrt(1 - x**2*np.sin(theta1)**2)
     e_vz = alpha*np.sin(theta1) - (alpha + beta)*x**2*np.sin(theta1)**3 + (alpha + beta)*x*np.sin(theta1)*np.cos(theta1)*np.sqrt(1 - x**2*np.sin(theta1)**2)
     e = np.sqrt(e_vx**2 + e_vz**2)
-    return e, e_vz
+    return e, e_vx, e_vz
 
 def calculate_e_bar_simple(d2_hat, theta1, alpha, beta):
     e_bar = beta - (beta**2 - alpha**2)*d2_hat*theta1/(2*beta)
@@ -139,11 +140,21 @@ def calculate_rebound_angle(d2_hat, theta1, alpha, beta):
             break
     return theta2
 
-def calculate_survive(d1, d2, psi, g, v2_x, v2_z, e):
-    zb = (1.0 - np.sin(psi))*0.5*(d1 + d2)
-    z_final = v2_z**2/(2.0*g)
-    if z_final > zb:
-        res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - 0.5*(d1 + d2)*np.cos(psi)
+def calculate_survive(d1, d2, d3, psi1, psi2, g, v2_x, v2_z, e):
+    if v2_x > 0.0:
+        zb = (1.0 - np.sin(psi1))*0.5*(d1 + d2)
+        z_final = v2_z**2/(2.0*g)
+        if z_final > zb:
+            res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - 0.5*(d1 + d2)*np.cos(psi1)
+        else:
+            res_x = -1
+    elif v2_x < 0.0:
+        zb = (1.0 - np.sin(psi2))*0.5*(d1 + d3)
+        z_final = v2_z**2/(2.0*g)
+        if z_final > zb:
+            res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - 0.5*(d1 + d3)*np.cos(psi2)
+        else:
+            res_x = -1
     else:
         res_x = -1
     if res_x <= 0.0 or e <= 0.0:
@@ -196,9 +207,9 @@ v1_hat_start = 1
 v1_hat_end = 10
 case_num = 100
 theta1_start = np.pi/180
-theta1_end = np.pi/2
+theta1_end = np.pi/2.1
 theta2_num = 60
-num_samples = 100
+num_samples = 1000
 #------------------------------------------------------------------
 # impact velocity
 if variation_param == 0:
@@ -242,9 +253,15 @@ e0_bar_list_2 = []
 ez_bar_list_0 = []
 ez_bar_list_1 = []
 ez_bar_list_2 = []
+ex_bar_list_0 = []
+ex_bar_list_1 = []
+ex_bar_list_2 = []
 ez0_bar_list_0 = []
 ez0_bar_list_1 = []
 ez0_bar_list_2 = []
+ex0_bar_list_0 = []
+ex0_bar_list_1 = []
+ex0_bar_list_2 = []
 
 for x in tqdm(x_array):
     if variation_param == 0:
@@ -262,6 +279,12 @@ for x in tqdm(x_array):
     e0_list_0 = []
     e0_list_1 = []
     e0_list_2 = []
+    ex_list_0 = []
+    ex_list_1 = []
+    ex_list_2 = []
+    ex0_list_0 = []
+    ex0_list_1 = []
+    ex0_list_2 = []
     ez_list_0 = []
     ez_list_1 = []
     ez_list_2 = []
@@ -318,6 +341,10 @@ for x in tqdm(x_array):
                 ):
                 d2_list.append(d2)
                 d3_list.append(d3)
+        # 三种情况:
+        # d1, d2, d3分别为不同的直径
+        # d1, d2=d3
+        # d1=d2=d3
         for i in range(3):
             if i == 1:
                 d3 = d2
@@ -334,12 +361,12 @@ for x in tqdm(x_array):
             mu = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
             alpha = (1 + epsilon)/(1 + mu) - 1
             beta = 1 - (2/7)*(1 - nu)/(1 + mu)
-            x_min, psi = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
+            x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
             x_max = calculate_x_max(alpha, beta, theta1)
             if x_min < x_max:
-                e, evz = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
+                e, evx, evz = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
                 x0_hat = np.random.uniform(x_min, x_max)
-                e0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
             else:
                 d_temp = d2
                 d2 = d3
@@ -352,44 +379,52 @@ for x in tqdm(x_array):
                 mu = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
                 alpha = (1 + epsilon)/(1 + mu) - 1
                 beta = 1 - (2/7)*(1 - nu)/(1 + mu)
-                x_min, psi = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
+                x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
                 x_max = calculate_x_max(alpha, beta, theta1)
-                e, evz = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
+                e, evx, evz = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
                 x0_hat = np.random.uniform(x_min, x_max)
-                e0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
             ez = evz/np.sin(theta1)
+            ex = evx/np.cos(theta1)
             ez0 = evz0/np.sin(theta1)
+            ex0 = evx0/np.cos(theta1)
             theta2 = np.arcsin(evz/e)
             theta20 = np.arcsin(evz0/e0)
             if i == 0:
                 e_list_0.append(e)
                 e0_list_0.append(e0)
                 ez_list_0.append(ez)
+                ex_list_0.append(ex)
                 ez0_list_0.append(ez0)
+                ex0_list_0.append(ex0)
                 theta2_list_0.append(theta2)
                 theta20_list_0.append(theta20)
             elif i == 1:
                 e_list_1.append(e)
                 e0_list_1.append(e0)
                 ez_list_1.append(ez)
+                ex_list_1.append(ex)
                 ez0_list_1.append(ez0)
+                ex0_list_1.append(ex0)
                 theta2_list_1.append(theta2)
                 theta20_list_1.append(theta20)
             elif i == 2:
                 e_list_2.append(e)
                 e0_list_2.append(e0)
                 ez_list_2.append(ez)
+                ex_list_2.append(ex)
                 ez0_list_2.append(ez0)
+                ex0_list_2.append(ex0)
                 theta2_list_2.append(theta2)
                 theta20_list_2.append(theta20)
             v2 = e*v1
             v20 = e0*v1
             v2_z = v1*evz
             v2_z0 = v1*evz0
-            v2_x = np.sqrt(v2**2 - v2_z**2)
-            v2_x0 = np.sqrt(v20**2 - v2_z0**2)
-            is_survive = calculate_survive(d1, d2, psi, g, v2_x, v2_z, e0)
-            is_survive0 = calculate_survive(d1, d2, psi, g, v2_x0, v2_z0, e0)
+            v2_x = v1*evx
+            v2_x0 = v1*evx0
+            is_survive = calculate_survive(d1, d2, d3, psi1, psi2, g, v2_x, v2_z, e)
+            is_survive0 = calculate_survive(d1, d2, d3, psi1, psi2, g, v2_x0, v2_z0, e0)
             #is_survive = calculate_survive1(d1, d2, v1, theta1, x0_hat, g, v2_x, v2_z, e0)
             if is_survive:
                 rebound_num_array[i] += 1
@@ -407,6 +442,12 @@ for x in tqdm(x_array):
     ez0_bar_0 = np.mean(ez0_list_0)
     ez0_bar_1 = np.mean(ez0_list_1)
     ez0_bar_2 = np.mean(ez0_list_2)
+    ex_bar_0 = np.mean(ex_list_0)
+    ex_bar_1 = np.mean(ex_list_1)
+    ex_bar_2 = np.mean(ex_list_2)
+    ex0_bar_0 = np.mean(ex0_list_0)
+    ex0_bar_1 = np.mean(ex0_list_1)
+    ex0_bar_2 = np.mean(ex0_list_2)
     e_bar_list_0.append(e_bar_0)
     e_bar_list_1.append(e_bar_1)
     e_bar_list_2.append(e_bar_2)
@@ -416,9 +457,15 @@ for x in tqdm(x_array):
     ez_bar_list_0.append(ez_bar_0)
     ez_bar_list_1.append(ez_bar_1)
     ez_bar_list_2.append(ez_bar_2)
+    ex_bar_list_0.append(ex_bar_0)
+    ex_bar_list_1.append(ex_bar_1)
+    ex_bar_list_2.append(ex_bar_2)
     ez0_bar_list_0.append(ez0_bar_0)
     ez0_bar_list_1.append(ez0_bar_1)
     ez0_bar_list_2.append(ez0_bar_2)
+    ex0_bar_list_0.append(ex0_bar_0)
+    ex0_bar_list_1.append(ex0_bar_1)
+    ex0_bar_list_2.append(ex0_bar_2)
     rebound_ratio_array = [rebound_num_array[i]/num_samples for i in range(3)]
     rebound_ratio_array0 = [rebound_num_array0[i]/num_samples for i in range(3)]
     rebound_ratio_list_0.append(rebound_ratio_array[0])
@@ -430,44 +477,73 @@ for x in tqdm(x_array):
 
 plt.figure(1)
 if variation_param == 0:
-    plt.xlabel('v1_hat')
+    plt.xlabel(r'$\hat{v}_1$')
+    plt.ylabel(r'$\langle e \rangle_{\theta}, \langle E \rangle_{\theta}$')
+    strlabel1 = r'$\langle e \rangle_{\theta}$'
+    strlabel2 = r'$\langle E \rangle_{\theta}$'
 elif variation_param == 1:
-    plt.xlabel('Impact Angle (degrees)')
     x_array = np.rad2deg(x_array)
-plt.plot(x_array, e_bar_list_0, 'r-', label='ebar: d1, d2, d3')
-plt.plot(x_array, e0_bar_list_0, 'r--', label='e: d1, d2, d3')
-plt.plot(x_array, e_bar_list_1, 'b-', label='ebar: d1, d2=d3')
-plt.plot(x_array, e0_bar_list_1, 'b--', label='e: d1, d2=d3')
-plt.plot(x_array, e_bar_list_2, 'g-', label='ebar: d1=d2=d3')
-plt.plot(x_array, e0_bar_list_2, 'g--', label='e: d1=d2=d3')
-plt.ylabel(r'$\bar{e}$')
+    plt.xlabel(r'$\theta (degree)$')
+    plt.ylabel(r'$\langle e \rangle_{\hat{v}}, \langle E \rangle_{\hat{v}}$')
+    strlabel1 = r'$\langle e \rangle_{\hat{v}}$'
+    strlabel2 = r'$\langle E \rangle_{\hat{v}}$'
+plt.plot(x_array, e0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
+plt.plot(x_array, e_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
+plt.plot(x_array, e0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
+plt.plot(x_array, e_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
+plt.plot(x_array, e0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
+plt.plot(x_array, e_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
 plt.legend()
 
 plt.figure(2)
 if variation_param == 0:
-    plt.xlabel('v1_hat')
+    plt.xlabel(r'$\hat{v}_1$')
+    plt.ylabel(r'$\langle e_z \rangle_{\theta}, \langle E_z \rangle_{\theta}$')
+    strlabel1 = r'$\langle e_z \rangle_{\theta}$'
+    strlabel2 = r'$\langle E_z \rangle_{\theta}$'
 elif variation_param == 1:
-    plt.xlabel('Impact Angle (degrees)')
-plt.plot(x_array, ez_bar_list_0, 'r-', label='ebar: d1, d2, d3')
-plt.plot(x_array, ez0_bar_list_0, 'r--', label='e: d1, d2, d3')
-plt.plot(x_array, ez_bar_list_1, 'b-', label='ebar: d1, d2=d3')
-plt.plot(x_array, ez0_bar_list_1, 'b--', label='e: d1, d2=d3')
-plt.plot(x_array, ez_bar_list_2, 'g-', label='ebar: d1=d2=d3')
-plt.plot(x_array, ez0_bar_list_2, 'g--', label='e: d1=d2=d3')
-plt.ylabel(r'$\bar{e_z}$')
+    plt.xlabel(r'$\theta (degree)$')
+    plt.ylabel(r'$\langle e_z \rangle_{\hat{v}}, \langle E_z \rangle_{\hat{v}}$')
+    strlabel1 = r'$\langle e_z \rangle_{\hat{v}}$'
+    strlabel2 = r'$\langle E_z \rangle_{\hat{v}}$'
+plt.plot(x_array, ez0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
+plt.plot(x_array, ez_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
+plt.plot(x_array, ez0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
+plt.plot(x_array, ez_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
+plt.plot(x_array, ez0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
+plt.plot(x_array, ez_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
 plt.legend()
 
 plt.figure(3)
 if variation_param == 0:
-    plt.xlabel('v1_hat')
-    plt.semilogx(x_array, rebound_ratio_list_0, 'r-', label='ebar: d1, d2, d3')
-    plt.semilogx(x_array, rebound_ratio0_list_0, 'r--', label='e: d1, d2, d3')
-    plt.semilogx(x_array, rebound_ratio_list_1, 'b-', label='ebar: d1, d2=d3')
-    plt.semilogx(x_array, rebound_ratio0_list_1, 'b--', label='e: d1, d2=d3')
-    plt.semilogx(x_array, rebound_ratio_list_2, 'g-', label='ebar: d1=d2=d3')
-    plt.semilogx(x_array, rebound_ratio0_list_2, 'g--', label='e: d1=d2=d3')
+    plt.xlabel(r'$\hat{v}_1$')
+    plt.ylabel(r'$\langle e_x \rangle_{\theta}, \langle E_x \rangle_{\theta}$')
+    strlabel1 = r'$\langle e_x \rangle_{\theta}$'
+    strlabel2 = r'$\langle E_x \rangle_{\theta}$'
 elif variation_param == 1:
-    plt.xlabel('Impact Angle (degrees)')
+    plt.xlabel(r'$\theta (degree)$')
+    plt.ylabel(r'$\langle e_x \rangle_{\hat{v}}, \langle E_x \rangle_{\hat{v}}$')
+    strlabel1 = r'$\langle e_x \rangle_{\hat{v}}$'
+    strlabel2 = r'$\langle E_x \rangle_{\hat{v}}$'
+plt.plot(x_array, ex0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
+plt.plot(x_array, ex_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
+plt.plot(x_array, ex0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
+plt.plot(x_array, ex_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
+plt.plot(x_array, ex0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
+plt.plot(x_array, ex_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
+plt.legend()
+
+plt.figure(4)
+if variation_param == 0:
+    plt.xlabel(r'$\hat{v}_1$')
+    plt.semilogx(x_array, rebound_ratio0_list_0, 'r-', label='e: d1, d2, d3')
+    plt.semilogx(x_array, rebound_ratio_list_0, 'r--', label='ebar: d1, d2, d3')
+    plt.semilogx(x_array, rebound_ratio0_list_1, 'b-', label='e: d1, d2=d3')
+    plt.semilogx(x_array, rebound_ratio_list_1, 'b--', label='ebar: d1, d2=d3')
+    plt.semilogx(x_array, rebound_ratio0_list_2, 'g-', label='e: d1=d2=d3')
+    plt.semilogx(x_array, rebound_ratio_list_2, 'g--', label='ebar: d1=d2=d3')
+elif variation_param == 1:
+    plt.xlabel(r'$\theta (degree)$')
     plt.plot(x_array, rebound_ratio_list_0, 'r-', label='ebar: d1, d2, d3')
     plt.plot(x_array, rebound_ratio0_list_0, 'r--', label='e: d1, d2, d3')
     plt.plot(x_array, rebound_ratio_list_1, 'b-', label='ebar: d1, d2=d3')

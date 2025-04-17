@@ -23,24 +23,24 @@ module public_val
     ! whichDiameterDist=1: npdf must = 1, d=dpa
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
     ! whichDiameterDist=3: npdf must >= 3, mu=logMu, sigma=logSigma
-    integer, parameter :: whichDiameterDist = 2 ! particle diameter distribution type
-    integer, parameter :: npdf = 2 ! bin num of particle distribution
+    integer, parameter :: whichDiameterDist = 1 ! particle diameter distribution type
+    integer, parameter :: npdf = 1 ! bin num of particle distribution
     integer, parameter :: pNumInit = 10 ! initial particle num
     integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
     integer, parameter :: maxNum = 100000 ! max particle num in one subdomain
     integer, parameter :: pNumInGridMax = maxNum/mxNode !/(my) ! max particle num in one x-y grid
     integer, parameter :: pNumExchMax = maxNum/10 ! max particle num for exchange between processors
-    real(kind=dbPc), parameter :: dpa = 4.0e-4 ! average particle diameter
+    real(kind=dbPc), parameter :: dpa = 3.0e-4 ! average particle diameter
     real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
-    real(kind=dbPc), parameter :: logMu = -7.9356 ! mu of lognormal distribution
-    real(kind=dbPc), parameter :: logSigma = 0.4724 ! sigma of lognormal distribution
+    real(kind=dbPc), parameter :: logMu = -8.2956 ! mu of lognormal distribution
+    real(kind=dbPc), parameter :: logSigma = 0.6064 ! sigma of lognormal distribution
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
-    real(kind=dbPc), parameter :: binStart = -1.0e-4 ! start of the particle diameter distribution
-    real(kind=dbPc), parameter :: binEnd = 11.0e-4 ! end of the particle diameter distribution
+    real(kind=dbPc), parameter :: binStart = 1.0e-4 ! start of the particle diameter distribution
+    real(kind=dbPc), parameter :: binEnd = 10.0e-4 ! end of the particle diameter distribution
     real(kind=dbPc), parameter :: binWidth = (binEnd - binStart)/npdf ! bin width of the particle diameter distribution
     real(kind=dbPc), parameter :: resN = 0.78 ! normal restitution coefficient
     real(kind=dbPc), parameter :: resT = -0.13 ! tangential restitution coefficient
-    real(kind=dbPc), parameter :: resN2 = 0.9 ! normal restitution coefficient for midair collision
+    real(kind=dbPc), parameter :: resN2 = resN ! normal restitution coefficient for midair collision
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
     ! bed surface
@@ -1016,7 +1016,7 @@ subroutine calculateSplash
     real(kind=dbPc) :: localXP, localYP
     real(kind=dbPc) :: d1, d2, d3, dRoll
     real(kind=dbPc) :: d13, d23
-    real(kind=dbPc) :: gamma, psi, angleC, xc
+    real(kind=dbPc) :: psi1, psi2, psi3, angleC, xc
     real(kind=dbPc) :: m1, m2
     real(kind=dbPc) :: v1, v2, v2z, v2x
     real(kind=dbPc) :: eta, alpha, beta, lambda, sigma, mu
@@ -1224,9 +1224,10 @@ subroutine calculateSplash
             alpha = (1.0 + resN)/(1.0 + eta) - 1.0
             beta = 1.0 - (2.0/7.0)*(1.0 - resT)/(1.0 + eta)
             angin1 = atan(abs(vin(3)/vin(1)))
-            gamma = acos((1.0 + d13**2 - d23**2)/(2.0*d13))
-            psi = acos((1.0 + d23**2 - d13**2)/(2.0*d23))
-            angleC = gamma + psi - 0.5*pi
+            psi1 = acos((1.0 + d13**2 - d23**2)/(2.0*d13))
+            psi2 = acos((1.0 + d23**2 - d13**2)/(2.0*d23))
+            psi3 = pi - psi1 - psi2
+            angleC = psi1 + psi2 - 0.5*pi
             xc = (1.0 + d23**2 - d13**2)/(2.0*d23)
             cscAngin1 = 1.0/sin(angin1)
             cotAngin1 = 1.0/tan(angin1)
@@ -1258,17 +1259,24 @@ subroutine calculateSplash
                   (alpha + beta)*xsin*cos(angin1)*sqrt(1.0 - xsin**2)
             e = sqrt(eVx**2 + eVz**2)
             v2 = e*v1
+            v2x = eVx*v1
             v2z = eVz*v1
-            v2x = sqrt(v2**2 - v2z**2)
-            !tt = xin*v1*cos(angin1)/(v1**2) + (1.0/v1**2)*sqrt((1.0-xin**2)*v1**2 + &
-            !    (xin*v1*cos(angin1))**2)
-            !v1t = v1*tt
-            !zb = (1.0 - v1t*sin(angin1))*0.5*(d1 + d2)
-            zb = (1.0 - sin(psi))*0.5*(d1 + d2)
-            if (v2z**2/(2.0*gHat) > zb) then
-                !xc = (v1t*cos(angin1) - xin)*0.5*(d1 + d2)
-                xc = cos(psi)*0.5*(d1 + d2)
-                remx = (sqrt((v2z/gHat)**2 - (2.0*zb)/gHat) + v2z/gHat)*v2x - xc
+            if (v2x > 0.0) then
+                zb = (1.0 - sin(psi2))*0.5*(d1 + d2)
+                if (v2z**2/(2.0*gHat) > zb) then
+                    xc = cos(psi2)*0.5*(d1 + d2)
+                    remx = (sqrt((v2z/gHat)**2 - (2.0*zb)/gHat) + v2z/gHat)*v2x - xc
+                else
+                    remx = -1.0
+                end if
+            else if (v2x < 0.0) then
+                zb = (1.0 - sin(psi3))*0.5*(d1 + d3)
+                if (v2z**2/(2.0*gHat) > zb) then
+                    xc = cos(psi3)*0.5*(d1 + d3)
+                    remx = (sqrt((v2z/gHat)**2 - (2.0*zb)/gHat) + v2z/gHat)*(-v2x) - xc
+                else
+                    remx = -1.0
+                end if
             else
                 remx = -1.0
             end if
@@ -1340,9 +1348,10 @@ subroutine calculateSplash
             end if
             m2 = (pi*d2**3)/6.0*rhoP
             Ed2 = m2*gHat*d2
-            tau_s = rho*0.0123*(rhoP/rho*gHat*d2 + 3.0e-4/(rho*d2))
-            Ec = Ed2*(1.0 - tau_f(1)/tau_s)
-            Eeff = max(Ec, 0.1*Ed2)
+            !tau_s = rho*0.0123*(rhoP/rho*gHat*d2 + 3.0e-4/(rho*d2))
+            !Ec = Ed2*(1.0 - tau_f(1)/tau_s)
+            !Eeff = max(Ec, 0.1*Ed2)
+            Eeff = Ed2
             if (Ed1 > Eeff) then
                 lambda = 2.0*log((1.0 - e**2)*E1/Eeff)
                 sigma = sqrt(lambda)*log(2.0)
