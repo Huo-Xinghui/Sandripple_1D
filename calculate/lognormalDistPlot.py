@@ -23,13 +23,15 @@ def get_normal_params(log_mean, log_std):
 
 
 log_mean = 3.0e-4
-log_std = 2.0e-4
-xmin = 1.0e-4
-xmax = 10e-4
+log_std = 1e-4
+xmin = 0.8e-4
+xmax = 6e-4
 xnum = 100000
 dx = xmax / xnum
 ddx = dx * 0.5
-mu, sigma = get_normal_params(log_mean, log_std)
+#mu, sigma = get_normal_params(log_mean, log_std)
+mu = -8.30271
+sigma = 0.25778
 # 生成数据点
 x = np.linspace(xmin+dx, xmax, xnum)
 x = x - ddx
@@ -49,9 +51,9 @@ plt.plot(x, y, 'r-', label='lognormal')
 plt.axvline(x50, color='r', linestyle='--', label=f'x50 = {x50:.4e}')
 plt.axvline(x90, color='b', linestyle='--', label=f'x90 = {x90:.4e}')
 plt.text(xmax, 0, f'x90/x50 = {x90/x50:.4e}', ha='right', va='bottom')
-# 绘制累计分布曲线
-#plt.plot(x, cum_y, 'b-', label='lognormal1')
-plt.semilogx(x, cum_y, 'b-', label='cumulative')
+## 绘制累计分布曲线
+##plt.plot(x, cum_y, 'b-', label='lognormal1')
+#plt.semilogx(x, cum_y, 'b-', label='cumulative')
 plt.title(f'mu={mu:.4f}, sigma={sigma:.4f}, pdf({xmax:.4f})={y[-1]:.4e}')
 plt.xlabel('Value')
 plt.ylabel('Probability Density')

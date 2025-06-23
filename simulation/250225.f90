@@ -57,7 +57,7 @@ module public_val
     real(kind=dbPc), parameter :: blockHeight = dpa*3.0 ! height of the block, must>chunkHeight. block is a temporary grid on surface
     real(kind=dbPc), parameter :: blockVol = xDiff*yDiff*blockHeight ! volume of a block
     ! fluid
-    real(kind=dbPc), parameter :: uStar = 0.50 ! fractional velocity
+    real(kind=dbPc), parameter :: uStar = 0.40 ! fractional velocity
     real(kind=dbPc), parameter :: rho = 1.263 ! fluid density
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.4 ! von Kaman's constant
@@ -1348,10 +1348,10 @@ subroutine calculateSplash
             end if
             m2 = (pi*d2**3)/6.0*rhoP
             Ed2 = m2*gHat*d2
-            !tau_s = rho*0.0123*(rhoP/rho*gHat*d2 + 3.0e-4/(rho*d2))
-            !Ec = Ed2*(1.0 - tau_f(1)/tau_s)
-            !Eeff = max(Ec, 0.1*Ed2)
-            Eeff = Ed2
+            tau_s = rho*0.0123*(rhoP/rho*gHat*d2 + 3.0e-4/(rho*d2))
+            Ec = Ed2*(1.0 - tau_f(1)/tau_s)
+            Eeff = max(Ec, 0.1*Ed2)
+            !Eeff = Ed2
             if (Ed1 > Eeff) then
                 lambda = 2.0*log((1.0 - e**2)*E1/Eeff)
                 sigma = sqrt(lambda)*log(2.0)

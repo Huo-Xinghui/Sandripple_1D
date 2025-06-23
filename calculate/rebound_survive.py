@@ -220,14 +220,14 @@ def calculate_survive1(d1, d2, v1, theta1, x, g, v2_x, v2_z, e):
     return is_survive
 
 #-------------------------------------------------------------------
-distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse
+distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse, 4:normal
 variation_param = 1 # 0: v1, 1: theta1
-shallow = True # shallow impact
-simplify = True # first order approximation
-d_min = 1e-4
-d_max = 10e-4
-normal_E = 4e-4
-normal_D = 2e-4
+shallow = False # shallow impact
+simplify = False # first order approximation
+d_min = 0.8e-4
+d_max = 6e-4
+normal_E = 3e-4
+normal_D = 1e-4
 mu1 = (d_min + d_max) * 0.3  # 第一个峰靠左
 mu2 = (d_min + d_max) * 0.7  # 第二个峰靠右
 sigma1 = (d_max - d_min) * 0.1
@@ -235,9 +235,9 @@ sigma2 = (d_max - d_min) * 0.1
 weight1 = 0.5 # 第一个峰的权重
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-epsilon = 0.78
-nu = -0.13
-v1_hat_single = 5
+epsilon = 0.7
+nu = -0.3
+v1_hat_single = 26
 theta1_single = np.pi/18
 v1_hat_start = 1
 v1_hat_end = 10
@@ -246,7 +246,7 @@ theta1_start = np.pi/180
 if shallow:
     theta1_end = np.pi/6
 else:
-    theta1_end = np.pi/2.1
+    theta1_end = np.pi/2
 theta2_num = 60
 num_samples = 100
 #------------------------------------------------------------------
@@ -263,15 +263,18 @@ else:
 if distribution == 0:
     d1_array = np.random.uniform(d_min, d_max, size=num_samples)
     d_mid = np.percentile(d1_array, 50)
-    #d_mid = np.percentile(d1_array, 90)
 elif distribution == 1:
     mu, sigma = get_normal_params(normal_E, normal_D)
     d1_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, num_samples)
     d_mid = np.percentile(d1_array, 50)
-    #d_mid = np.percentile(d1_array, 90)
 elif distribution == 2:
-    #d_mid = d_min
     d_mid = (d_min + d_max) * 0.5
+elif distribution == 3:
+    d1_array = generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, d_min, d_max, num_samples)
+    d_mid = np.percentile(d1_array, 50)
+elif distribution == 4:
+    d1_array = np.random.normal(loc=normal_E, scale=normal_D, size=num_samples)
+    d_mid = np.percentile(d1_array, 50)
 d1 = d_mid
 m_in = np.pi * d1**3 / 6 * rho
 E_in = m_in * g * d1 * 10
@@ -307,7 +310,12 @@ theta2_bar_list_2 = []
 theta20_bar_list_0 = []
 theta20_bar_list_1 = []
 theta20_bar_list_2 = []
-
+x_array0 = []
+x_array1 = []
+x_array2 = []
+x0_array0 = []
+x0_array1 = []
+x0_array2 = []
 for x in tqdm(x_array):
     if variation_param == 0:
         v1_hat = x
@@ -342,6 +350,8 @@ for x in tqdm(x_array):
     theta20_list_0 = []
     theta20_list_1 = []
     theta20_list_2 = []
+    have_survived = [False, False, False]
+    have_survived0 = [False, False, False]
     while len(d3_list) < num_samples:
         if distribution == 0:
             d_array = np.random.uniform(d_min, d_max, size=3)
@@ -353,7 +363,7 @@ for x in tqdm(x_array):
         elif distribution == 1:
             mu, sigma = get_normal_params(normal_E, normal_D)
             d_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, 3)
-            #d1 = d_array[0]
+            d1 = d_array[0]
             d2 = d_array[1]
             d3 = d_array[2]
             d2_list.append(d2)
@@ -386,6 +396,13 @@ for x in tqdm(x_array):
                 ):
                 d2_list.append(d2)
                 d3_list.append(d3)
+        elif distribution == 4:
+            d_array = np.random.normal(loc=normal_E, scale=normal_D, size=3)
+            #d1 = d_array[0]
+            d2 = d_array[1]
+            d3 = d_array[2]
+            d2_list.append(d2)
+            d3_list.append(d3)
         # 三种情况:
         # d1, d2, d3分别为不同的直径
         # d1, d2=d3
@@ -452,44 +469,44 @@ for x in tqdm(x_array):
                     e, evx, evz = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
                 x0_hat = np.random.uniform(x_min, x_max)
                 e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
-            ez = evz #/np.sin(theta1)
-            ex = evx #/np.cos(theta1)
-            ez0 = evz0 #/np.sin(theta1)
-            ex0 = evx0 #/np.cos(theta1)
-            if i != 0:
-                theta2 = np.arctan(2.0*np.sqrt(2.0)/3.0/beta*np.sqrt(d2_hat)*(alpha + beta)*np.sqrt(theta1) - theta1)
-            else:
-                theta2 = np.arctan(evz/evx)
-            theta20 = np.arctan(evz0/evx0)
-            if theta20 < 0:
-                theta20 += np.pi
-            if i == 0:
-                e_list_0.append(e)
-                e0_list_0.append(e0)
-                ez_list_0.append(ez)
-                ex_list_0.append(ex)
-                ez0_list_0.append(ez0)
-                ex0_list_0.append(ex0)
-                theta2_list_0.append(theta2)
-                theta20_list_0.append(theta20)
-            elif i == 1:
-                e_list_1.append(e)
-                e0_list_1.append(e0)
-                ez_list_1.append(ez)
-                ex_list_1.append(ex)
-                ez0_list_1.append(ez0)
-                ex0_list_1.append(ex0)
-                theta2_list_1.append(theta2)
-                theta20_list_1.append(theta20)
-            elif i == 2:
-                e_list_2.append(e)
-                e0_list_2.append(e0)
-                ez_list_2.append(ez)
-                ex_list_2.append(ex)
-                ez0_list_2.append(ez0)
-                ex0_list_2.append(ex0)
-                theta2_list_2.append(theta2)
-                theta20_list_2.append(theta20)
+            #ez = evz #/np.sin(theta1)
+            #ex = evx #/np.cos(theta1)
+            #ez0 = evz0 #/np.sin(theta1)
+            #ex0 = evx0 #/np.cos(theta1)
+            ##if i != 0:
+            ##    theta2 = np.arctan(2.0*np.sqrt(2.0)/3.0/beta*np.sqrt(d2_hat)*(alpha + beta)*np.sqrt(theta1) - theta1)
+            ##else:
+            #theta2 = np.arctan(evz/evx)
+            #theta20 = np.arctan(evz0/evx0)
+            #if theta20 < 0:
+            #    theta20 += np.pi
+            #if i == 0:
+            #    e_list_0.append(e)
+            #    e0_list_0.append(e0)
+            #    ez_list_0.append(ez)
+            #    ex_list_0.append(ex)
+            #    ez0_list_0.append(ez0)
+            #    ex0_list_0.append(ex0)
+            #    theta2_list_0.append(theta2)
+            #    theta20_list_0.append(theta20)
+            #elif i == 1:
+            #    e_list_1.append(e)
+            #    e0_list_1.append(e0)
+            #    ez_list_1.append(ez)
+            #    ex_list_1.append(ex)
+            #    ez0_list_1.append(ez0)
+            #    ex0_list_1.append(ex0)
+            #    theta2_list_1.append(theta2)
+            #    theta20_list_1.append(theta20)
+            #elif i == 2:
+            #    e_list_2.append(e)
+            #    e0_list_2.append(e0)
+            #    ez_list_2.append(ez)
+            #    ex_list_2.append(ex)
+            #    ez0_list_2.append(ez0)
+            #    ex0_list_2.append(ex0)
+            #    theta2_list_2.append(theta2)
+            #    theta20_list_2.append(theta20)
             v2 = e*v1
             v20 = e0*v1
             v2_z = v1*evz
@@ -500,69 +517,127 @@ for x in tqdm(x_array):
             is_survive0 = calculate_survive(d1, d2, d3, psi1, psi2, g, v2_x0, v2_z0, e0)
             #is_survive = calculate_survive1(d1, d2, v1, theta1, x0_hat, g, v2_x, v2_z, e0)
             if is_survive:
+                have_survived[i] = True
                 rebound_num_array[i] += 1
+                ez = evz #/np.sin(theta1)
+                ex = evx #/np.cos(theta1)
+                theta2 = np.arctan(evz/evx)
+                if i == 0:
+                    e_list_0.append(e)
+                    ez_list_0.append(ez)
+                    ex_list_0.append(ex)
+                    theta2_list_0.append(theta2)
+                elif i == 1:
+                    e_list_1.append(e)
+                    ez_list_1.append(ez)
+                    ex_list_1.append(ex)
+                    theta2_list_1.append(theta2)
+                elif i == 2:
+                    e_list_2.append(e)
+                    ez_list_2.append(ez)
+                    ex_list_2.append(ex)
+                    theta2_list_2.append(theta2)
+                v2 = e*v1
+                v2_z = v1*evz
+                v2_x = v1*evx
             if is_survive0:
+                have_survived0[i] = True
                 rebound_num_array0[i] += 1
-    #e_bar_0 = np.mean(e_list_0)
-    e_bar_1 = np.mean(e_list_1)
-    e_bar_2 = np.mean(e_list_2)
+                ez0 = evz0 #/np.sin(theta1)
+                ex0 = evx0 #/np.cos(theta1)
+                theta20 = np.arctan(evz0/evx0)
+                if theta20 < 0:
+                    theta20 += np.pi
+                if i == 0:
+                    e0_list_0.append(e0)
+                    ez0_list_0.append(ez0)
+                    ex0_list_0.append(ex0)
+                    theta20_list_0.append(theta20)
+                elif i == 1:
+                    e0_list_1.append(e0)
+                    ez0_list_1.append(ez0)
+                    ex0_list_1.append(ex0)
+                    theta20_list_1.append(theta20)
+                elif i == 2:
+                    e0_list_2.append(e0)
+                    ez0_list_2.append(ez0)
+                    ex0_list_2.append(ex0)
+                    theta20_list_2.append(theta20)
+                v20 = e0*v1
+                v2_z0 = v1*evz0
+                v2_x0 = v1*evx0
+    if have_survived[0]:
+        x_array0.append(x)
+        e_bar_0 = np.mean(e_list_0)
+        ez_bar_0 = np.mean(ez_list_0)
+        ex_bar_0 = np.mean(ex_list_0)
+        theta2_bar_0 = np.mean(theta2_list_0)
+        e_bar_list_0.append(e_bar_0)
+        ez_bar_list_0.append(ez_bar_0)
+        ex_bar_list_0.append(ex_bar_0)
+        theta2_bar_list_0.append(theta2_bar_0)
+    if have_survived[1]:
+        x_array1.append(x)
+        e_bar_1 = np.mean(e_list_1)
+        ez_bar_1 = np.mean(ez_list_1)
+        ex_bar_1 = np.mean(ex_list_1)
+        theta2_bar_1 = np.mean(theta2_list_1)
+        e_bar_list_1.append(e_bar_1)
+        ez_bar_list_1.append(ez_bar_1)
+        ex_bar_list_1.append(ex_bar_1)
+        theta2_bar_list_1.append(theta2_bar_1)
+    if have_survived[2]:
+        x_array2.append(x)
+        e_bar_2 = np.mean(e_list_2)
+        ez_bar_2 = np.mean(ez_list_2)
+        ex_bar_2 = np.mean(ex_list_2)
+        theta2_bar_2 = np.mean(theta2_list_2)
+        e_bar_list_2.append(e_bar_2)
+        ez_bar_list_2.append(ez_bar_2)
+        ex_bar_list_2.append(ex_bar_2)
+        theta2_bar_list_2.append(theta2_bar_2)
+    if have_survived0[0]:
+        x0_array0.append(x)
+        ez0_bar_0 = np.mean(ez0_list_0)
+        ex0_bar_0 = np.mean(ex0_list_0)
+        e0_bar_0 = np.sqrt(ex0_bar_0**2 + ez0_bar_0**2)
+        theta20_bar_0 = np.mean(theta20_list_0)
+        e0_bar_list_0.append(e0_bar_0)
+        ez0_bar_list_0.append(ez0_bar_0)
+        ex0_bar_list_0.append(ex0_bar_0)
+        theta20_bar_list_0.append(theta20_bar_0)
+    if have_survived0[1]:
+        x0_array1.append(x)
+        ez0_bar_1 = np.mean(ez0_list_1)
+        ex0_bar_1 = np.mean(ex0_list_1)
+        e0_bar_1 = np.sqrt(ex0_bar_1**2 + ez0_bar_1**2)
+        theta20_bar_1 = np.mean(theta20_list_1)
+        e0_bar_list_1.append(e0_bar_1)
+        ez0_bar_list_1.append(ez0_bar_1)
+        ex0_bar_list_1.append(ex0_bar_1)
+        theta20_bar_list_1.append(theta20_bar_1)
+    if have_survived0[2]:
+        x0_array2.append(x)
+        ez0_bar_2 = np.mean(ez0_list_2)
+        ex0_bar_2 = np.mean(ex0_list_2)
+        e0_bar_2 = np.sqrt(ex0_bar_2**2 + ez0_bar_2**2)
+        theta20_bar_2 = np.mean(theta20_list_2)
+        e0_bar_list_2.append(e0_bar_2)
+        ez0_bar_list_2.append(ez0_bar_2)
+        ex0_bar_list_2.append(ex0_bar_2)
+        theta20_bar_list_2.append(theta20_bar_2)
     #e0_bar_0 = np.mean(e0_list_0)
     #e0_bar_1 = np.mean(e0_list_1)
     #e0_bar_2 = np.mean(e0_list_2)
-    ez_bar_0 = np.mean(ez_list_0)
-    ez_bar_1 = np.mean(ez_list_1)
-    ez_bar_2 = np.mean(ez_list_2)
-    ez0_bar_0 = np.mean(ez0_list_0)
-    ez0_bar_1 = np.mean(ez0_list_1)
-    ez0_bar_2 = np.mean(ez0_list_2)
-    ex_bar_0 = np.mean(ex_list_0)
-    ex_bar_1 = np.mean(ex_list_1)
-    ex_bar_2 = np.mean(ex_list_2)
-    ex0_bar_0 = np.mean(ex0_list_0)
-    ex0_bar_1 = np.mean(ex0_list_1)
-    ex0_bar_2 = np.mean(ex0_list_2)
-    theta2_bar_0 = np.mean(theta2_list_0)
-    #theta2_bar_1 = np.mean(theta2_list_1)
-    #theta2_bar_2 = np.mean(theta2_list_2)
-    #theta20_bar_0 = np.mean(theta20_list_0)
-    #theta20_bar_1 = np.mean(theta20_list_1)
-    #theta20_bar_2 = np.mean(theta20_list_2)
-    e_bar_0 = np.sqrt(ex_bar_0**2 + ez_bar_0**2)
+    #e_bar_0 = np.sqrt(ex_bar_0**2 + ez_bar_0**2)
     #e_bar_1 = np.sqrt(ex_bar_1**2 + ez_bar_1**2)
     #e_bar_2 = np.sqrt(ex_bar_2**2 + ez_bar_2**2)
-    e0_bar_0 = np.sqrt(ex0_bar_0**2 + ez0_bar_0**2)
-    e0_bar_1 = np.sqrt(ex0_bar_1**2 + ez0_bar_1**2)
-    e0_bar_2 = np.sqrt(ex0_bar_2**2 + ez0_bar_2**2)
     #theta2_bar_0 = np.arctan(ez_bar_0/ex_bar_0)
-    theta2_bar_1 = np.arctan(ez_bar_1/ex_bar_1)
-    theta2_bar_2 = np.arctan(ez_bar_2/ex_bar_2)
-    theta20_bar_0 = np.arctan(ez0_bar_0/ex0_bar_0)
-    theta20_bar_1 = np.arctan(ez0_bar_1/ex0_bar_1)
-    theta20_bar_2 = np.arctan(ez0_bar_2/ex0_bar_2)
-    e_bar_list_0.append(e_bar_0)
-    e_bar_list_1.append(e_bar_1)
-    e_bar_list_2.append(e_bar_2)
-    e0_bar_list_0.append(e0_bar_0)
-    e0_bar_list_1.append(e0_bar_1)
-    e0_bar_list_2.append(e0_bar_2)
-    ez_bar_list_0.append(ez_bar_0)
-    ez_bar_list_1.append(ez_bar_1)
-    ez_bar_list_2.append(ez_bar_2)
-    ex_bar_list_0.append(ex_bar_0)
-    ex_bar_list_1.append(ex_bar_1)
-    ex_bar_list_2.append(ex_bar_2)
-    ez0_bar_list_0.append(ez0_bar_0)
-    ez0_bar_list_1.append(ez0_bar_1)
-    ez0_bar_list_2.append(ez0_bar_2)
-    ex0_bar_list_0.append(ex0_bar_0)
-    ex0_bar_list_1.append(ex0_bar_1)
-    ex0_bar_list_2.append(ex0_bar_2)
-    theta2_bar_list_0.append(theta2_bar_0)
-    theta2_bar_list_1.append(theta2_bar_1)
-    theta2_bar_list_2.append(theta2_bar_2)
-    theta20_bar_list_0.append(theta20_bar_0)
-    theta20_bar_list_1.append(theta20_bar_1)
-    theta20_bar_list_2.append(theta20_bar_2)
+    #theta2_bar_1 = np.arctan(ez_bar_1/ex_bar_1)
+    #theta2_bar_2 = np.arctan(ez_bar_2/ex_bar_2)
+    #theta20_bar_0 = np.arctan(ez0_bar_0/ex0_bar_0)
+    #theta20_bar_1 = np.arctan(ez0_bar_1/ex0_bar_1)
+    #theta20_bar_2 = np.arctan(ez0_bar_2/ex0_bar_2)
     rebound_ratio_array = [rebound_num_array[i]/num_samples for i in range(3)]
     rebound_ratio_array0 = [rebound_num_array0[i]/num_samples for i in range(3)]
     rebound_ratio_list_0.append(rebound_ratio_array[0])
@@ -572,6 +647,44 @@ for x in tqdm(x_array):
     rebound_ratio0_list_1.append(rebound_ratio_array0[1])
     rebound_ratio0_list_2.append(rebound_ratio_array0[2])
 
+"""other's data"""
+Beladjine07_v26= {
+    'ang_in': [10, 20, 40, 60, 90],
+    'ang_re': [21.21, 26.68, 33.87, 40.94, 90.01]
+}
+Zhou06_v_many= {
+    'ang_in': [8, 8, 8, 8, 8, 8, 8, 8, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5],
+    'ang_re': [47.53, 47.14, 47.53, 47.50, 46.97, 46.75, 46.45, 45.90, 48.33, 48.09, 48.28, 47.86, 47.38, 47.34, 46.60, 46.37]
+}
+Rice95_v_many_coarse= {
+    'ang_in': [13.94, 14.75, 14.73, 15.04],
+    'ang_re': [20.95, 23.03, 22.55, 25.63]
+}
+Rice95_v_many_medium= {
+    'ang_in': [11.82, 11.47, 11.53, 11.36],
+    'ang_re': [29.95, 30.31, 31.06, 29.56]
+}
+Rice95_v_many_fine= {
+    'ang_in': [10.85, 10.24, 10.46],
+    'ang_re': [44.63, 38.03, 37.85]
+}
+Chen18_v_many= {
+    'ang_in': [23.2, 21.8, 21.9, 30.7, 30.6, 37.6, 47.1, 46.6, 46],
+    'ang_re': [32.83, 35.59, 29.90, 43, 33.28, 44.16, 57.62, 50.97, 39.88]
+}
+Willetts89_v_many_coarse= {
+    'ang_in': [12.7, 17.8, 23.2, 27.7],
+    'ang_re': [19.1, 25.2, 21.4, 27.2]
+}
+Willetts89_v_many_medium= {
+    'ang_in': [11.7, 18.2, 21.4, 26.3],
+    'ang_re': [24.9, 33.4, 33.3, 44.7]
+}
+Willetts89_v_many_fine= {
+    'ang_in': [9.5, 15.4, 19.7, 24.9],
+    'ang_re': [38.8, 42, 42.2, 42.5]
+}
+
 plt.figure(1)
 if variation_param == 0:
     plt.xlabel(r'$\hat{v}_1$')
@@ -579,17 +692,23 @@ if variation_param == 0:
     strlabel1 = r'$\langle e \rangle_{\theta}$'
     strlabel2 = r'$\langle E \rangle_{\theta}$'
 elif variation_param == 1:
+    x_array0 = np.rad2deg(x_array0)
+    x_array1 = np.rad2deg(x_array1)
+    x_array2 = np.rad2deg(x_array2)
+    x0_array0 = np.rad2deg(x0_array0)
+    x0_array1 = np.rad2deg(x0_array1)
+    x0_array2 = np.rad2deg(x0_array2)
     x_array = np.rad2deg(x_array)
     plt.xlabel(r'$\theta (degree)$')
     plt.ylabel(r'$\langle e \rangle_{\hat{v}}, \langle E \rangle_{\hat{v}}$')
     strlabel1 = r'$\langle e \rangle_{\hat{v}}$'
     strlabel2 = r'$\langle E \rangle_{\hat{v}}$'
-plt.plot(x_array, e0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
-plt.plot(x_array, e_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
-plt.plot(x_array, e0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
-plt.plot(x_array, e_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
-plt.plot(x_array, e0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
-plt.plot(x_array, e_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
+plt.plot(x0_array0, e0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
+plt.plot(x_array0, e_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
+plt.plot(x0_array1, e0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
+plt.plot(x_array1, e_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
+plt.plot(x0_array2, e0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
+plt.plot(x_array2, e_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
 plt.legend()
 
 plt.figure(2)
@@ -603,12 +722,12 @@ elif variation_param == 1:
     plt.ylabel(r'$\langle e_z \rangle_{\hat{v}}, \langle E_z \rangle_{\hat{v}}$')
     strlabel1 = r'$\langle e_z \rangle_{\hat{v}}$'
     strlabel2 = r'$\langle E_z \rangle_{\hat{v}}$'
-plt.plot(x_array, ez0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
-plt.plot(x_array, ez_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
-plt.plot(x_array, ez0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
-plt.plot(x_array, ez_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
-plt.plot(x_array, ez0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
-plt.plot(x_array, ez_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
+plt.plot(x0_array0, ez0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
+plt.plot(x_array0, ez_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
+plt.plot(x0_array1, ez0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
+plt.plot(x_array1, ez_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
+plt.plot(x0_array2, ez0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
+plt.plot(x_array2, ez_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
 plt.legend()
 
 plt.figure(3)
@@ -622,12 +741,12 @@ elif variation_param == 1:
     plt.ylabel(r'$\langle e_x \rangle_{\hat{v}}, \langle E_x \rangle_{\hat{v}}$')
     strlabel1 = r'$\langle e_x \rangle_{\hat{v}}$'
     strlabel2 = r'$\langle E_x \rangle_{\hat{v}}$'
-plt.plot(x_array, ex0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
-plt.plot(x_array, ex_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
-plt.plot(x_array, ex0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
-plt.plot(x_array, ex_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
-plt.plot(x_array, ex0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
-plt.plot(x_array, ex_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
+plt.plot(x0_array0, ex0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
+plt.plot(x_array0, ex_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
+plt.plot(x0_array1, ex0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
+plt.plot(x_array1, ex_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
+plt.plot(x0_array2, ex0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
+plt.plot(x_array2, ex_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
 plt.legend()
 
 plt.figure(4)
@@ -678,12 +797,21 @@ theta20_bar_list_2 = np.rad2deg(theta20_bar_list_2)
 theta2_bar_list_0 = np.rad2deg(theta2_bar_list_0)
 theta2_bar_list_1 = np.rad2deg(theta2_bar_list_1)
 theta2_bar_list_2 = np.rad2deg(theta2_bar_list_2)
-plt.plot(x_array, theta20_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
-plt.plot(x_array, theta2_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
-plt.plot(x_array, theta20_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
-plt.plot(x_array, theta2_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
-plt.plot(x_array, theta20_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
-plt.plot(x_array, theta2_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
+plt.plot(x0_array0, theta20_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
+#plt.plot(x_array0, theta2_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
+plt.plot(x0_array1, theta20_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
+#plt.plot(x_array1, theta2_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
+plt.plot(x0_array2, theta20_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
+#plt.plot(x_array2, theta2_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
+plt.plot(Beladjine07_v26['ang_in'], Beladjine07_v26['ang_re'], 'k*', label='Beladjine et al. 2007')
+#plt.plot(Zhou06_v_many['ang_in'], Zhou06_v_many['ang_re'], 'k^', label='Zhou et al. 2006')
+#plt.plot(Rice95_v_many_fine['ang_in'], Rice95_v_many_fine['ang_re'], 'ks', label='Rice et al. 1995 (fine)')
+#plt.plot(Rice95_v_many_coarse['ang_in'], Rice95_v_many_coarse['ang_re'], 'kD', label='Rice et al. 1995 (coarse)')
+plt.plot(Rice95_v_many_medium['ang_in'], Rice95_v_many_medium['ang_re'], 'ko', label='Rice et al. 1995 (medium)')
+plt.plot(Chen18_v_many['ang_in'], Chen18_v_many['ang_re'], 'kP', label='Chen et al. 2018')
+#plt.plot(Willetts89_v_many_coarse['ang_in'], Willetts89_v_many_coarse['ang_re'], 'kH', label='Willetts et al. 1989 (coarse)')
+plt.plot(Willetts89_v_many_medium['ang_in'], Willetts89_v_many_medium['ang_re'], 'kX', label='Willetts et al. 1989 (medium)')
+#plt.plot(Willetts89_v_many_fine['ang_in'], Willetts89_v_many_fine['ang_re'], 'k+', label='Willetts et al. 1989 (fine)')
 plt.legend()
 
 plt.show()
