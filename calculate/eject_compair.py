@@ -227,8 +227,8 @@ weight1 = 0.5 # 第一个峰的权重
 gamma_ej = 0.03 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-epsilon = 0.6
-nu = -0.3
+epsilon = 0.7
+nu = -0.68
 num_samples = 100
 #------------------------------------------------------------------
 # average bed diameter
@@ -272,7 +272,8 @@ Rice95_v_many_coarse= {
     'ang_in': [13.94, 14.75, 14.73, 15.04],
     'ang_re': [20.95, 23.03, 22.55, 25.63],
     'e': [0.58, 0.56, 0.56, 0.58],
-    'Nej': [5.7, 5.09, 5.12, 4.64]
+    'Nej': [5.7, 5.09, 5.12, 4.64],
+    'v_ej': [0.243, 0.2422, 0.2522, 0.2637]
 }
 Rice95_v_many_medium= {
     'd_in': [medium_d1, medium_d1, medium_d1, medium_d1],
@@ -280,7 +281,8 @@ Rice95_v_many_medium= {
     'ang_in': [11.82, 11.47, 11.53, 11.36],
     'ang_re': [29.95, 30.31, 31.06, 29.56],
     'e': [0.57, 0.54, 0.59, 0.58],
-    'Nej': [2.68, 3.43, 2.67, 2.76]
+    'Nej': [2.68, 3.43, 2.67, 2.76],
+    'v_ej': [0.2544, 0.252, 0.2607, 0.295]
 }
 Rice95_v_many_fine= {
     'd_in': [fine_d1, fine_d1, fine_d1],
@@ -288,7 +290,8 @@ Rice95_v_many_fine= {
     'ang_in': [10.85, 10.24, 10.46],
     'ang_re': [44.63, 38.03, 37.85],
     'e': [0.52, 0.56, 0.58],
-    'Nej': [1.86, 1.71, 1.58]
+    'Nej': [1.86, 1.71, 1.58],
+    'v_ej': [0.2757, 0.2566, 0.2773]
 }
 Chen18_v_many= {
     'ang_in': [23.2, 21.8, 21.9, 30.7, 30.6, 37.6, 47.1, 46.6, 46],
@@ -300,21 +303,24 @@ Willetts89_v_many_coarse= {
     'v_in': [3.38, 3.43, 3.18, 3.50],
     'ang_in': [12.7, 17.8, 23.2, 27.7],
     'ang_re': [19.1, 25.2, 21.4, 27.2],
-    'e': [0.63, 0.57, 0.54, 0.46]
+    'e': [0.63, 0.57, 0.54, 0.46],
+    'v_ej': [0.3718, 0.3773, 0.4134, 0.42]
 }
 Willetts89_v_many_medium= {
     'd_in': [medium_d1, medium_d1, medium_d1, medium_d1],
     'v_in': [3.56, 3.99, 4.02, 4.39],
     'ang_in': [11.7, 18.2, 21.4, 26.3],
     'ang_re': [24.9, 33.4, 33.3, 44.7],
-    'e': [0.61, 0.53, 0.50, 0.40]
+    'e': [0.61, 0.53, 0.50, 0.40],
+    'v_ej': [0.356, 0.399, 0.3618, 0.439]
 }
 Willetts89_v_many_fine= {
     'd_in': [fine_d1, fine_d1, fine_d1, fine_d1],
     'v_in': [3.61, 4.41, 4.26, 4.35],
     'ang_in': [9.5, 15.4, 19.7, 24.9],
     'ang_re': [38.8, 42, 42.2, 42.5],
-    'e': [0.57, 0.50, 0.48, 0.46]
+    'e': [0.57, 0.50, 0.48, 0.46],
+    'v_ej': [0.3249, 0.3969, 0.3834, 0.348]
 }
 Rioual20_v_many= {
     'ang_in': 53.0,
@@ -362,7 +368,6 @@ vn_bar_list_2 = []
 for n in tqdm(range(iteration_num)):
     d1 = d1_array[n]
     v1 = v1_array[n]
-    v1_hat = v1/np.sqrt(g*d1)
     theta1 = np.radians(theta1_array[n])
     e0_list_0 = []
     e0_list_1 = []
@@ -390,7 +395,8 @@ for n in tqdm(range(iteration_num)):
             d2 = d_array[1]
             d3 = d_array[2]
         elif distribution == 1:
-            mu, sigma = get_normal_params(normal_E, normal_D)
+            if not lognormal_param:
+                mu, sigma = get_normal_params(normal_E, normal_D)
             d_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, 3)
             d2 = d_array[1]
             d3 = d_array[2]
@@ -433,9 +439,9 @@ for n in tqdm(range(iteration_num)):
             d2_hat = d2/d
             d3_hat = d3/d
             # restitution coefficient
-            mu = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
-            alpha = (1 + epsilon)/(1 + mu) - 1
-            beta = 1 - (2/7)*(1 - nu)/(1 + mu)
+            mu_re = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
+            alpha = (1 + epsilon)/(1 + mu_re) - 1
+            beta = 1 - (2/7)*(1 - nu)/(1 + mu_re)
             x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
 
             x_max = calculate_x_max(alpha, beta, theta1)
@@ -455,9 +461,9 @@ for n in tqdm(range(iteration_num)):
                 d1_hat = d1/d
                 d2_hat = d2/d
                 d3_hat = d3/d
-                mu = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
-                alpha = (1 + epsilon)/(1 + mu) - 1
-                beta = 1 - (2/7)*(1 - nu)/(1 + mu)
+                mu_re = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
+                alpha = (1 + epsilon)/(1 + mu_re) - 1
+                beta = 1 - (2/7)*(1 - nu)/(1 + mu_re)
                 x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
                 x_max = calculate_x_max(alpha, beta, theta1)
                 x0_hat = np.random.uniform(x_min, x_max)
@@ -470,7 +476,13 @@ for n in tqdm(range(iteration_num)):
             mu_ej = np.log((1.0 - e0**2)*E1) - lambda_ej*np.log(2.0)
             sigma_ej = np.sqrt(lambda_ej)*np.log(2.0)
             En_bar = np.exp(mu_ej + sigma_ej**2/2)
-            vn = np.sqrt(2.0*En_bar/(rho*(d2**3*np.pi/6)))
+            En = np.random.lognormal(mu_ej, sigma_ej, size=1)[0]
+            #if not lognormal_param:
+            #    mu, sigma = get_normal_params(normal_E, normal_D)
+            #d4 = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
+            #En = En_bar
+            d4 = d2
+            vn = np.sqrt(2.0*En/(rho*(d4**3*np.pi/6)))
             Nej = gamma_ej*(1.0 - e0**2)*E1/En_bar/2.0*erfc((np.log(Ec) - mu_ej)/(np.sqrt(2.0)*sigma_ej))
             Nej = max(Nej, 0.0)
             if i == 0:
@@ -777,5 +789,75 @@ if output_Nej:
     circle_m = mlines.Line2D([], [], color='k', marker='o', linestyle='None', markersize=ms_m, label='Rice95 medium')
     circle_f = mlines.Line2D([], [], color='k', marker='o', linestyle='None', markersize=ms_f, label='Rice95 fine')
     plt.legend(handles=[circle_c, circle_m, circle_f], loc='best')
+
+if output_vn:
+    plt.figure(6, figsize=(8, 6))
+    colors = Rice95_v_many_coarse['ang_in']
+    x_array = Rice95_v_many_coarse['v_ej']
+    y_array = vn_bar_list_0[0:len_R95_c]
+    len0 = len_R95_c
+    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='o', label='Rice95 coarse')
+    min_xy = min(x_array + y_array)
+    max_xy = max(x_array + y_array)
+
+    colors = Rice95_v_many_medium['ang_in']
+    x_array = Rice95_v_many_medium['v_ej']
+    y_array = vn_bar_list_0[len0:len0 + len_R95_m]
+    len0 += len_R95_m
+    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='o', label='Rice95 medium')
+    min_xy = min(min(x_array + y_array), min_xy)
+    max_xy = max(max(x_array + y_array), max_xy)
+
+    colors = Rice95_v_many_fine['ang_in']
+    x_array = Rice95_v_many_fine['v_ej']
+    y_array = vn_bar_list_0[len0:len0 + len_R95_f]
+    len0 += len_R95_f
+    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='o', label='Rice95 fine')
+    min_xy = min(min(x_array + y_array), min_xy)
+    max_xy = max(max(x_array + y_array), max_xy)
+
+    colors = Willetts89_v_many_coarse['ang_in']
+    x_array = Willetts89_v_many_coarse['v_ej']
+    y_array = vn_bar_list_0[len0:len0 + len_W89_c]
+    len0 += len_W89_c
+    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='^', label='Willetts89 coarse')
+    min_xy = min(min(x_array + y_array), min_xy)
+    max_xy = max(max(x_array + y_array), max_xy)
+
+    colors = Willetts89_v_many_medium['ang_in']
+    x_array = Willetts89_v_many_medium['v_ej']
+    y_array = vn_bar_list_0[len0:len0 + len_W89_m]
+    len0 += len_W89_m
+    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='^', label='Willetts89 medium')
+    min_xy = min(min(x_array + y_array), min_xy)
+    max_xy = max(max(x_array + y_array), max_xy)
+
+    colors = Willetts89_v_many_fine['ang_in']
+    x_array = Willetts89_v_many_fine['v_ej']
+    y_array = vn_bar_list_0[len0:len0 + len_W89_f]
+    len0 += len_W89_f
+    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='^', label='Willetts89 fine')
+    min_xy = min(min(x_array + y_array), min_xy)
+    max_xy = max(max(x_array + y_array), max_xy)
+
+    line_points = [min_xy, max_xy]
+    plt.plot(line_points, line_points, 'k--', label='y=x')
+
+    plt.xlabel('$v_{n,exp}$ (m/s)')
+    plt.ylabel('$v_{n,sim}$ (m/s)')
+    #plt.xlim(min_xy, max_xy)
+    #plt.ylim(min_xy, max_xy)
+    plt.colorbar(label='Impact angle (degrees)')
+
+    ms_c = np.sqrt(size_c)
+    ms_m = np.sqrt(size_m)
+    ms_f = np.sqrt(size_f)
+    circle_c = mlines.Line2D([], [], color='k', marker='o', linestyle='None', markersize=ms_c, label='Rice95 coarse')
+    circle_m = mlines.Line2D([], [], color='k', marker='o', linestyle='None', markersize=ms_m, label='Rice95 medium')
+    circle_f = mlines.Line2D([], [], color='k', marker='o', linestyle='None', markersize=ms_f, label='Rice95 fine')
+    triangle_c = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_c, label='Willetts89 coarse')
+    triangle_m = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_m, label='Willetts89 medium')
+    triangle_f = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_f, label='Willetts89 fine')
+    plt.legend(handles=[circle_c, circle_m, circle_f, triangle_c, triangle_m, triangle_f], loc='best')
 
 plt.show()

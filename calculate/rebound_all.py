@@ -237,12 +237,16 @@ variation_param = 1 # 0: v1, 1: theta1
 shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
-impactor = 2 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine, 4: dist
+impactor = 2 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine, 4: dist coarse, 5: dist medium, 6: dist fine
 
 d_min = 0.5e-4
 d_max = 6e-4
-d_min_impactor = 3.55e-4
-d_max_impactor = 6e-4
+d_min_impactor_c = 3.55e-4
+d_max_impactor_c = d_max
+d_min_impactor_m = 2.5e-4
+d_max_impactor_m = d_min_impactor_c
+d_min_impactor_f = d_min
+d_max_impactor_f = d_min_impactor_m
 normal_E = 2e-4
 normal_D = 4e-4
 mu = -8.30271
@@ -255,11 +259,11 @@ weight1 = 0.5 # 第一个峰的权重
 gamma_ej = 0.049 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-epsilon = 0.6
-nu = -0.3
-#epsilon = 0.73
-#nu = -0.18
-v1_single = 2.7323
+#epsilon = 0.7
+#nu = -0.57
+epsilon = 0.7
+nu = -0.68
+v1_single = 3.38
 theta1_single = np.pi/18
 v1_start = 1
 v1_end = 10
@@ -288,13 +292,13 @@ elif distribution == 1:
     d1_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, num_samples)
     d_mid = np.percentile(d1_array, 50)
     if impactor == 1:
-        #d1 = 1.4*np.percentile(d1_array, 50)
-        d1 = np.percentile(d1_array, 90)
+        d1 = 1.4*np.percentile(d1_array, 50)
+        #d1 = np.percentile(d1_array, 90)
     elif impactor == 2:
         d1 = d_mid
     elif impactor == 3:
-        #d1 = 0.73*np.percentile(d1_array, 50)
-        d1 = np.percentile(d1_array, 10)
+        d1 = 0.73*np.percentile(d1_array, 50)
+        #d1 = np.percentile(d1_array, 10)
 elif distribution == 2:
     d_mid = (d_min + d_max) * 0.5
     if impactor == 1:
@@ -324,10 +328,8 @@ elif distribution == 4:
 # impact velocity
 if variation_param == 0:
     x_array = np.linspace(v1_start, v1_end, case_num)
-    x_array = x_array/np.sqrt(g*d1)
 else:
-    v1_hat_single = v1_single/np.sqrt(g*d1)
-    v1_hat = v1_hat_single
+    v1 = v1_single
 # impact angle
 if variation_param == 1:
     x_array = np.linspace(theta1_start, theta1_end, case_num)
@@ -377,11 +379,7 @@ x_array2 = []
 x0_array0 = []
 x0_array1 = []
 x0_array2 = []
-for x in tqdm(x_array):
-    if variation_param == 0:
-        v1_hat = x
-    elif variation_param == 1:
-        theta1 = x
+for n, x in enumerate(tqdm(x_array)):
     rebound_num_array = [0, 0, 0]
     rebound_num_array0 = [0, 0, 0]
     rebound_ratio_array = [0, 0, 0]
@@ -425,18 +423,27 @@ for x in tqdm(x_array):
             if impactor == 0:
                 d1 = d_array[0]
             elif impactor == 4:
-                d1 = np.random.uniform(d_min_impactor, d_max_impactor, size=1)[0]
+                d1 = np.random.uniform(d_min_impactor_c, d_max_impactor_c, size=1)[0]
+            elif impactor == 5:
+                d1 = np.random.uniform(d_min_impactor_m, d_max_impactor_m, size=1)[0]
+            elif impactor == 6:
+                d1 = np.random.uniform(d_min_impactor_f, d_max_impactor_f, size=1)[0]
             d2 = d_array[1]
             d3 = d_array[2]
             d2_list.append(d2)
             d3_list.append(d3)
         elif distribution == 1:
-            mu, sigma = get_normal_params(normal_E, normal_D)
+            if not lognormal_param:
+                mu, sigma = get_normal_params(normal_E, normal_D)
             d_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, 3)
             if impactor == 0:
                 d1 = d_array[0]
             elif impactor == 4:
-                d1 = generate_truncated_lognormal(mu, sigma, d_min_impactor, d_max_impactor, 1)[0]
+                d1 = generate_truncated_lognormal(mu, sigma, d_min_impactor_c, d_max_impactor_c, 1)[0]
+            elif impactor == 5:
+                d1 = generate_truncated_lognormal(mu, sigma, d_min_impactor_m, d_max_impactor_m, 1)[0]
+            elif impactor == 6:
+                d1 = generate_truncated_lognormal(mu, sigma, d_min_impactor_f, d_max_impactor_f, 1)[0]
             d2 = d_array[1]
             d3 = d_array[2]
             d2_list.append(d2)
@@ -478,6 +485,11 @@ for x in tqdm(x_array):
             d3 = d_array[2]
             d2_list.append(d2)
             d3_list.append(d3)
+        if variation_param == 0:
+            v1 = x
+            x_array[n] = v1/np.sqrt(g*d1)
+        elif variation_param == 1:
+            theta1 = x
         # 三种情况:
         # d1, d2, d3分别为不同的直径
         # d1, d2=d3
@@ -494,9 +506,9 @@ for x in tqdm(x_array):
             d2_hat = d2/d
             d3_hat = d3/d
             # restitution coefficient
-            mu = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
-            alpha = (1 + epsilon)/(1 + mu) - 1
-            beta = 1 - (2/7)*(1 - nu)/(1 + mu)
+            mu_re = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
+            alpha = (1 + epsilon)/(1 + mu_re) - 1
+            beta = 1 - (2/7)*(1 - nu)/(1 + mu_re)
             x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
 
             if shallow:
@@ -530,9 +542,9 @@ for x in tqdm(x_array):
                 d1_hat = d1/d
                 d2_hat = d2/d
                 d3_hat = d3/d
-                mu = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
-                alpha = (1 + epsilon)/(1 + mu) - 1
-                beta = 1 - (2/7)*(1 - nu)/(1 + mu)
+                mu_re = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
+                alpha = (1 + epsilon)/(1 + mu_re) - 1
+                beta = 1 - (2/7)*(1 - nu)/(1 + mu_re)
                 x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
 
                 if shallow:
@@ -548,7 +560,6 @@ for x in tqdm(x_array):
                 x0_hat = np.random.uniform(x_min, x_max)
                 e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
 
-            v1 = v1_hat*np.sqrt(g*d1)
             v2 = e*v1
             v20 = e0*v1
             v2_z = v1*evz
@@ -707,9 +718,9 @@ for x in tqdm(x_array):
     #theta20_bar_1 = np.arctan(ez0_bar_1/ex0_bar_1)
     #theta20_bar_2 = np.arctan(ez0_bar_2/ex0_bar_2)
     """ejection velocity"""
-    vn_bar_0 = np.mean(vn_list_0)
-    vn_bar_1 = np.mean(vn_list_1)
-    vn_bar_2 = np.mean(vn_list_2)
+    vn_bar_0 = np.mean(vn_list_0)/np.sqrt(g*d_mid)
+    vn_bar_1 = np.mean(vn_list_1)/np.sqrt(g*d_mid)
+    vn_bar_2 = np.mean(vn_list_2)/np.sqrt(g*d_mid)
     vn_bar_list_0.append(vn_bar_0)
     vn_bar_list_1.append(vn_bar_1)
     vn_bar_list_2.append(vn_bar_2)
@@ -825,7 +836,7 @@ if output_e:
     #plt.plot(x_array1, e_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
     #plt.plot(x_array2, e_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
 
-    if impactor == 0 or impactor == 2:
+    if impactor == 0 or impactor == 2 or impactor ==5:
         plt.plot(Chen18_v_many[x_exp], Chen18_v_many['e'], 'kP', label='Chen18')
         plt.plot(Beladjine07_v26[x_exp], Beladjine07_v26['e'], 'k*', label='Beladjine07')
         #plt.plot(Zhou06_v_many[x_exp], Zhou06_v_many['e_mean'], 'k^', label='Zhou06')
@@ -837,7 +848,7 @@ if output_e:
     elif impactor == 1 or impactor == 4:
         plt.plot(Rice95_v_many_coarse[x_exp], Rice95_v_many_coarse['e'], 'ks', label='Rice95 coarse')
         plt.plot(Willetts89_v_many_coarse[x_exp], Willetts89_v_many_coarse['e'], 'kH', label='Willetts89 coarse')
-    elif impactor == 3:
+    elif impactor == 3 or impactor == 6:
         plt.plot(Rice95_v_many_fine[x_exp], Rice95_v_many_fine['e'], 'ko', label='Rice95 fine')
         plt.plot(Willetts89_v_many_fine[x_exp], Willetts89_v_many_fine['e'], 'k+', label='Willetts89 fine')
 
@@ -941,7 +952,7 @@ if output_theta2:
     #plt.plot(x_array1, theta2_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
     #plt.plot(x_array2, theta2_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
 
-    if impactor == 0 or impactor == 2:
+    if impactor == 0 or impactor == 2 or impactor == 5:
         plt.plot(Chen18_v_many[x_exp], Chen18_v_many['ang_re'], 'kP', label='Chen et al. 2018')
         plt.plot(Beladjine07_v26[x_exp], Beladjine07_v26['ang_re'], 'k*', label='Beladjine et al. 2007')
         #plt.plot(Zhou06_v_many[x_exp], Zhou06_v_many['ang_re_mean'], 'k^', label='Zhou et al. 2006')
@@ -950,7 +961,7 @@ if output_theta2:
     elif impactor == 1 or impactor == 4:
         plt.plot(Rice95_v_many_coarse[x_exp], Rice95_v_many_coarse['ang_re'], 'kD', label='Rice et al. 1995 (coarse)')
         plt.plot(Willetts89_v_many_coarse[x_exp], Willetts89_v_many_coarse['ang_re'], 'kH', label='Willetts et al. 1989 (coarse)')
-    elif impactor == 3:
+    elif impactor == 3 or impactor == 6:
         plt.plot(Rice95_v_many_fine[x_exp], Rice95_v_many_fine['ang_re'], 'ks', label='Rice et al. 1995 (fine)')
         plt.plot(Willetts89_v_many_fine[x_exp], Willetts89_v_many_fine['ang_re'], 'k+', label='Willetts et al. 1989 (fine)')
     plt.legend()
@@ -967,11 +978,11 @@ if output_Nej:
     plt.plot(x_array, Nej_bar_list_1, 'b-', label='d1, d2=d3')
     plt.plot(x_array, Nej_bar_list_2, 'g-', label='d1=d2=d3')
 
-    if impactor == 0 or impactor == 2:
+    if impactor == 0 or impactor == 2 or impactor == 5:
         plt.plot(Rice95_v_many_medium[x_exp], Rice95_v_many_medium['Nej'], 'ko', label='Rice95 medium')
     if impactor == 1 or impactor == 4:
         plt.plot(Rice95_v_many_coarse[x_exp], Rice95_v_many_coarse['Nej'], 'kD', label='Rice95 coarse')
-    if impactor == 3:
+    if impactor == 3 or impactor == 6:
         plt.plot(Rice95_v_many_fine[x_exp], Rice95_v_many_fine['Nej'], 'ks', label='Rice95 fine')
     plt.legend()
 
