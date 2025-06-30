@@ -4,6 +4,7 @@ import matplotlib.lines as mlines
 import seaborn as sns
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.stats import truncnorm
+from scipy.stats import norm
 from tqdm import tqdm
 from scipy.special import erfc
 
@@ -224,11 +225,11 @@ mu2 = (d_min + d_max) * 0.7  # 第二个峰靠右
 sigma1 = (d_max - d_min) * 0.1
 sigma2 = (d_max - d_min) * 0.1
 weight1 = 0.5 # 第一个峰的权重
-gamma_ej = 0.03 # the fraction of remaining energy to eject particles
+gamma_ej = 0.05 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-epsilon = 0.7
-nu = -0.68
+epsilon = 0.15
+nu = -0.9
 num_samples = 100
 #------------------------------------------------------------------
 # average bed diameter
@@ -240,6 +241,7 @@ elif distribution == 1:
         mu, sigma = get_normal_params(normal_E, normal_D)
     d2_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, num_samples)
     d2_mid = np.percentile(d2_array, 50)
+    d2_90 = np.percentile(d2_array, 90)
 elif distribution == 2:
     d2_mid = (d_min + d_max) * 0.5
 elif distribution == 3:
@@ -255,9 +257,13 @@ fine_d1 = 0.73*d2_mid
 
 """other's data"""
 Beladjine07_v26= {
+    'd_in': [0.006, 0.006, 0.006, 0.006, 0.006],
+    'v_in': [26, 26, 26, 26, 26],
     'ang_in': [10, 20, 40, 60, 90],
     'ang_re': [21.21, 26.68, 33.87, 40.94, 90.01],
-    'e': [0.77, 0.61, 0.43, 0.26, 0.22]
+    'e': [0.77, 0.61, 0.43, 0.26, 0.22],
+    'Nej': [9, 14, 17, 21, 19],
+    'v_ej': [0.92, 0.86, 0.85, 0.9, 0.83]
 }
 Zhou06_v_many= {
     'ang_in': [8, 11.5],
@@ -469,22 +475,54 @@ for n in tqdm(range(iteration_num)):
                 x0_hat = np.random.uniform(x_min, x_max)
                 e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
 
-            E1 = 0.5*rho*(d1**3*np.pi/6)*v1**2
-            Ec = rho*(d2_mid**3*np.pi/6)*g*d2_mid
+            if not lognormal_param:
+                mu, sigma = get_normal_params(normal_E, normal_D)
+            dn = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
+            m1 = rho*(d1**3*np.pi/6)
+            mn = rho*(dn**3*np.pi/6)
+            m_mid = rho*(d2_mid**3*np.pi/6)
+            C_Ec = rho*g*np.pi/6*d2_90
+            Ec_min = C_Ec*d_min**3
+            Ec_max = C_Ec*d_max**3
+            mu_Ec = np.log(C_Ec) + 3.0*mu
+            sigma_Ec = 3.0*sigma
+            z_min = (np.log(Ec_min) - mu_Ec - sigma_Ec**2) / sigma_Ec
+            z_max = (np.log(Ec_max) - mu_Ec - sigma_Ec**2) / sigma_Ec
+            P_Ec = norm.cdf((np.log(Ec_max) - mu_Ec) / sigma_Ec) - norm.cdf((np.log(Ec_min) - mu_Ec) / sigma_Ec)
+            Ec = (C_Ec*np.exp(3.0*mu + 9.0*sigma**2/2.0) * (norm.cdf(z_max) - norm.cdf(z_min))) / P_Ec
+            E1 = 0.5*m1*v1**2
             k_max = (1.0 - e0**2)*E1/Ec
             lambda_ej = 2.0*np.log(k_max)
             mu_ej = np.log((1.0 - e0**2)*E1) - lambda_ej*np.log(2.0)
             sigma_ej = np.sqrt(lambda_ej)*np.log(2.0)
             En_bar = np.exp(mu_ej + sigma_ej**2/2)
-            En = np.random.lognormal(mu_ej, sigma_ej, size=1)[0]
-            #if not lognormal_param:
-            #    mu, sigma = get_normal_params(normal_E, normal_D)
-            #d4 = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
-            #En = En_bar
-            d4 = d2
-            vn = np.sqrt(2.0*En/(rho*(d4**3*np.pi/6)))
-            Nej = gamma_ej*(1.0 - e0**2)*E1/En_bar/2.0*erfc((np.log(Ec) - mu_ej)/(np.sqrt(2.0)*sigma_ej))
+            #Ec_ej_min = mn*g*d_min
+            #Ec_ej_max = mn*g*d_max
+            #mu_Ec_ej = np.log(mn*g) + mu
+            #sigma_Ec_ej = sigma
+            #z_min = (np.log(Ec_ej_min) - mu_Ec_ej - sigma_Ec_ej**2) / sigma_Ec_ej
+            #z_max = (np.log(Ec_ej_max) - mu_Ec_ej - sigma_Ec_ej**2) / sigma_Ec_ej
+            #P_Ec_ej = norm.cdf((np.log(Ec_ej_max) - mu_Ec_ej) / sigma_Ec_ej) - norm.cdf((np.log(Ec_ej_min) - mu_Ec_ej) / sigma_Ec_ej)
+            #Ec_ej = (mn*g*np.exp(mu + sigma**2/2.0) * (norm.cdf(z_max) - norm.cdf(z_min))) / P_Ec_ej
+            Ec_ej = Ec
+            Nej = gamma_ej*(1.0 - e0**2)*E1/En_bar/2.0*erfc((np.log(Ec_ej) - mu_ej)/(np.sqrt(2.0)*sigma_ej))
             Nej = max(Nej, 0.0)
+            Nejed = 0
+            vn_list = []
+            while Nejed <= Nej:
+                Nejed += 1
+                dn = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
+                mn = rho*(dn**3*np.pi/6)
+                En = 0.0
+                while En < Ec_ej:
+                    En = np.random.lognormal(mu_ej, sigma_ej, size=1)[0]
+                vn = np.sqrt(2.0*En/mn)
+                vn_list.append(vn)
+            vn = np.mean(vn_list)
+            #C_ej = np.sqrt(2.0/mn)
+            #Qn = (np.log(Ec_ej) - mu_ej - sigma_ej**2/2.0)/(np.sqrt(2.0)*sigma_ej)
+            #Pn = (np.log(Ec_ej) - mu_ej)/(np.sqrt(2.0)*sigma_ej)
+            #vn = erfc(Qn)/erfc(Pn)*C_ej*np.exp(mu_ej/2.0 + sigma_ej**2/8.0)
             if i == 0:
                 vn_list_0.append(vn)
                 Nej_list_0.append(Nej)
@@ -570,6 +608,8 @@ color_map = 'jet'
 size_c = 80
 size_m = 50
 size_f = 20
+x_array_total = []
+y_array_total = []
 if output_e:
     plt.figure(1, figsize=(8, 6))
     colors = Rice95_v_many_coarse['ang_in']
@@ -579,6 +619,8 @@ if output_e:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='o', label='Rice95 coarse')
     min_xy = min(x_array + y_array)
     max_xy = max(x_array + y_array)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Rice95_v_many_medium['ang_in']
     x_array = Rice95_v_many_medium['e']
@@ -587,6 +629,8 @@ if output_e:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='o', label='Rice95 medium')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Rice95_v_many_fine['ang_in']
     x_array = Rice95_v_many_fine['e']
@@ -595,6 +639,8 @@ if output_e:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='o', label='Rice95 fine')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Willetts89_v_many_coarse['ang_in']
     x_array = Willetts89_v_many_coarse['e']
@@ -603,6 +649,8 @@ if output_e:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='^', label='Willetts89 coarse')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Willetts89_v_many_medium['ang_in']
     x_array = Willetts89_v_many_medium['e']
@@ -611,6 +659,8 @@ if output_e:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='^', label='Willetts89 medium')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Willetts89_v_many_fine['ang_in']
     x_array = Willetts89_v_many_fine['e']
@@ -619,6 +669,8 @@ if output_e:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='^', label='Willetts89 fine')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     line_points = [min_xy, max_xy]
     plt.plot(line_points, line_points, 'k--', label='y=x')
@@ -665,6 +717,8 @@ if output_theta2:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='o', label='Rice95 coarse')
     min_xy = min(x_array + y_array)
     max_xy = max(x_array + y_array)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Rice95_v_many_medium['ang_in']
     x_array = Rice95_v_many_medium['ang_re']
@@ -674,6 +728,8 @@ if output_theta2:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='o', label='Rice95 medium')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Rice95_v_many_fine['ang_in']
     x_array = Rice95_v_many_fine['ang_re']
@@ -683,6 +739,8 @@ if output_theta2:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='o', label='Rice95 fine')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Willetts89_v_many_coarse['ang_in']
     x_array = Willetts89_v_many_coarse['ang_re']
@@ -692,6 +750,8 @@ if output_theta2:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='^', label='Willetts89 coarse')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Willetts89_v_many_medium['ang_in']
     x_array = Willetts89_v_many_medium['ang_re']
@@ -701,6 +761,8 @@ if output_theta2:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='^', label='Willetts89 medium')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Willetts89_v_many_fine['ang_in']
     x_array = Willetts89_v_many_fine['ang_re']
@@ -710,6 +772,8 @@ if output_theta2:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='^', label='Willetts89 fine')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     line_points = [min_xy, max_xy]
     plt.plot(line_points, line_points, 'k--', label='y=x')
@@ -757,6 +821,8 @@ if output_Nej:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='o', label='Rice95 coarse')
     min_xy = min(x_array + y_array)
     max_xy = max(x_array + y_array)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Rice95_v_many_medium['ang_in']
     x_array = Rice95_v_many_medium['Nej']
@@ -765,6 +831,8 @@ if output_Nej:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='o', label='Rice95 medium')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Rice95_v_many_fine['ang_in']
     x_array = Rice95_v_many_fine['Nej']
@@ -773,6 +841,8 @@ if output_Nej:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='o', label='Rice95 fine')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     line_points = [min_xy, max_xy]
     plt.plot(line_points, line_points, 'k--', label='y=x')
@@ -799,6 +869,8 @@ if output_vn:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='o', label='Rice95 coarse')
     min_xy = min(x_array + y_array)
     max_xy = max(x_array + y_array)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Rice95_v_many_medium['ang_in']
     x_array = Rice95_v_many_medium['v_ej']
@@ -807,6 +879,8 @@ if output_vn:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='o', label='Rice95 medium')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
     colors = Rice95_v_many_fine['ang_in']
     x_array = Rice95_v_many_fine['v_ej']
@@ -815,30 +889,32 @@ if output_vn:
     plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='o', label='Rice95 fine')
     min_xy = min(min(x_array + y_array), min_xy)
     max_xy = max(max(x_array + y_array), max_xy)
+    x_array_total += x_array
+    y_array_total += y_array
 
-    colors = Willetts89_v_many_coarse['ang_in']
-    x_array = Willetts89_v_many_coarse['v_ej']
-    y_array = vn_bar_list_0[len0:len0 + len_W89_c]
-    len0 += len_W89_c
-    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='^', label='Willetts89 coarse')
-    min_xy = min(min(x_array + y_array), min_xy)
-    max_xy = max(max(x_array + y_array), max_xy)
+    #colors = Willetts89_v_many_coarse['ang_in']
+    #x_array = Willetts89_v_many_coarse['v_ej']
+    #y_array = vn_bar_list_0[len0:len0 + len_W89_c]
+    #len0 += len_W89_c
+    #plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='^', label='Willetts89 coarse')
+    #min_xy = min(min(x_array + y_array), min_xy)
+    #max_xy = max(max(x_array + y_array), max_xy)
 
-    colors = Willetts89_v_many_medium['ang_in']
-    x_array = Willetts89_v_many_medium['v_ej']
-    y_array = vn_bar_list_0[len0:len0 + len_W89_m]
-    len0 += len_W89_m
-    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='^', label='Willetts89 medium')
-    min_xy = min(min(x_array + y_array), min_xy)
-    max_xy = max(max(x_array + y_array), max_xy)
+    #colors = Willetts89_v_many_medium['ang_in']
+    #x_array = Willetts89_v_many_medium['v_ej']
+    #y_array = vn_bar_list_0[len0:len0 + len_W89_m]
+    #len0 += len_W89_m
+    #plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='^', label='Willetts89 medium')
+    #min_xy = min(min(x_array + y_array), min_xy)
+    #max_xy = max(max(x_array + y_array), max_xy)
 
-    colors = Willetts89_v_many_fine['ang_in']
-    x_array = Willetts89_v_many_fine['v_ej']
-    y_array = vn_bar_list_0[len0:len0 + len_W89_f]
-    len0 += len_W89_f
-    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='^', label='Willetts89 fine')
-    min_xy = min(min(x_array + y_array), min_xy)
-    max_xy = max(max(x_array + y_array), max_xy)
+    #colors = Willetts89_v_many_fine['ang_in']
+    #x_array = Willetts89_v_many_fine['v_ej']
+    #y_array = vn_bar_list_0[len0:len0 + len_W89_f]
+    #len0 += len_W89_f
+    #plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='^', label='Willetts89 fine')
+    #min_xy = min(min(x_array + y_array), min_xy)
+    #max_xy = max(max(x_array + y_array), max_xy)
 
     line_points = [min_xy, max_xy]
     plt.plot(line_points, line_points, 'k--', label='y=x')
@@ -855,9 +931,9 @@ if output_vn:
     circle_c = mlines.Line2D([], [], color='k', marker='o', linestyle='None', markersize=ms_c, label='Rice95 coarse')
     circle_m = mlines.Line2D([], [], color='k', marker='o', linestyle='None', markersize=ms_m, label='Rice95 medium')
     circle_f = mlines.Line2D([], [], color='k', marker='o', linestyle='None', markersize=ms_f, label='Rice95 fine')
-    triangle_c = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_c, label='Willetts89 coarse')
-    triangle_m = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_m, label='Willetts89 medium')
-    triangle_f = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_f, label='Willetts89 fine')
-    plt.legend(handles=[circle_c, circle_m, circle_f, triangle_c, triangle_m, triangle_f], loc='best')
+    plt.legend(handles=[circle_c, circle_m, circle_f], loc='best')
 
 plt.show()
+
+rmse = np.sqrt(np.mean((np.array(x_array_total) - np.array(y_array_total))**2))
+print(f'RMSE: {rmse:.4f}')

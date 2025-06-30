@@ -227,8 +227,8 @@ output_ex = False # output e_x
 output_ez = False # output e_z
 output_theta2 = True # output rebound angle
 output_theta2_dist = False # output rebound angle distribution
-output_vn = True # output eject velocity
-output_Nej = True # output eject number
+output_vn = False # output eject velocity
+output_Nej = False # output eject number
 
 just_survive = False # only calculate survival
 
@@ -237,7 +237,7 @@ variation_param = 1 # 0: v1, 1: theta1
 shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
-impactor = 2 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine, 4: dist coarse, 5: dist medium, 6: dist fine
+impactor = 1 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine, 4: dist coarse, 5: dist medium, 6: dist fine
 
 d_min = 0.5e-4
 d_max = 6e-4
@@ -261,8 +261,8 @@ rho = 2650
 g = 9.8*(1 - 1.263/rho)
 #epsilon = 0.7
 #nu = -0.57
-epsilon = 0.7
-nu = -0.68
+epsilon = 0.76
+nu = -0.6
 v1_single = 3.38
 theta1_single = np.pi/18
 v1_start = 1
