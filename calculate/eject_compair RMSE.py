@@ -6,6 +6,7 @@ from scipy.stats import truncnorm
 from scipy.stats import norm
 from tqdm import tqdm
 from scipy.special import erfc
+from scipy.ndimage import gaussian_filter
 
 # 根据对数正态分布的均值和标准差求正态分布的参数
 def get_normal_params(log_mean, log_std):
@@ -210,7 +211,7 @@ shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
 
-no_calculate = False # do not calculate, just output figure
+no_calculate = True # do not calculate, just output figure
 
 d_min = 0.5e-4
 d_max = 6e-4
@@ -226,7 +227,7 @@ weight1 = 0.5 # 第一个峰的权重
 gamma_ej = 0.049 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-num_samples = 100
+num_samples = 200
 #------------------------------------------------------------------
 # average bed diameter
 if distribution == 0:
@@ -346,36 +347,37 @@ theta1_array = Rice95_v_many_coarse['ang_in'] + Rice95_v_many_medium['ang_in'] +
 theta1_array = theta1_array + Willetts89_v_many_coarse['ang_in'] + Willetts89_v_many_medium['ang_in'] + Willetts89_v_many_fine['ang_in']
 iteration_num = len(d1_array)
 
-d_epsilon = 0.05
-d_nu = 0.05
+d_epsilon = 0.02
+d_nu = 0.02
 epsilon_list = np.arange(0.1, 0.9 + 1.1*d_epsilon, d_epsilon).tolist()
 nu_list = np.arange(-0.9, -0.1 + 1.1*d_nu, d_nu).tolist()
 rmse_list = []
 
 if no_calculate:
-    data = np.loadtxt('eject_compair_distance.txt', delimiter=',')
+    data = np.loadtxt('eject_compair_rmse.txt', delimiter=',')
     read_x = data[:, 0]
     read_y = data[:, 1]
     read_z = data[:, 2]
     mesh_x = np.unique(read_x)
     mesh_y = np.unique(read_y)
     mesh_z = read_z.reshape(len(mesh_y), len(mesh_x))
-    plt.contourf(mesh_x, mesh_y, mesh_z, cmap='jet')
+    mesh_z_smooth = gaussian_filter(mesh_z, sigma=1.0)
+    read_z_smooth = mesh_z_smooth.flatten()
+    plt.contourf(mesh_y, mesh_x, mesh_z_smooth, cmap='jet', levels=1000)
     plt.colorbar(label='RMSE')
     plt.xlabel('Epsilon')
     plt.ylabel('Nu')
     plt.title('RMSE of Eject Ratio')
     plt.show()
-    min_indices = np.argpartition(mesh_z.flatten(), 5)[:5]
+    min_indices = np.argpartition(read_z_smooth, 10)[:10]  # Get indices of the 10 smallest RMSE values
     for min_index in min_indices:
-        min_index_x, min_index_y = np.unravel_index(min_index, mesh_z.shape)
-        min_x = mesh_x.flatten()[min_index_x]
-        min_y = mesh_y.flatten()[min_index_y]
-        min_z = mesh_z.flatten()[min_index]
+        min_x = read_x[min_index]
+        min_y = read_y[min_index]
+        min_z = read_z[min_index]
         print(f'Minimum RMSE: {min_z:.4f} at Epsilon: {min_x:.4f}, Nu: {min_y:.4f}')
     sys.exit(0)
 
-os.remove('eject_compair_distance.txt') if os.path.exists('eject_compair_distance.txt') else None
+os.remove('eject_compair_rmse.txt') if os.path.exists('eject_compair_rmse.txt') else None
 os.remove('eject_compair_rmse_e.txt') if os.path.exists('eject_compair_rmse_e.txt') else None
 os.remove('eject_compair_rmse_th.txt') if os.path.exists('eject_compair_rmse_th.txt') else None
 os.remove('eject_compair_rmse_Nej.txt') if os.path.exists('eject_compair_rmse_Nej.txt') else None
@@ -597,6 +599,7 @@ for epsilon in tqdm(epsilon_list):
         x_array_total_vn = []
         y_array_total_vn = []
         output_kind = 0
+        rmse_array = []
         if output_e:
             x_array = Rice95_v_many_coarse['e']
             y_array = e0_bar_list_0[0:len_R95_c]
@@ -634,13 +637,13 @@ for epsilon in tqdm(epsilon_list):
             x_array_total_e += x_array
             y_array_total_e += y_array
 
-            e_array = (np.array(x_array_total_e) - np.array(y_array_total_e))**2
-            if output_kind == 0:
-                distance_sum = e_array
-            output_kind += 1
-            rmse_e = np.sqrt(np.mean((np.array(x_array_total_e) - np.array(y_array_total_e))**2))
+            e_scale = np.std(x_array_total_e)
+            e_elements = (np.array(x_array_total_e)/e_scale - np.array(y_array_total_e)/e_scale)**2
+            e_rmse = np.sqrt(np.mean(e_elements))
             with open('eject_compair_rmse_e.txt', 'a') as f:
-                f.write(f'{epsilon:.4f}, {nu:.4f}, {rmse_e:.4f}\n')
+                f.write(f'{epsilon:.4f}, {nu:.4f}, {e_rmse:.4f}\n')
+            e_elements = e_elements.tolist()
+            rmse_array += e_elements
 
         if output_theta2:
             x_array = Rice95_v_many_coarse['ang_re']
@@ -685,15 +688,13 @@ for epsilon in tqdm(epsilon_list):
             x_array_total_theta2 += x_array
             y_array_total_theta2 += y_array
 
-            theta2_array = (np.array(x_array_total_theta2) - np.array(y_array_total_theta2))**2
-            if output_kind == 0:
-                distance_sum = theta2_array
-            else:
-                distance_sum += theta2_array
-            output_kind += 1
-            rmse_th = np.sqrt(np.mean((np.array(x_array_total_theta2) - np.array(y_array_total_theta2))**2))
+            theta2_scale = np.std(x_array_total_theta2)
+            theta2_elements = (np.array(x_array_total_theta2)/theta2_scale - np.array(y_array_total_theta2)/theta2_scale)**2
+            theta2_rmse = np.sqrt(np.mean(theta2_elements))
             with open('eject_compair_rmse_th.txt', 'a') as f:
-                f.write(f'{epsilon:.4f}, {nu:.4f}, {rmse_th:.4f}\n')
+                f.write(f'{epsilon:.4f}, {nu:.4f}, {theta2_rmse:.4f}\n')
+            theta2_elements = theta2_elements.tolist()
+            rmse_array += theta2_elements
 
         if output_Nej:
             x_array = Rice95_v_many_coarse['Nej']
@@ -714,15 +715,13 @@ for epsilon in tqdm(epsilon_list):
             x_array_total_Nej += x_array
             y_array_total_Nej += y_array
 
-            Nej_array = (np.array(x_array_total_Nej) - np.array(y_array_total_Nej))**2
-            if output_kind == 0:
-                distance_sum = Nej_array
-            else:
-                distance_sum += Nej_array
-            output_kind += 1
-            rmse_Nej = np.sqrt(np.mean((np.array(x_array_total_Nej) - np.array(y_array_total_Nej))**2))
+            Nej_scale = np.std(x_array_total_Nej)
+            Nej_elements = (np.array(x_array_total_Nej)/Nej_scale - np.array(y_array_total_Nej)/Nej_scale)**2
+            Nej_rmse = np.sqrt(np.mean(Nej_elements))
             with open('eject_compair_rmse_Nej.txt', 'a') as f:
-                f.write(f'{epsilon:.4f}, {nu:.4f}, {rmse_Nej:.4f}\n')
+                f.write(f'{epsilon:.4f}, {nu:.4f}, {Nej_rmse:.4f}\n')
+            Nej_elements = Nej_elements.tolist()
+            rmse_array += Nej_elements
 
         if output_vn:
             x_array = Rice95_v_many_coarse['v_ej']
@@ -749,27 +748,25 @@ for epsilon in tqdm(epsilon_list):
             x_array_total_vn += x_array
             y_array_total_vn += y_array
 
-            vn_array = (np.array(x_array_total_vn) - np.array(y_array_total_vn))**2
-            if output_kind == 0:
-                distance_sum = vn_array
-            else:
-                distance_sum += vn_array
-            output_kind += 1
-            rmse_vn = np.sqrt(np.mean((np.array(x_array_total_vn) - np.array(y_array_total_vn))**2))
+            vn_scale = np.std(x_array_total_vn)
+            vn_elements = (np.array(x_array_total_vn)/vn_scale - np.array(y_array_total_vn)/vn_scale)**2
+            vn_rmse = np.sqrt(np.mean(vn_elements))
             with open('eject_compair_rmse_vn.txt', 'a') as f:
-                f.write(f'{epsilon:.4f}, {nu:.4f}, {rmse_vn:.4f}\n')
+                f.write(f'{epsilon:.4f}, {nu:.4f}, {vn_rmse:.4f}\n')
+            vn_elements = vn_elements.tolist()
+            rmse_array += vn_elements
 
-        distance = np.mean(np.sqrt(distance_sum))
-        rmse_list.append(distance)
-        with open('eject_compair_distance.txt', 'a') as f:
-            f.write(f'{epsilon:.4f}, {nu:.4f}, {distance:.4f}\n')
+        rmse = np.sqrt(np.mean(np.array(rmse_array)))
+        rmse_list.append(rmse)
+        with open('eject_compair_rmse.txt', 'a') as f:
+            f.write(f'{epsilon:.4f}, {nu:.4f}, {rmse:.4f}\n')
 mesh_x, mesh_y = np.meshgrid(epsilon_list, nu_list)
 mesh_z = np.array(rmse_list).reshape(len(nu_list), len(epsilon_list))
 plt.contourf(mesh_x, mesh_y, mesh_z, cmap='jet')
-plt.colorbar(label='distance')
+plt.colorbar(label='RMSE')
 plt.xlabel('Epsilon')
 plt.ylabel('Nu')
-plt.title('Distance of Eject Compair')
+plt.title('RMSE of Eject Compair')
 plt.show()
 min_index = np.argmin(mesh_z)
 min_index_x, min_index_y = np.unravel_index(min_index, mesh_z.shape)

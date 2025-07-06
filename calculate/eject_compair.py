@@ -228,8 +228,8 @@ weight1 = 0.5 # 第一个峰的权重
 gamma_ej = 0.05 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-epsilon = 0.15
-nu = -0.9
+epsilon = 0.72
+nu = -0.6
 num_samples = 100
 #------------------------------------------------------------------
 # average bed diameter

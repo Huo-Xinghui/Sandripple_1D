@@ -234,7 +234,7 @@ just_survive = False # only calculate survival
 
 distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse, 4:normal
 variation_param = 1 # 0: v1, 1: theta1
-shallow = False # shallow impact
+shallow = True # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
 impactor = 1 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine, 4: dist coarse, 5: dist medium, 6: dist fine
@@ -261,8 +261,8 @@ rho = 2650
 g = 9.8*(1 - 1.263/rho)
 #epsilon = 0.7
 #nu = -0.57
-epsilon = 0.76
-nu = -0.6
+epsilon = 0.72
+nu = -0.58
 v1_single = 3.38
 theta1_single = np.pi/18
 v1_start = 1
@@ -272,7 +272,7 @@ theta1_start = np.pi/180
 if shallow:
     theta1_end = np.pi/6
 else:
-    theta1_end = np.pi/2
+    theta1_end = 90/180*np.pi
 theta2_num = 60
 num_samples = 100
 #------------------------------------------------------------------
@@ -832,9 +832,9 @@ if output_e:
     plt.plot(x0_array0, e0_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
     plt.plot(x0_array1, e0_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
     plt.plot(x0_array2, e0_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
-    #plt.plot(x_array0, e_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
-    #plt.plot(x_array1, e_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
-    #plt.plot(x_array2, e_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
+    plt.plot(x_array0, e_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
+    plt.plot(x_array1, e_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
+    plt.plot(x_array2, e_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
 
     if impactor == 0 or impactor == 2 or impactor ==5:
         plt.plot(Chen18_v_many[x_exp], Chen18_v_many['e'], 'kP', label='Chen18')
@@ -948,9 +948,9 @@ if output_theta2:
     plt.plot(x0_array0, theta20_bar_list_0, 'r-', label=strlabel1 + ': d1, d2, d3')
     plt.plot(x0_array1, theta20_bar_list_1, 'b-', label=strlabel1 + ': d1, d2=d3')
     plt.plot(x0_array2, theta20_bar_list_2, 'g-', label=strlabel1 + ': d1=d2=d3')
-    #plt.plot(x_array0, theta2_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
-    #plt.plot(x_array1, theta2_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
-    #plt.plot(x_array2, theta2_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
+    plt.plot(x_array0, theta2_bar_list_0, 'r--', label=strlabel2 + ': d1, d2, d3')
+    plt.plot(x_array1, theta2_bar_list_1, 'b--', label=strlabel2 + ': d1, d2=d3')
+    plt.plot(x_array2, theta2_bar_list_2, 'g--', label=strlabel2 + ': d1=d2=d3')
 
     if impactor == 0 or impactor == 2 or impactor == 5:
         plt.plot(Chen18_v_many[x_exp], Chen18_v_many['ang_re'], 'kP', label='Chen et al. 2018')
