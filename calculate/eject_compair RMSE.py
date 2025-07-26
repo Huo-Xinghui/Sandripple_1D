@@ -7,6 +7,7 @@ from scipy.stats import norm
 from tqdm import tqdm
 from scipy.special import erfc
 from scipy.ndimage import gaussian_filter
+from scipy.integrate import quad
 
 # 根据对数正态分布的均值和标准差求正态分布的参数
 def get_normal_params(log_mean, log_std):
@@ -155,6 +156,18 @@ def calculate_e_bar_shallow_simp(alpha, beta, d1, d2, d3, theta1):
         e = np.sqrt(e_vx**2 + e_vz**2)
     return e, e_vx, e_vz
 
+def rebound_angle_bar(x, alpha, beta, theta1):
+    e_vx = -alpha*np.cos(theta1) + (alpha + beta)*x**2*np.sin(theta1)**2*np.cos(theta1) + (alpha + beta)*x*np.sin(theta1)**2*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    e_vz = alpha*np.sin(theta1) - (alpha + beta)*x**2*np.sin(theta1)**3 + (alpha + beta)*x*np.sin(theta1)*np.cos(theta1)*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    theta2 = np.arctan2(e_vz, e_vx)
+    return theta2
+
+def rebound_res_bar(x, alpha, beta, theta1):
+    e_vx = -alpha*np.cos(theta1) + (alpha + beta)*x**2*np.sin(theta1)**2*np.cos(theta1) + (alpha + beta)*x*np.sin(theta1)**2*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    e_vz = alpha*np.sin(theta1) - (alpha + beta)*x**2*np.sin(theta1)**3 + (alpha + beta)*x*np.sin(theta1)*np.cos(theta1)*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    res = np.sqrt(e_vx**2 + e_vz**2)
+    return res
+
 def calculate_survive(d1, d2, d3, psi1, psi2, g, v2_x, v2_z, e):
     if v2_x > 0.0:
         zb = (1.0 - np.sin(psi1))*0.5*(d1 + d2)
@@ -213,7 +226,7 @@ lognormal_param = True # lognormal distribution parameters
 
 no_calculate = True # do not calculate, just output figure
 
-d_min = 0.5e-4
+d_min = 1.5e-4
 d_max = 6e-4
 normal_E = 2e-4
 normal_D = 4e-4
@@ -227,7 +240,7 @@ weight1 = 0.5 # 第一个峰的权重
 gamma_ej = 0.049 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-num_samples = 200
+num_samples = 100
 #------------------------------------------------------------------
 # average bed diameter
 if distribution == 0:
@@ -251,6 +264,9 @@ elif distribution == 4:
 coarse_d1 = 1.4*d2_mid
 medium_d1 = d2_mid
 fine_d1 = 0.73*d2_mid
+#fine_d1 = np.mean(d2_array[(d2_array >= 0.00015) & (d2_array <= 0.00025)])
+#medium_d1 = np.mean(d2_array[(d2_array >= 0.0003) & (d2_array <= 0.000355)])
+#coarse_d1 = np.mean(d2_array[(d2_array >= 0.000425) & (d2_array <= 0.0006)])
 
 """other's data"""
 Beladjine07_v26= {
@@ -270,31 +286,31 @@ Zhou06_v_many= {
     'e_std': [0.006, 0.009]
 }
 Rice95_v_many_coarse= {
-    'd_in': [coarse_d1, coarse_d1, coarse_d1, coarse_d1],
-    'v_in': [2.7323, 2.7013, 2.7070, 2.7979],
-    'ang_in': [13.94, 14.75, 14.73, 15.04],
-    'ang_re': [20.95, 23.03, 22.55, 25.63],
-    'e': [0.58, 0.56, 0.56, 0.58],
-    'Nej': [5.7, 5.09, 5.12, 4.64],
-    'v_ej': [0.243, 0.2422, 0.2522, 0.2637]
+    'd_in': np.mean([coarse_d1, coarse_d1, coarse_d1, coarse_d1]),
+    'v_in': np.mean([2.7323, 2.7013, 2.7070, 2.7979]),
+    'ang_in': np.mean([13.94, 14.75, 14.73, 15.04]),
+    'ang_re': np.mean([20.95, 23.03, 22.55, 25.63]),
+    'e': np.mean([0.58, 0.56, 0.56, 0.58]),
+    'Nej': np.mean([5.7, 5.09, 5.12, 4.64]),
+    'v_ej': np.mean([0.243, 0.2422, 0.2522, 0.2637])
 }
 Rice95_v_many_medium= {
-    'd_in': [medium_d1, medium_d1, medium_d1, medium_d1],
-    'v_in': [3.1649, 3.3638, 3.3604, 3.2963],
-    'ang_in': [11.82, 11.47, 11.53, 11.36],
-    'ang_re': [29.95, 30.31, 31.06, 29.56],
-    'e': [0.57, 0.54, 0.59, 0.58],
-    'Nej': [2.68, 3.43, 2.67, 2.76],
-    'v_ej': [0.2544, 0.252, 0.2607, 0.295]
+    'd_in': np.mean([medium_d1, medium_d1, medium_d1, medium_d1]),
+    'v_in': np.mean([3.1649, 3.3638, 3.3604, 3.2963]),
+    'ang_in': np.mean([11.82, 11.47, 11.53, 11.36]),
+    'ang_re': np.mean([29.95, 30.31, 31.06, 29.56]),
+    'e': np.mean([0.57, 0.54, 0.59, 0.58]),
+    'Nej': np.mean([2.68, 3.43, 2.67, 2.76]),
+    'v_ej': np.mean([0.2544, 0.252, 0.2607, 0.295])
 }
 Rice95_v_many_fine= {
-    'd_in': [fine_d1, fine_d1, fine_d1],
-    'v_in': [3.8493, 3.7801, 3.7411],
-    'ang_in': [10.85, 10.24, 10.46],
-    'ang_re': [44.63, 38.03, 37.85],
-    'e': [0.52, 0.56, 0.58],
-    'Nej': [1.86, 1.71, 1.58],
-    'v_ej': [0.2757, 0.2566, 0.2773]
+    'd_in': np.mean([fine_d1, fine_d1, fine_d1]),
+    'v_in': np.mean([3.8493, 3.7801, 3.7411]),
+    'ang_in': np.mean([10.85, 10.24, 10.46]),
+    'ang_re': np.mean([44.63, 38.03, 37.85]),
+    'e': np.mean([0.52, 0.56, 0.58]),
+    'Nej': np.mean([1.86, 1.71, 1.58]),
+    'v_ej': np.mean([0.2757, 0.2566, 0.2773])
 }
 Chen18_v_many= {
     'ang_in': [23.2, 21.8, 21.9, 30.7, 30.6, 37.6, 47.1, 46.6, 46],
@@ -339,35 +355,37 @@ Gordon09_v_many= {
     'e': [0.79, 0.64]
 }
 
-d1_array = Rice95_v_many_coarse['d_in'] + Rice95_v_many_medium['d_in'] + Rice95_v_many_fine['d_in']
+d1_array = [coarse_d1, medium_d1, fine_d1]
 d1_array = d1_array + Willetts89_v_many_coarse['d_in'] + Willetts89_v_many_medium['d_in'] + Willetts89_v_many_fine['d_in']
-v1_array = Rice95_v_many_coarse['v_in'] + Rice95_v_many_medium['v_in'] + Rice95_v_many_fine['v_in']
+v1_array = [Rice95_v_many_coarse['v_in'], Rice95_v_many_medium['v_in'], Rice95_v_many_fine['v_in']]
 v1_array = v1_array + Willetts89_v_many_coarse['v_in'] + Willetts89_v_many_medium['v_in'] + Willetts89_v_many_fine['v_in']
-theta1_array = Rice95_v_many_coarse['ang_in'] + Rice95_v_many_medium['ang_in'] + Rice95_v_many_fine['ang_in']
+theta1_array = [Rice95_v_many_coarse['ang_in'], Rice95_v_many_medium['ang_in'], Rice95_v_many_fine['ang_in']]
 theta1_array = theta1_array + Willetts89_v_many_coarse['ang_in'] + Willetts89_v_many_medium['ang_in'] + Willetts89_v_many_fine['ang_in']
 iteration_num = len(d1_array)
 
-d_epsilon = 0.02
-d_nu = 0.02
-epsilon_list = np.arange(0.1, 0.9 + 1.1*d_epsilon, d_epsilon).tolist()
-nu_list = np.arange(-0.9, -0.1 + 1.1*d_nu, d_nu).tolist()
+d_epsilon = 0.05
+d_nu = 0.05
+epsilon_list = np.arange(0.3, 1.2 + 1.1*d_epsilon, d_epsilon).tolist()
+nu_list = np.arange(-1.3, -0.4 + 1.1*d_nu, d_nu).tolist()
 rmse_list = []
 
 if no_calculate:
-    data = np.loadtxt('eject_compair_rmse.txt', delimiter=',')
+    data = np.loadtxt('eject_compair_rmse_final.txt', delimiter=',')
     read_x = data[:, 0]
     read_y = data[:, 1]
     read_z = data[:, 2]
     mesh_x = np.unique(read_x)
     mesh_y = np.unique(read_y)
     mesh_z = read_z.reshape(len(mesh_y), len(mesh_x))
-    mesh_z_smooth = gaussian_filter(mesh_z, sigma=1.0)
+    mesh_z_smooth = gaussian_filter(mesh_z, sigma=3.0)
     read_z_smooth = mesh_z_smooth.flatten()
-    plt.contourf(mesh_y, mesh_x, mesh_z_smooth, cmap='jet', levels=1000)
-    plt.colorbar(label='RMSE')
-    plt.xlabel('Epsilon')
-    plt.ylabel('Nu')
-    plt.title('RMSE of Eject Ratio')
+    plt.contourf(mesh_x, mesh_y, mesh_z_smooth, cmap='viridis', levels=100)
+    cbar = plt.colorbar(ticks=np.linspace(0, 5, 11))
+    cbar.set_label(r'$\Delta^{\mathrm{norm}}_{\mathrm{ave}}$', rotation=0, labelpad=20, fontsize=14)
+    cbar.ax.tick_params(labelsize=10)
+    plt.xlabel(r'$\epsilon$', fontsize=14)
+    plt.ylabel(r'$\nu$', fontsize=14)
+    plt.tick_params(labelsize=10)
     plt.show()
     min_indices = np.argpartition(read_z_smooth, 10)[:10]  # Get indices of the 10 smallest RMSE values
     for min_index in min_indices:
@@ -481,8 +499,13 @@ for epsilon in tqdm(epsilon_list):
                     dont_change_flag = False
 
                 if dont_change_flag:
-                    x0_hat = np.random.uniform(x_min, x_max)
-                    e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                    #x0_hat = np.random.uniform(x_min, x_max)
+                    #e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                    theta20, error = quad(rebound_angle_bar, x_min, x_max, args=(alpha, beta, theta1))
+                    theta20 = theta20 / (x_max - x_min)
+                    e0, error = quad(rebound_res_bar, x_min, x_max, args=(alpha, beta, theta1))
+                    e0 = e0 / (x_max - x_min)
+                    #e0, evx0, evz0 = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
                 else:
                     d_temp = d2
                     d2 = d3
@@ -496,14 +519,19 @@ for epsilon in tqdm(epsilon_list):
                     beta = 1 - (2/7)*(1 - nu)/(1 + mu_re)
                     x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
                     x_max = calculate_x_max(alpha, beta, theta1)
-                    x0_hat = np.random.uniform(x_min, x_max)
-                    e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                    #x0_hat = np.random.uniform(x_min, x_max)
+                    #e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                    theta20, error = quad(rebound_angle_bar, x_min, x_max, args=(alpha, beta, theta1))
+                    theta20 = theta20 / (x_max - x_min)
+                    e0, error = quad(rebound_res_bar, x_min, x_max, args=(alpha, beta, theta1))
+                    e0 = e0 / (x_max - x_min)
+                    #e0, evx0, evz0 = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
 
                 if not lognormal_param:
                     mu, sigma = get_normal_params(normal_E, normal_D)
-                dn = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
+                #dn = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
                 m1 = rho*(d1**3*np.pi/6)
-                mn = rho*(dn**3*np.pi/6)
+                #mn = rho*(dn**3*np.pi/6)
                 m_mid = rho*(d2_mid**3*np.pi/6)
                 C_Ec = rho*g*np.pi/6*d2_90
                 Ec_min = C_Ec*d_min**3
@@ -550,26 +578,26 @@ for epsilon in tqdm(epsilon_list):
                 vn_list_0.append(vn)
                 Nej_list_0.append(Nej)
 
-                ez0 = evz0 #/np.sin(theta1)
-                ex0 = evx0 #/np.cos(theta1)
-                theta20 = np.arctan(evz0/evx0)
-                if theta20 < 0:
-                    theta20 += np.pi
+                #ez0 = evz0 #/np.sin(theta1)
+                #ex0 = evx0 #/np.cos(theta1)
+                #theta20 = np.arctan(evz0/evx0)
+                #if theta20 < 0:
+                #    theta20 += np.pi
                 e0_list_0.append(e0)
-                ez0_list_0.append(ez0)
-                ex0_list_0.append(ex0)
+                #ez0_list_0.append(ez0)
+                #ex0_list_0.append(ex0)
                 theta20_list_0.append(theta20)
                 v20 = e0*v1
-                v2_z0 = v1*evz0
-                v2_x0 = v1*evx0
+                #v2_z0 = v1*evz0
+                #v2_x0 = v1*evx0
             """d1, d2, d3"""
-            ez0_bar_0 = np.mean(ez0_list_0)
-            ex0_bar_0 = np.mean(ex0_list_0)
-            e0_bar_0 = np.sqrt(ex0_bar_0**2 + ez0_bar_0**2)
+            e0_bar_0 = np.mean(e0_list_0)
+            #ez0_bar_0 = np.mean(ez0_list_0)
+            #ex0_bar_0 = np.mean(ex0_list_0)
             theta20_bar_0 = np.mean(theta20_list_0)
             e0_bar_list_0.append(e0_bar_0)
-            ez0_bar_list_0.append(ez0_bar_0)
-            ex0_bar_list_0.append(ex0_bar_0)
+            #ez0_bar_list_0.append(ez0_bar_0)
+            #ex0_bar_list_0.append(ex0_bar_0)
             theta20_bar_list_0.append(theta20_bar_0)
             """ejection velocity"""
             vn_bar_0 = np.mean(vn_list_0)
@@ -578,9 +606,6 @@ for epsilon in tqdm(epsilon_list):
             Nej_bar_0 = np.mean(Nej_list_0)
             Nej_bar_list_0.append(Nej_bar_0)
 
-        len_R95_c = len(Rice95_v_many_coarse['e'])
-        len_R95_m = len(Rice95_v_many_medium['e'])
-        len_R95_f = len(Rice95_v_many_fine['e'])
         len_W89_c = len(Willetts89_v_many_coarse['e'])
         len_W89_m = len(Willetts89_v_many_medium['e'])
         len_W89_f = len(Willetts89_v_many_fine['e'])
@@ -601,23 +626,21 @@ for epsilon in tqdm(epsilon_list):
         output_kind = 0
         rmse_array = []
         if output_e:
-            x_array = Rice95_v_many_coarse['e']
-            y_array = e0_bar_list_0[0:len_R95_c]
-            len0 = len_R95_c
+            x_array = [Rice95_v_many_coarse['e']]
+            y_array = [e0_bar_list_0[0]]
             x_array_total_e += x_array
             y_array_total_e += y_array
 
-            x_array = Rice95_v_many_medium['e']
-            y_array = e0_bar_list_0[len0:len0 + len_R95_m]
-            len0 += len_R95_m
+            x_array = [Rice95_v_many_medium['e']]
+            y_array = [e0_bar_list_0[1]]
             x_array_total_e += x_array
             y_array_total_e += y_array
 
-            x_array = Rice95_v_many_fine['e']
-            y_array = e0_bar_list_0[len0:len0 + len_R95_f]
-            len0 += len_R95_f
+            x_array = [Rice95_v_many_fine['e']]
+            y_array = [e0_bar_list_0[2]]
             x_array_total_e += x_array
             y_array_total_e += y_array
+            len0 = 3
 
             x_array = Willetts89_v_many_coarse['e']
             y_array = e0_bar_list_0[len0:len0 + len_W89_c]
@@ -646,26 +669,21 @@ for epsilon in tqdm(epsilon_list):
             rmse_array += e_elements
 
         if output_theta2:
-            x_array = Rice95_v_many_coarse['ang_re']
-            y_array = np.degrees(theta20_bar_list_0[0:len_R95_c])
-            y_array = y_array.tolist()
-            len0 = len_R95_c
+            x_array = [Rice95_v_many_coarse['ang_re']]
+            y_array = [np.degrees(theta20_bar_list_0[0])]
             x_array_total_theta2 += x_array
             y_array_total_theta2 += y_array
 
-            x_array = Rice95_v_many_medium['ang_re']
-            y_array = np.degrees(theta20_bar_list_0[len0:len0 + len_R95_m])
-            y_array = y_array.tolist()
-            len0 += len_R95_m
+            x_array = [Rice95_v_many_medium['ang_re']]
+            y_array = [np.degrees(theta20_bar_list_0[1])]
             x_array_total_theta2 += x_array
             y_array_total_theta2 += y_array
 
-            x_array = Rice95_v_many_fine['ang_re']
-            y_array = np.degrees(theta20_bar_list_0[len0:len0 + len_R95_f])
-            y_array = y_array.tolist()
-            len0 += len_R95_f
+            x_array = [Rice95_v_many_fine['ang_re']]
+            y_array = [np.degrees(theta20_bar_list_0[2])]
             x_array_total_theta2 += x_array
             y_array_total_theta2 += y_array
+            len0 = 3
 
             x_array = Willetts89_v_many_coarse['ang_re']
             y_array = np.degrees(theta20_bar_list_0[len0:len0 + len_W89_c])
@@ -696,67 +714,69 @@ for epsilon in tqdm(epsilon_list):
             theta2_elements = theta2_elements.tolist()
             rmse_array += theta2_elements
 
-        if output_Nej:
-            x_array = Rice95_v_many_coarse['Nej']
-            y_array = Nej_bar_list_0[0:len_R95_c]
-            len0 = len_R95_c
-            x_array_total_Nej += x_array
-            y_array_total_Nej += y_array
+        #if output_Nej:
+        #    x_array = Rice95_v_many_coarse['Nej']
+        #    y_array = Nej_bar_list_0[0:len_R95_c]
+        #    len0 = len_R95_c
+        #    x_array_total_Nej += x_array
+        #    y_array_total_Nej += y_array
 
-            x_array = Rice95_v_many_medium['Nej']
-            y_array = Nej_bar_list_0[len0:len0 + len_R95_m]
-            len0 += len_R95_m
-            x_array_total_Nej += x_array
-            y_array_total_Nej += y_array
+        #    x_array = Rice95_v_many_medium['Nej']
+        #    y_array = Nej_bar_list_0[len0:len0 + len_R95_m]
+        #    len0 += len_R95_m
+        #    x_array_total_Nej += x_array
+        #    y_array_total_Nej += y_array
 
-            x_array = Rice95_v_many_fine['Nej']
-            y_array = Nej_bar_list_0[len0:len0 + len_R95_f]
-            len0 += len_R95_f
-            x_array_total_Nej += x_array
-            y_array_total_Nej += y_array
+        #    x_array = Rice95_v_many_fine['Nej']
+        #    y_array = Nej_bar_list_0[len0:len0 + len_R95_f]
+        #    len0 += len_R95_f
+        #    x_array_total_Nej += x_array
+        #    y_array_total_Nej += y_array
 
-            Nej_scale = np.std(x_array_total_Nej)
-            Nej_elements = (np.array(x_array_total_Nej)/Nej_scale - np.array(y_array_total_Nej)/Nej_scale)**2
-            Nej_rmse = np.sqrt(np.mean(Nej_elements))
-            with open('eject_compair_rmse_Nej.txt', 'a') as f:
-                f.write(f'{epsilon:.4f}, {nu:.4f}, {Nej_rmse:.4f}\n')
-            Nej_elements = Nej_elements.tolist()
-            rmse_array += Nej_elements
+        #    Nej_scale = np.std(x_array_total_Nej)
+        #    Nej_elements = (np.array(x_array_total_Nej)/Nej_scale - np.array(y_array_total_Nej)/Nej_scale)**2
+        #    Nej_rmse = np.sqrt(np.mean(Nej_elements))
+        #    with open('eject_compair_rmse_Nej.txt', 'a') as f:
+        #        f.write(f'{epsilon:.4f}, {nu:.4f}, {Nej_rmse:.4f}\n')
+        #    Nej_elements = Nej_elements.tolist()
+        #    rmse_array += Nej_elements
 
-        if output_vn:
-            x_array = Rice95_v_many_coarse['v_ej']
-            y_array = vn_bar_list_0[0:len_R95_c]
-            len0 = len_R95_c
-            x_array_total += x_array
-            y_array_total += y_array
-            x_array_total_vn += x_array
-            y_array_total_vn += y_array
+        #if output_vn:
+        #    x_array = Rice95_v_many_coarse['v_ej']
+        #    y_array = vn_bar_list_0[0:len_R95_c]
+        #    len0 = len_R95_c
+        #    x_array_total += x_array
+        #    y_array_total += y_array
+        #    x_array_total_vn += x_array
+        #    y_array_total_vn += y_array
 
-            x_array = Rice95_v_many_medium['v_ej']
-            y_array = vn_bar_list_0[len0:len0 + len_R95_m]
-            len0 += len_R95_m
-            x_array_total += x_array
-            y_array_total += y_array
-            x_array_total_vn += x_array
-            y_array_total_vn += y_array
+        #    x_array = Rice95_v_many_medium['v_ej']
+        #    y_array = vn_bar_list_0[len0:len0 + len_R95_m]
+        #    len0 += len_R95_m
+        #    x_array_total += x_array
+        #    y_array_total += y_array
+        #    x_array_total_vn += x_array
+        #    y_array_total_vn += y_array
 
-            x_array = Rice95_v_many_fine['v_ej']
-            y_array = vn_bar_list_0[len0:len0 + len_R95_f]
-            len0 += len_R95_f
-            x_array_total += x_array
-            y_array_total += y_array
-            x_array_total_vn += x_array
-            y_array_total_vn += y_array
+        #    x_array = Rice95_v_many_fine['v_ej']
+        #    y_array = vn_bar_list_0[len0:len0 + len_R95_f]
+        #    len0 += len_R95_f
+        #    x_array_total += x_array
+        #    y_array_total += y_array
+        #    x_array_total_vn += x_array
+        #    y_array_total_vn += y_array
 
-            vn_scale = np.std(x_array_total_vn)
-            vn_elements = (np.array(x_array_total_vn)/vn_scale - np.array(y_array_total_vn)/vn_scale)**2
-            vn_rmse = np.sqrt(np.mean(vn_elements))
-            with open('eject_compair_rmse_vn.txt', 'a') as f:
-                f.write(f'{epsilon:.4f}, {nu:.4f}, {vn_rmse:.4f}\n')
-            vn_elements = vn_elements.tolist()
-            rmse_array += vn_elements
+        #    vn_scale = np.std(x_array_total_vn)
+        #    vn_elements = (np.array(x_array_total_vn)/vn_scale - np.array(y_array_total_vn)/vn_scale)**2
+        #    vn_rmse = np.sqrt(np.mean(vn_elements))
+        #    with open('eject_compair_rmse_vn.txt', 'a') as f:
+        #        f.write(f'{epsilon:.4f}, {nu:.4f}, {vn_rmse:.4f}\n')
+        #    vn_elements = vn_elements.tolist()
+        #    rmse_array += vn_elements
 
-        rmse = np.sqrt(np.mean(np.array(rmse_array)))
+        delta_norm = [np.sqrt(delta_e + delta_theta2) for delta_e, delta_theta2 in zip(e_elements, theta2_elements)]
+        rmse = np.mean(delta_norm)
+        #rmse = np.sqrt(np.mean(np.array(rmse_array)))
         rmse_list.append(rmse)
         with open('eject_compair_rmse.txt', 'a') as f:
             f.write(f'{epsilon:.4f}, {nu:.4f}, {rmse:.4f}\n')

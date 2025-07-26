@@ -1,3 +1,6 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
 d1 = 3e-4
 d2 = 3e-4
 epsilon = 0.78
@@ -19,3 +22,14 @@ ghat = 9.8*(1 - 1/s)
 Qstar1 = Q1/(rhop*d1*(s*ghat*d1)**0.5)
 Qstar2 = Q2/(rhop*d2*(s*ghat*d2)**0.5)
 print('Qstar =', Qstar1, Qstar2)
+
+d13 = np.linspace(0.1, 1, 10)
+d23 = 1
+thetac = np.zeros_like(d13)
+for i, d in enumerate(d13):
+    cos1 = (1 + d**2 - d23**2)/(2*d)
+    cos2 = (1 + d23**2 - d**2)/(2*d23)
+    thetac[i] = np.arccos(cos1) + np.arccos(cos2) - np.pi/2
+    thetac[i] = thetac[i] * 180/np.pi
+plt.plot(d13, thetac, 'o')
+plt.show()

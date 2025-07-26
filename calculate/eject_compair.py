@@ -1,12 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
-import seaborn as sns
+import os
+import sys
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.stats import truncnorm
 from scipy.stats import norm
 from tqdm import tqdm
 from scipy.special import erfc
+from scipy.integrate import quad
 
 # 根据对数正态分布的均值和标准差求正态分布的参数
 def get_normal_params(log_mean, log_std):
@@ -155,6 +157,18 @@ def calculate_e_bar_shallow_simp(alpha, beta, d1, d2, d3, theta1):
         e = np.sqrt(e_vx**2 + e_vz**2)
     return e, e_vx, e_vz
 
+def rebound_angle_bar(x, alpha, beta, theta1):
+    e_vx = -alpha*np.cos(theta1) + (alpha + beta)*x**2*np.sin(theta1)**2*np.cos(theta1) + (alpha + beta)*x*np.sin(theta1)**2*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    e_vz = alpha*np.sin(theta1) - (alpha + beta)*x**2*np.sin(theta1)**3 + (alpha + beta)*x*np.sin(theta1)*np.cos(theta1)*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    theta2 = np.arctan2(e_vz, e_vx)
+    return theta2
+
+def rebound_res_bar(x, alpha, beta, theta1):
+    e_vx = -alpha*np.cos(theta1) + (alpha + beta)*x**2*np.sin(theta1)**2*np.cos(theta1) + (alpha + beta)*x*np.sin(theta1)**2*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    e_vz = alpha*np.sin(theta1) - (alpha + beta)*x**2*np.sin(theta1)**3 + (alpha + beta)*x*np.sin(theta1)*np.cos(theta1)*np.sqrt(1 - x**2*np.sin(theta1)**2)
+    res = np.sqrt(e_vx**2 + e_vz**2)
+    return res
+
 def calculate_survive(d1, d2, d3, psi1, psi2, g, v2_x, v2_z, e):
     if v2_x > 0.0:
         zb = (1.0 - np.sin(psi1))*0.5*(d1 + d2)
@@ -206,15 +220,15 @@ output_e = True # output e
 output_ex = False # output e_x
 output_ez = False # output e_z
 output_theta2 = True # output rebound angle
-output_vn = True # output eject velocity
-output_Nej = True # output eject number
+output_vn = False # output eject velocity
+output_Nej = False # output eject number
 
 distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse, 4:normal
 shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
 
-d_min = 0.5e-4
+d_min = 1.5e-4
 d_max = 6e-4
 normal_E = 2e-4
 normal_D = 4e-4
@@ -228,9 +242,11 @@ weight1 = 0.5 # 第一个峰的权重
 gamma_ej = 0.05 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-epsilon = 0.72
-nu = -0.6
-num_samples = 100
+epsilon = 0.71
+nu = -0.88
+epsilon_La = 0.94
+nu_La = -1.2
+num_samples = 1000
 #------------------------------------------------------------------
 # average bed diameter
 if distribution == 0:
@@ -254,6 +270,11 @@ elif distribution == 4:
 coarse_d1 = 1.4*d2_mid
 medium_d1 = d2_mid
 fine_d1 = 0.73*d2_mid
+## 对d2_array中所有介于0.00015和0.00025之间的值求平均值
+#fine_d1 = np.mean(d2_array[(d2_array >= 0.00015) & (d2_array <= 0.00025)])
+#medium_d1 = np.mean(d2_array[(d2_array >= 0.0003) & (d2_array <= 0.000355)])
+#coarse_d1 = np.mean(d2_array[(d2_array >= 0.000425) & (d2_array <= 0.0006)])
+
 
 """other's data"""
 Beladjine07_v26= {
@@ -352,47 +373,34 @@ iteration_num = len(d1_array)
 
 rebound_ratio0_list_0 = []
 rebound_ratio0_list_1 = []
-rebound_ratio0_list_2 = []
 e0_bar_list_0 = []
 e0_bar_list_1 = []
-e0_bar_list_2 = []
 ez0_bar_list_0 = []
 ez0_bar_list_1 = []
-ez0_bar_list_2 = []
 ex0_bar_list_0 = []
 ex0_bar_list_1 = []
-ex0_bar_list_2 = []
 theta20_bar_list_0 = []
 theta20_bar_list_1 = []
-theta20_bar_list_2 = []
 Nej_bar_list_0 = []
 Nej_bar_list_1 = []
-Nej_bar_list_2 = []
 vn_bar_list_0 = []
 vn_bar_list_1 = []
-vn_bar_list_2 = []
 for n in tqdm(range(iteration_num)):
     d1 = d1_array[n]
     v1 = v1_array[n]
     theta1 = np.radians(theta1_array[n])
     e0_list_0 = []
     e0_list_1 = []
-    e0_list_2 = []
     ex0_list_0 = []
     ex0_list_1 = []
-    ex0_list_2 = []
     ez0_list_0 = []
     ez0_list_1 = []
-    ez0_list_2 = []
     theta20_list_0 = []
     theta20_list_1 = []
-    theta20_list_2 = []
     Nej_list_0 = []
     Nej_list_1 = []
-    Nej_list_2 = []
     vn_list_0 = []
     vn_list_1 = []
-    vn_list_2 = []
     current_n = 0
     while current_n < num_samples:
         current_n += 1
@@ -433,21 +441,23 @@ for n in tqdm(range(iteration_num)):
         # d1, d2, d3分别为不同的直径
         # d1, d2=d3
         # d1=d2=d3
-        for i in range(3):
+        for i in range(2):
+            current_ep = epsilon
+            current_nu = nu
             if i == 1:
+                d2 = d2_mid
                 d3 = d2
-            elif i == 2:
-                d2 = d1
-                d3 = d1
+                current_ep = epsilon_La
+                current_nu = nu_La
 
             d = (d1 + d2)/2
             d1_hat = d1/d
             d2_hat = d2/d
             d3_hat = d3/d
             # restitution coefficient
-            mu_re = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
-            alpha = (1 + epsilon)/(1 + mu_re) - 1
-            beta = 1 - (2/7)*(1 - nu)/(1 + mu_re)
+            mu_re = current_ep*d1_hat**3/(d1_hat**3 + current_ep*d2_hat**3)
+            alpha = (1 + current_ep)/(1 + mu_re) - 1
+            beta = 1 - (2/7)*(1 - current_nu)/(1 + mu_re)
             x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
 
             x_max = calculate_x_max(alpha, beta, theta1)
@@ -457,8 +467,13 @@ for n in tqdm(range(iteration_num)):
                 dont_change_flag = False
 
             if dont_change_flag:
-                x0_hat = np.random.uniform(x_min, x_max)
-                e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                #x0_hat = np.random.uniform(x_min, x_max)
+                #e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                #e0, evx0, evz0 = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
+                theta20, error = quad(rebound_angle_bar, x_min, x_max, args=(alpha, beta, theta1))
+                theta20 = theta20 / (x_max - x_min)
+                e0, error = quad(rebound_res_bar, x_min, x_max, args=(alpha, beta, theta1))
+                e0 = e0 / (x_max - x_min)
             else:
                 d_temp = d2
                 d2 = d3
@@ -467,13 +482,18 @@ for n in tqdm(range(iteration_num)):
                 d1_hat = d1/d
                 d2_hat = d2/d
                 d3_hat = d3/d
-                mu_re = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
-                alpha = (1 + epsilon)/(1 + mu_re) - 1
-                beta = 1 - (2/7)*(1 - nu)/(1 + mu_re)
+                mu_re = current_ep*d1_hat**3/(d1_hat**3 + current_ep*d2_hat**3)
+                alpha = (1 + current_ep)/(1 + mu_re) - 1
+                beta = 1 - (2/7)*(1 - current_nu)/(1 + mu_re)
                 x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
                 x_max = calculate_x_max(alpha, beta, theta1)
-                x0_hat = np.random.uniform(x_min, x_max)
-                e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                #x0_hat = np.random.uniform(x_min, x_max)
+                #e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)
+                #e0, evx0, evz0 = calculate_e_bar(alpha, beta, x_min, x_max, theta1)
+                theta20, error = quad(rebound_angle_bar, x_min, x_max, args=(alpha, beta, theta1))
+                theta20 = theta20 / (x_max - x_min)
+                e0, error = quad(rebound_res_bar, x_min, x_max, args=(alpha, beta, theta1))
+                e0 = e0 / (x_max - x_min)
 
             if not lognormal_param:
                 mu, sigma = get_normal_params(normal_E, normal_D)
@@ -529,75 +549,78 @@ for n in tqdm(range(iteration_num)):
             elif i == 1:
                 vn_list_1.append(vn)
                 Nej_list_1.append(Nej)
-            elif i == 2:
-                vn_list_2.append(vn)
-                Nej_list_2.append(Nej)
 
-            ez0 = evz0 #/np.sin(theta1)
-            ex0 = evx0 #/np.cos(theta1)
-            theta20 = np.arctan(evz0/evx0)
-            if theta20 < 0:
-                theta20 += np.pi
+            #ez0 = evz0 #/np.sin(theta1)
+            #ex0 = evx0 #/np.cos(theta1)
+            #theta20 = np.arctan(evz0/evx0)
+            #if theta20 < 0:
+            #    theta20 += np.pi
             if i == 0:
                 e0_list_0.append(e0)
-                ez0_list_0.append(ez0)
-                ex0_list_0.append(ex0)
+                #ez0_list_0.append(ez0)
+                #ex0_list_0.append(ex0)
                 theta20_list_0.append(theta20)
             elif i == 1:
                 e0_list_1.append(e0)
-                ez0_list_1.append(ez0)
-                ex0_list_1.append(ex0)
+                #ez0_list_1.append(ez0)
+                #ex0_list_1.append(ex0)
                 theta20_list_1.append(theta20)
-            elif i == 2:
-                e0_list_2.append(e0)
-                ez0_list_2.append(ez0)
-                ex0_list_2.append(ex0)
-                theta20_list_2.append(theta20)
             v20 = e0*v1
-            v2_z0 = v1*evz0
-            v2_x0 = v1*evx0
+            #v2_z0 = v1*evz0
+            #v2_x0 = v1*evx0
     """d1, d2, d3"""
-    ez0_bar_0 = np.mean(ez0_list_0)
-    ex0_bar_0 = np.mean(ex0_list_0)
-    e0_bar_0 = np.sqrt(ex0_bar_0**2 + ez0_bar_0**2)
+    #ez0_bar_0 = np.mean(ez0_list_0)
+    #ex0_bar_0 = np.mean(ex0_list_0)
+    e0_bar_0 = np.mean(e0_list_0)
     theta20_bar_0 = np.mean(theta20_list_0)
     e0_bar_list_0.append(e0_bar_0)
-    ez0_bar_list_0.append(ez0_bar_0)
-    ex0_bar_list_0.append(ex0_bar_0)
+    #ez0_bar_list_0.append(ez0_bar_0)
+    #ex0_bar_list_0.append(ex0_bar_0)
     theta20_bar_list_0.append(theta20_bar_0)
     """d2=d3"""
-    ez0_bar_1 = np.mean(ez0_list_1)
-    ex0_bar_1 = np.mean(ex0_list_1)
-    e0_bar_1 = np.sqrt(ex0_bar_1**2 + ez0_bar_1**2)
+    #ez0_bar_1 = np.mean(ez0_list_1)
+    #ex0_bar_1 = np.mean(ex0_list_1)
+    e0_bar_1 = np.mean(e0_list_1)
     theta20_bar_1 = np.mean(theta20_list_1)
     e0_bar_list_1.append(e0_bar_1)
-    ez0_bar_list_1.append(ez0_bar_1)
-    ex0_bar_list_1.append(ex0_bar_1)
+    #ez0_bar_list_1.append(ez0_bar_1)
+    #ex0_bar_list_1.append(ex0_bar_1)
     theta20_bar_list_1.append(theta20_bar_1)
-    """d1=d2=d3"""
-    ez0_bar_2 = np.mean(ez0_list_2)
-    ex0_bar_2 = np.mean(ex0_list_2)
-    e0_bar_2 = np.sqrt(ex0_bar_2**2 + ez0_bar_2**2)
-    theta20_bar_2 = np.mean(theta20_list_2)
-    e0_bar_list_2.append(e0_bar_2)
-    ez0_bar_list_2.append(ez0_bar_2)
-    ex0_bar_list_2.append(ex0_bar_2)
-    theta20_bar_list_2.append(theta20_bar_2)
     """ejection velocity"""
     vn_bar_0 = np.mean(vn_list_0)
     vn_bar_1 = np.mean(vn_list_1)
-    vn_bar_2 = np.mean(vn_list_2)
     vn_bar_list_0.append(vn_bar_0)
     vn_bar_list_1.append(vn_bar_1)
-    vn_bar_list_2.append(vn_bar_2)
     """ejection number"""
     Nej_bar_0 = np.mean(Nej_list_0)
     Nej_bar_1 = np.mean(Nej_list_1)
-    Nej_bar_2 = np.mean(Nej_list_2)
     Nej_bar_list_0.append(Nej_bar_0)
     Nej_bar_list_1.append(Nej_bar_1)
-    Nej_bar_list_2.append(Nej_bar_2)
 
+with open('e0_bar_list_0.txt', 'w') as f:
+    for e0 in e0_bar_list_0:
+        f.write(f"{e0}\n")
+with open('e0_bar_list_1.txt', 'w') as f:
+    for e0 in e0_bar_list_1:
+        f.write(f"{e0}\n")
+with open('theta20_bar_list_0.txt', 'w') as f:
+    for theta20 in theta20_bar_list_0:
+        f.write(f"{theta20}\n")
+with open('theta20_bar_list_1.txt', 'w') as f:
+    for theta20 in theta20_bar_list_1:
+        f.write(f"{theta20}\n")
+with open('vn_bar_list_0.txt', 'w') as f:
+    for vn in vn_bar_list_0:
+        f.write(f"{vn}\n")
+with open('vn_bar_list_1.txt', 'w') as f:
+    for vn in vn_bar_list_1:
+        f.write(f"{vn}\n")
+with open('Nej_bar_list_0.txt', 'w') as f:
+    for Nej in Nej_bar_list_0:
+        f.write(f"{Nej}\n")
+with open('Nej_bar_list_1.txt', 'w') as f:
+    for Nej in Nej_bar_list_1:
+        f.write(f"{Nej}\n")
 len_R95_c = len(Rice95_v_many_coarse['e'])
 len_R95_m = len(Rice95_v_many_medium['e'])
 len_R95_f = len(Rice95_v_many_fine['e'])
@@ -690,19 +713,17 @@ if output_e:
     triangle_c = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_c, label='Willetts89 coarse')
     triangle_m = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_m, label='Willetts89 medium')
     triangle_f = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_f, label='Willetts89 fine')
-    plt.legend(handles=[circle_c, circle_m, circle_f, triangle_c, triangle_m, triangle_f], loc='best')
+    #plt.legend(handles=[circle_c, circle_m, circle_f, triangle_c, triangle_m, triangle_f], loc='best')
 
-    plt.figure(2, figsize=(8, 6))
+    #plt.figure(2, figsize=(8, 6))
     x_array = Rice95_v_many_coarse['e'] + Rice95_v_many_medium['e'] + Rice95_v_many_fine['e']
     x_array = x_array + Willetts89_v_many_coarse['e'] + Willetts89_v_many_medium['e'] + Willetts89_v_many_fine['e']
     y_array1 = e0_bar_list_1
-    y_array2 = e0_bar_list_2
-    min_xy = min(x_array + y_array1 + y_array2)
-    max_xy = max(x_array + y_array1 + y_array2)
+    min_xy = min(x_array + y_array1)
+    max_xy = max(x_array + y_array1)
     line_points = [min_xy, max_xy]
-    plt.plot(line_points, line_points, 'k--', label='y=x')
+    #plt.plot(line_points, line_points, 'k--', label='y=x')
     plt.scatter(x_array, y_array1, c='k', marker='s', label='d2=d3')
-    plt.scatter(x_array, y_array2, c='k', marker='*', label='d1=d2=d3')
     plt.xlabel('$e_{exp}$')
     plt.ylabel('$e_{sim}$')
     plt.legend()
@@ -793,21 +814,18 @@ if output_theta2:
     triangle_c = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_c, label='Willetts89 coarse')
     triangle_m = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_m, label='Willetts89 medium')
     triangle_f = mlines.Line2D([], [], color='k', marker='^', linestyle='None', markersize=ms_f, label='Willetts89 fine')
-    plt.legend(handles=[circle_c, circle_m, circle_f, triangle_c, triangle_m, triangle_f], loc='best')
+    #plt.legend(handles=[circle_c, circle_m, circle_f, triangle_c, triangle_m, triangle_f], loc='best')
 
-    plt.figure(4, figsize=(8, 6))
+    #plt.figure(4, figsize=(8, 6))
     x_array = Rice95_v_many_coarse['ang_re'] + Rice95_v_many_medium['ang_re'] + Rice95_v_many_fine['ang_re']
     x_array = x_array + Willetts89_v_many_coarse['ang_re'] + Willetts89_v_many_medium['ang_re'] + Willetts89_v_many_fine['ang_re']
     y_array1 = np.degrees(theta20_bar_list_1)
-    y_array2 = np.degrees(theta20_bar_list_2)
     y_array1 = y_array1.tolist()
-    y_array2 = y_array2.tolist()
-    min_xy = min(x_array + y_array1 + y_array2)
-    max_xy = max(x_array + y_array1 + y_array2)
+    min_xy = min(x_array + y_array1)
+    max_xy = max(x_array + y_array1)
     line_points = [min_xy, max_xy]
-    plt.plot(line_points, line_points, 'k--', label='y=x')
+    #plt.plot(line_points, line_points, 'k--', label='y=x')
     plt.scatter(x_array, y_array1, c='k', marker='s', label='d2=d3')
-    plt.scatter(x_array, y_array2, c='k', marker='*', label='d1=d2=d3')
     plt.xlabel('$\\theta_{re,exp}$ (degrees)')
     plt.ylabel('$\\theta_{re,sim}$ (degrees)')
     plt.legend()
