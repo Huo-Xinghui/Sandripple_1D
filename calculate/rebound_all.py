@@ -88,7 +88,7 @@ def calculate_x_min_3D(d1, d2, d3, d4, theta1):
     d14 = (d1 + d4)/2
     d34 = (d3 + d4)/2
     kmax = (d13**2 + d34**2 - d14**2)/(2*d13*d34)
-    k = np.random.uniform(0, kmax)
+    k = kmax/2 #np.random.uniform(0, kmax)
     d13 = d13*np.sqrt(1.0 - k**2)
     d23 = d23*np.sqrt(1.0 - (k*d13/d23)**2)
     cos0 = (d13**2 + d23**2 - 1)/(2*d13*d23)
@@ -333,7 +333,7 @@ shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
 Three_D = True # 3D bed
-impactor = 1 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine
+impactor = 2 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine
 
 d_min = 1.5e-4
 d_max = 6e-4
@@ -361,8 +361,8 @@ g = 9.8*(1 - 1.263/rho)
 #nu = -0.90
 epsilon = 0.61
 nu = -0.73
-epsilon_La = 0.94
-nu_La = -1.2
+epsilon_La = 0.80
+nu_La = -0.80
 v1_single = 3.38
 theta1_single = np.pi/18
 v1_start = 1
@@ -373,7 +373,7 @@ if shallow:
     theta1_end = 30/180*np.pi
 else:
     theta1_end = 89.5/180*np.pi
-num_samples = 10000
+num_samples = 10
 #------------------------------------------------------------------
 # impactor diameter
 if distribution == 0:
