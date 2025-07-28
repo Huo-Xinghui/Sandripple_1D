@@ -61,18 +61,35 @@ def generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, dmin, dmax, size):
 def calculate_x_min(d1, d2, d3, theta1):
     d13 = (d1 + d3)/2
     d23 = (d2 + d3)/2
-    cos1 = (1 + d13**2 - d23**2)/(2*d13)
-    cos2 = (1 + d23**2 - d13**2)/(2*d23)
-    gamma = np.arccos(cos1)
-    delta = np.arccos(cos2)
-    epsilon = np.pi - gamma - delta
-    theta_c = gamma + delta - np.pi/2
+    cos0 = (d13**2 + d23**2 - 1)/(2*d13*d23)
+    alpha = np.arccos(cos0)
+    #theta_c = gamma + delta - np.pi/2
+    theta_c = np.pi/2 - alpha
     l_r = (1 + d23**2 - d13**2)/(2*d23)
     if theta1 <= theta_c:
         x_min = d13/np.sin(theta1) - d23
     else:
         x_min = np.sqrt(1 - l_r**2)/np.tan(theta1) - l_r
-    return x_min, delta, epsilon
+    return x_min
+
+def calculate_x_min_3D(d1, d2, d3, d4, theta1):
+    d13 = (d1 + d3)/2
+    d23 = (d2 + d3)/2
+    d14 = (d1 + d4)/2
+    d34 = (d3 + d4)/2
+    kmax = (d13**2 + d34**2 - d14**2)/(2*d13*d34)
+    k = np.random.uniform(0, kmax)
+    d13 = d13*np.sqrt(1.0 - k**2)
+    d23 = d23*np.sqrt(1.0 - (k*d13/d23)**2)
+    cos0 = (d13**2 + d23**2 - 1)/(2*d13*d23)
+    alpha = np.arccos(cos0)
+    theta_c = np.pi/2 - alpha
+    l_r = (1 + d23**2 - d13**2)/(2*d23)
+    if theta1 <= theta_c:
+        x_min = d13/np.sin(theta1) - d23
+    else:
+        x_min = np.sqrt(1 - l_r**2)/np.tan(theta1) - l_r
+    return x_min
 
 def calculate_x_max(alpha, beta, theta1):
     x_max_try = 1/np.sin(theta1)
@@ -168,51 +185,6 @@ def rebound_res_bar(x, alpha, beta, theta1):
     res = np.sqrt(e_vx**2 + e_vz**2)
     return res
 
-def calculate_survive(d1, d2, d3, psi1, psi2, g, v2_x, v2_z, e):
-    if v2_x > 0.0:
-        zb = (1.0 - np.sin(psi1))*0.5*(d1 + d2)
-        z_final = v2_z**2/(2.0*g)
-        if z_final > zb:
-            res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - 0.5*(d1 + d2)*np.cos(psi1)
-        else:
-            res_x = -1
-    elif v2_x < 0.0:
-        zb = (1.0 - np.sin(psi2))*0.5*(d1 + d3)
-        z_final = v2_z**2/(2.0*g)
-        if z_final > zb:
-            res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - 0.5*(d1 + d3)*np.cos(psi2)
-        else:
-            res_x = -1
-    else:
-        res_x = -1
-    if res_x <= 0.0 or e <= 0.0:
-        is_survive = False
-    else:
-        is_survive = True
-    return is_survive
-
-def calculate_survive1(d1, d2, v1, theta1, x, g, v2_x, v2_z, e):
-    v1_vec = np.array([v1*np.cos(theta1), v1*np.sin(theta1)])
-    x_vec = np.array([x, 0])
-    t = x_vec @ v1_vec / (v1**2) + (1/v1**2)*np.sqrt((1-x**2)*v1**2 + (x_vec @ v1_vec)**2)
-    v1t = v1 * t
-    zb = (1 - v1t*np.sin(theta1))*0.5*(d1 + d2)
-    z_final = v2_z**2/(2.0*g)
-    if z_final > zb:
-        x_distance = (v1t*np.cos(theta1) - x)*0.5*(d1 + d2)
-        x_min_try = 1/np.tan(theta1)*0.5*(d1 + d2)
-        if x_distance < x_min_try:
-            res_x = (np.sqrt((v2_z/g)**2 - (2.0*zb)/g) + v2_z/g)*v2_x - x_distance
-        else:
-            res_x = 1
-    else:
-        res_x = -1
-    if res_x <= 0.0 or e <= 0.0:
-        is_survive = False
-    else:
-        is_survive = True
-    return is_survive
-
 #-------------------------------------------------------------------
 output_e = True # output e
 output_theta2 = True # output rebound angle
@@ -223,6 +195,7 @@ distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse, 4:norma
 shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
+Three_D = True # 3D bed
 
 no_calculate = True # do not calculate, just output figure
 
@@ -363,14 +336,14 @@ theta1_array = [Rice95_v_many_coarse['ang_in'], Rice95_v_many_medium['ang_in'], 
 theta1_array = theta1_array + Willetts89_v_many_coarse['ang_in'] + Willetts89_v_many_medium['ang_in'] + Willetts89_v_many_fine['ang_in']
 iteration_num = len(d1_array)
 
-d_epsilon = 0.05
-d_nu = 0.05
-epsilon_list = np.arange(0.3, 1.2 + 1.1*d_epsilon, d_epsilon).tolist()
-nu_list = np.arange(-1.3, -0.4 + 1.1*d_nu, d_nu).tolist()
+d_epsilon = 0.01
+d_nu = 0.01
+epsilon_list = np.arange(0.6, 0.9 + 1.1*d_epsilon, d_epsilon).tolist()
+nu_list = np.arange(-0.9, -0.6 + 1.1*d_nu, d_nu).tolist()
 rmse_list = []
 
 if no_calculate:
-    data = np.loadtxt('eject_compair_rmse_final.txt', delimiter=',')
+    data = np.loadtxt('eject_compair_rmse.txt', delimiter=',')
     read_x = data[:, 0]
     read_y = data[:, 1]
     read_z = data[:, 2]
@@ -455,9 +428,10 @@ for epsilon in tqdm(epsilon_list):
                 elif distribution == 1:
                     if not lognormal_param:
                         mu, sigma = get_normal_params(normal_E, normal_D)
-                    d_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, 3)
+                    d_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, 4)
                     d2 = d_array[1]
                     d3 = d_array[2]
+                    d4 = d_array[3]
                 elif distribution == 2:
                     r = np.random.uniform(0.5,1.5,size=3)
                     rr = np.floor(r)
@@ -486,11 +460,15 @@ for epsilon in tqdm(epsilon_list):
                 d1_hat = d1/d
                 d2_hat = d2/d
                 d3_hat = d3/d
+                d4_hat = d4/d
                 # restitution coefficient
                 mu_re = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
                 alpha = (1 + epsilon)/(1 + mu_re) - 1
                 beta = 1 - (2/7)*(1 - nu)/(1 + mu_re)
-                x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
+                if Three_D:
+                    x_min = calculate_x_min_3D(d1_hat, d2_hat, d3_hat, d4_hat, theta1)
+                else:
+                    x_min = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
 
                 x_max = calculate_x_max(alpha, beta, theta1)
                 if x_min < x_max:
@@ -514,10 +492,14 @@ for epsilon in tqdm(epsilon_list):
                     d1_hat = d1/d
                     d2_hat = d2/d
                     d3_hat = d3/d
+                    d4_hat = d4/d
                     mu_re = epsilon*d1_hat**3/(d1_hat**3 + epsilon*d2_hat**3)
                     alpha = (1 + epsilon)/(1 + mu_re) - 1
                     beta = 1 - (2/7)*(1 - nu)/(1 + mu_re)
-                    x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
+                    if Three_D:
+                        x_min = calculate_x_min_3D(d1_hat, d2_hat, d3_hat, d4_hat, theta1)
+                    else:
+                        x_min = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
                     x_max = calculate_x_max(alpha, beta, theta1)
                     #x0_hat = np.random.uniform(x_min, x_max)
                     #e0, evx0, evz0 = calculate_e(alpha, beta, x0_hat, theta1)

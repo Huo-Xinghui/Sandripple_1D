@@ -114,9 +114,9 @@ fig, ax = plt.subplots(1, 2, figsize=(10, 5))
 #data_coarse = np.loadtxt('rebound_e_coarse_7692.txt')
 #data_medium = np.loadtxt('rebound_e_medium_7692.txt')
 #data_fine = np.loadtxt('rebound_e_fine_7692.txt')
-data_coarse = np.loadtxt('rebound_e_coarse_7188.txt')
-data_medium = np.loadtxt('rebound_e_medium_7188.txt')
-data_fine = np.loadtxt('rebound_e_fine_7188.txt')
+data_coarse = np.loadtxt('rebound_e_fine_6680_3D_randk.txt')
+data_medium = np.loadtxt('rebound_e_fine_7188.txt')
+data_fine = np.loadtxt('rebound_e_fine_6680_3D.txt')
 x = data_coarse[:, 0]
 e0_coarse = data_coarse[:, 1]
 e0_medium = data_medium[:, 1]
@@ -202,9 +202,9 @@ ax1.text(0, 1, '(a)', transform=ax1.transAxes, fontsize=label_size, fontweight='
 #data_coarse = np.loadtxt('rebound_th_coarse_7692.txt')
 #data_medium = np.loadtxt('rebound_th_medium_7692.txt')
 #data_fine = np.loadtxt('rebound_th_fine_7692.txt')
-data_coarse = np.loadtxt('rebound_th_coarse_7188.txt')
-data_medium = np.loadtxt('rebound_th_medium_7188.txt')
-data_fine = np.loadtxt('rebound_th_fine_7188.txt')
+data_coarse = np.loadtxt('rebound_th_fine_6680_3D_randk.txt')
+data_medium = np.loadtxt('rebound_th_fine_7188.txt')
+data_fine = np.loadtxt('rebound_th_fine_6680_3D.txt')
 x = data_coarse[:, 0]
 th0_coarse = data_coarse[:, 1]
 th0_medium = data_medium[:, 1]

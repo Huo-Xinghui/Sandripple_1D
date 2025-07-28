@@ -65,12 +65,41 @@ def generate_bimodal(mu1, sigma1, mu2, sigma2, weight1, dmin, dmax, size):
 def calculate_x_min(d1, d2, d3, theta1):
     d13 = (d1 + d3)/2
     d23 = (d2 + d3)/2
+    cos0 = (d13**2 + d23**2 - 1)/(2*d13*d23)
     cos1 = (1 + d13**2 - d23**2)/(2*d13)
     cos2 = (1 + d23**2 - d13**2)/(2*d23)
+    alpha = np.arccos(cos0)
     gamma = np.arccos(cos1)
     delta = np.arccos(cos2)
     epsilon = np.pi - gamma - delta
-    theta_c = gamma + delta - np.pi/2
+    #theta_c = gamma + delta - np.pi/2
+    theta_c = np.pi/2 - alpha
+    l_r = (1 + d23**2 - d13**2)/(2*d23)
+    if theta1 <= theta_c:
+        x_min = d13/np.sin(theta1) - d23
+    else:
+        x_min = np.sqrt(1 - l_r**2)/np.tan(theta1) - l_r
+    return x_min, delta, epsilon
+
+
+def calculate_x_min_3D(d1, d2, d3, d4, theta1):
+    d13 = (d1 + d3)/2
+    d23 = (d2 + d3)/2
+    d14 = (d1 + d4)/2
+    d34 = (d3 + d4)/2
+    kmax = (d13**2 + d34**2 - d14**2)/(2*d13*d34)
+    k = np.random.uniform(0, kmax)
+    d13 = d13*np.sqrt(1.0 - k**2)
+    d23 = d23*np.sqrt(1.0 - (k*d13/d23)**2)
+    cos0 = (d13**2 + d23**2 - 1)/(2*d13*d23)
+    cos1 = (1 + d13**2 - d23**2)/(2*d13)
+    cos2 = (1 + d23**2 - d13**2)/(2*d23)
+    alpha = np.arccos(cos0)
+    gamma = np.arccos(cos1)
+    delta = np.arccos(cos2)
+    epsilon = np.pi - gamma - delta
+    #theta_c = gamma + delta - np.pi/2
+    theta_c = np.pi/2 - alpha
     l_r = (1 + d23**2 - d13**2)/(2*d23)
     if theta1 <= theta_c:
         x_min = d13/np.sin(theta1) - d23
@@ -303,6 +332,7 @@ variation_param = 1 # 0: v1, 1: theta1
 shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
+Three_D = True # 3D bed
 impactor = 1 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine
 
 d_min = 1.5e-4
@@ -327,20 +357,22 @@ rho = 2650
 g = 9.8*(1 - 1.263/rho)
 #epsilon = 0.71
 #nu = -0.88
-epsilon = 0.73
-nu = -0.90
+#epsilon = 0.73
+#nu = -0.90
+epsilon = 0.61
+nu = -0.73
 epsilon_La = 0.94
 nu_La = -1.2
 v1_single = 3.38
 theta1_single = np.pi/18
 v1_start = 1
 v1_end = 10
-case_num = 40
-theta1_start = np.pi/180
+case_num = 45
+theta1_start = 0.5*np.pi/180
 if shallow:
     theta1_end = 30/180*np.pi
 else:
-    theta1_end = 40/180*np.pi
+    theta1_end = 89.5/180*np.pi
 num_samples = 10000
 #------------------------------------------------------------------
 # impactor diameter
@@ -459,11 +491,12 @@ for n, x in enumerate(tqdm(x_array)):
         elif distribution == 1:
             if not lognormal_param:
                 mu, sigma = get_normal_params(normal_E, normal_D)
-            d_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, 3)
+            d_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, 4)
             if impactor == 0:
                 d1 = d_array[0]
             d2 = d_array[1]
             d3 = d_array[2]
+            d4 = d_array[3]
             d3_list.append(d3)
         elif distribution == 2:
             r = np.random.uniform(0.5,1.5,size=3)
@@ -512,6 +545,7 @@ for n, x in enumerate(tqdm(x_array)):
         d1_hat = d1/d
         d2_hat = d2/d
         d3_hat = d3/d
+        d4_hat = d4/d
         # restitution coefficient
         mu_re = current_eps*d1_hat**3/(d1_hat**3 + current_eps*d2_hat**3)
         alpha = (1 + current_eps)/(1 + mu_re) - 1
@@ -521,7 +555,10 @@ for n, x in enumerate(tqdm(x_array)):
             x_max = calculate_x_max_shallow(theta1)
         else:
             x_max = calculate_x_max(alpha, beta, theta1)
-            x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
+            if Three_D:
+                x_min, psi1, psi2 = calculate_x_min_3D(d1_hat, d2_hat, d3_hat, d4_hat, theta1)
+            else:
+                x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
 
         if shallow:
             if x_min < x_max:
@@ -563,6 +600,7 @@ for n, x in enumerate(tqdm(x_array)):
             d1_hat = d1/d
             d2_hat = d2/d
             d3_hat = d3/d
+            d4_hat = d4/d
             mu_re = current_eps*d1_hat**3/(d1_hat**3 + current_eps*d2_hat**3)
             alpha = (1 + current_eps)/(1 + mu_re) - 1
             beta = 1 - (2/7)*(1 - current_nu)/(1 + mu_re)
@@ -571,7 +609,10 @@ for n, x in enumerate(tqdm(x_array)):
                 x_max = calculate_x_max_shallow(theta1)
             else:
                 x_max = calculate_x_max(alpha, beta, theta1)
-                x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
+                if Three_D:
+                    x_min, psi1, psi2 = calculate_x_min_3D(d1_hat, d2_hat, d3_hat, d4_hat, theta1)
+                else:
+                    x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
 
             x0_hat = np.random.uniform(x_min, x_max)
             if shallow:
@@ -638,6 +679,7 @@ for n, x in enumerate(tqdm(x_array)):
     # d1, d2=d3=d_mid
     d2 = d_mid
     d3 = d_mid
+    d4 = d_mid
     current_eps = epsilon_La
     current_nu = nu_La
 
@@ -645,6 +687,7 @@ for n, x in enumerate(tqdm(x_array)):
     d1_hat = d1/d
     d2_hat = d2/d
     d3_hat = d3/d
+    d4_hat = d4/d
     # restitution coefficient
     mu_re = current_eps*d1_hat**3/(d1_hat**3 + current_eps*d2_hat**3)
     alpha = (1 + current_eps)/(1 + mu_re) - 1
@@ -654,7 +697,10 @@ for n, x in enumerate(tqdm(x_array)):
         x_max = calculate_x_max_shallow(theta1)
     else:
         x_max = calculate_x_max(alpha, beta, theta1)
-        x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
+        if Three_D:
+            x_min, psi1, psi2 = calculate_x_min_3D(d1_hat, d2_hat, d3_hat, d4_hat, theta1)
+        else:
+            x_min, psi1, psi2 = calculate_x_min(d1_hat, d2_hat, d3_hat, theta1)
 
     if shallow:
         if x_min < x_max:
