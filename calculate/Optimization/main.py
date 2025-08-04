@@ -1,6 +1,5 @@
 import numpy as np
 import sys
-from scipy.optimize import minimize
 from skopt import gp_minimize
 from skopt.space import Real
 from skopt.utils import use_named_args
@@ -14,14 +13,14 @@ objective_function_num = 2  # 0: CCA, 1: correlation, 2: Euclidean distance, 3: 
 epsilon_min = 0.1
 epsilon_max = 1.0
 nu_min = -2.0
-nu_max = 2.0
+nu_max = 0.0
 # Bed PSD parameters
 dist_params = {
     'd_min': 1.5e-4,
     'd_max': 6e-4,
     'mu': -8.30271,
     'sigma': 0.25778,
-    'sampling_num': 200
+    'sampling_num': 1000
 }
 # Average bed diameter
 sampling_num = 10000

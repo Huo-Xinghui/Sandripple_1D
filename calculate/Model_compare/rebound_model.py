@@ -20,8 +20,8 @@ def calculate_x_min_3D(d1, d2, d3, d4, th):
     d14 = (d1 + d4)/2
     d34 = (d3 + d4)/2
     smax = (d13**2 + d34**2 - d14**2)/(2*d23*d34)
-    s = np.random.uniform(0, smax)
-    #s = smax/2 # for simplicity, use the middle value
+    #s = np.random.uniform(0, smax)
+    s = smax/2 # for simplicity, use the middle value
     d13 = d13*np.sqrt(1.0 - (s*d23/d13)**2)
     d23 = d23*np.sqrt(1.0 - s**2)
     cos0 = (d13**2 + d23**2 - 1)/(2*d13*d23)
