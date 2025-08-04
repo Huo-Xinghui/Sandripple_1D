@@ -25,3 +25,15 @@ def prepare_data_for_CCA(Phi_array, E_array, phi_array, e_array):
         (e_array - E_mean) / E_std
     ])
     return exp_data, model_data
+
+def normalize_data(Phi_array, E_array, phi_array, e_array):
+    """Normalize data to zero mean and unit variance."""
+    Phi_mean = np.mean(Phi_array)
+    E_mean = np.mean(E_array)
+    Phi_std = np.std(Phi_array, ddof=1)
+    E_std = np.std(E_array, ddof=1)
+    Phi_norm = (Phi_array - Phi_mean) / Phi_std
+    E_norm = (E_array - E_mean) / E_std
+    phi_norm = (phi_array - Phi_mean) / Phi_std
+    e_norm = (e_array - E_mean) / E_std
+    return Phi_norm, E_norm, phi_norm, e_norm

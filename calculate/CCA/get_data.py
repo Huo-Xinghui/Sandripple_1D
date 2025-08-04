@@ -97,6 +97,7 @@ def get_exp_data_array(coarse_d1, medium_d1, fine_d1):
     theta1_array = [Rice95_v_many_coarse['ang_in'], Rice95_v_many_medium['ang_in'], Rice95_v_many_fine['ang_in']]
     theta1_array = theta1_array + Willetts89_v_many_coarse['ang_in'] + Willetts89_v_many_medium['ang_in'] + Willetts89_v_many_fine['ang_in']
     theta1_array = np.array(theta1_array)
+    theta1_array = np.deg2rad(theta1_array)  # Convert angles to radians
     # Experimental data of rebound
     E_array = [Rice95_v_many_coarse['e'], Rice95_v_many_medium['e'], Rice95_v_many_fine['e']]
     E_array = E_array + Willetts89_v_many_coarse['e'] + Willetts89_v_many_medium['e'] + Willetts89_v_many_fine['e']
@@ -104,6 +105,7 @@ def get_exp_data_array(coarse_d1, medium_d1, fine_d1):
     Phi_array = [Rice95_v_many_coarse['ang_re'], Rice95_v_many_medium['ang_re'], Rice95_v_many_fine['ang_re']]
     Phi_array = Phi_array + Willetts89_v_many_coarse['ang_re'] + Willetts89_v_many_medium['ang_re'] + Willetts89_v_many_fine['ang_re']
     Phi_array = np.array(Phi_array)
+    Phi_array = np.deg2rad(Phi_array)  # Convert angles to radians
 
     return d1_array, theta1_array, Phi_array, E_array
 
@@ -146,6 +148,8 @@ def get_model_data_array(epsilon, nu, d1_array, th_array, dist_params, bed_type)
                 phi, e = calculate_rebound_3D(d1, d2, d3, d4, th, epsilon, nu)
             else:
                 phi, e = calculate_rebound_2D(d1, d2, d3, th, epsilon, nu)
+            phi_list.append(phi)
+            e_list.append(e)
         else:
             phi, e = sample_averaged_rebound(epsilon, nu, d1, th, dist_params, bed_type)
             phi_list.append(phi)

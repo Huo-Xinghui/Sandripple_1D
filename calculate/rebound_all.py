@@ -333,7 +333,7 @@ shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
 Three_D = True # 3D bed
-impactor = 2 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine
+impactor = 3 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine
 
 d_min = 1.5e-4
 d_max = 6e-4
@@ -359,10 +359,10 @@ g = 9.8*(1 - 1.263/rho)
 #nu = -0.88
 #epsilon = 0.73
 #nu = -0.90
-epsilon = 0.61
-nu = -0.73
-epsilon_La = 0.80
-nu_La = -0.80
+epsilon = 0.6605
+nu = -0.8310
+epsilon_La = 0.7538
+nu_La = -0.9131
 v1_single = 3.38
 theta1_single = np.pi/18
 v1_start = 1
@@ -373,7 +373,7 @@ if shallow:
     theta1_end = 30/180*np.pi
 else:
     theta1_end = 89.5/180*np.pi
-num_samples = 10
+num_samples = 100
 #------------------------------------------------------------------
 # impactor diameter
 if distribution == 0:
