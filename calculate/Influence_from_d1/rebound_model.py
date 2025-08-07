@@ -22,8 +22,15 @@ def calculate_x_min_3D(d1, d2, d3, d4, th):
     smax = (d13**2 + d34**2 - d14**2)/(2*d23*d34)
     s = np.random.uniform(0, smax)
     #s = smax/2 # for simplicity, use the middle value
-    d13 = d13*np.sqrt(1.0 - (s*d23/d13)**2)
-    d23 = d23*np.sqrt(1.0 - s**2)
+    d13_temp = d13*np.sqrt(1.0 - (s*d23/d13)**2)
+    d23_temp = d23*np.sqrt(1.0 - s**2)
+    while d23_temp - d13_temp >= 1.0:
+        s = np.random.uniform(0, smax)
+        #s = smax/2 # for simplicity, use the middle value
+        d13_temp = d13*np.sqrt(1.0 - (s*d23/d13)**2)
+        d23_temp = d23*np.sqrt(1.0 - s**2)
+    d13 = d13_temp
+    d23 = d23_temp
     cos0 = (d13**2 + d23**2 - 1)/(2*d13*d23)
     alpha = np.arccos(cos0)
     theta_c = np.pi/2 - alpha
