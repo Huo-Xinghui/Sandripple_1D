@@ -8,6 +8,7 @@ from tqdm import tqdm
 from scipy.special import erfc
 from scipy.ndimage import gaussian_filter
 from scipy.integrate import quad
+from sklearn.cross_decomposition import CCA
 
 # 根据对数正态分布的均值和标准差求正态分布的参数
 def get_normal_params(log_mean, log_std):
@@ -195,9 +196,9 @@ distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse, 4:norma
 shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
-Three_D = True # 3D bed
+Three_D = False # 3D bed
 
-no_calculate = True # do not calculate, just output figure
+no_calculate = False # do not calculate, just output figure
 
 d_min = 1.5e-4
 d_max = 6e-4
@@ -213,7 +214,7 @@ weight1 = 0.5 # 第一个峰的权重
 gamma_ej = 0.049 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-num_samples = 100
+num_samples = 200
 #------------------------------------------------------------------
 # average bed diameter
 if distribution == 0:
@@ -237,9 +238,6 @@ elif distribution == 4:
 coarse_d1 = 1.4*d2_mid
 medium_d1 = d2_mid
 fine_d1 = 0.73*d2_mid
-#fine_d1 = np.mean(d2_array[(d2_array >= 0.00015) & (d2_array <= 0.00025)])
-#medium_d1 = np.mean(d2_array[(d2_array >= 0.0003) & (d2_array <= 0.000355)])
-#coarse_d1 = np.mean(d2_array[(d2_array >= 0.000425) & (d2_array <= 0.0006)])
 
 """other's data"""
 Beladjine07_v26= {
@@ -336,10 +334,10 @@ theta1_array = [Rice95_v_many_coarse['ang_in'], Rice95_v_many_medium['ang_in'], 
 theta1_array = theta1_array + Willetts89_v_many_coarse['ang_in'] + Willetts89_v_many_medium['ang_in'] + Willetts89_v_many_fine['ang_in']
 iteration_num = len(d1_array)
 
-d_epsilon = 0.01
-d_nu = 0.01
-epsilon_list = np.arange(0.6, 0.9 + 1.1*d_epsilon, d_epsilon).tolist()
-nu_list = np.arange(-0.9, -0.6 + 1.1*d_nu, d_nu).tolist()
+d_epsilon = 0.1
+d_nu = 0.1
+epsilon_list = np.arange(0.3, 1.2 + 1.1*d_epsilon, d_epsilon).tolist()
+nu_list = np.arange(-1.2, -0.3 + 1.1*d_nu, d_nu).tolist()
 rmse_list = []
 
 if no_calculate:
@@ -368,11 +366,8 @@ if no_calculate:
         print(f'Minimum RMSE: {min_z:.4f} at Epsilon: {min_x:.4f}, Nu: {min_y:.4f}')
     sys.exit(0)
 
-os.remove('eject_compair_rmse.txt') if os.path.exists('eject_compair_rmse.txt') else None
-os.remove('eject_compair_rmse_e.txt') if os.path.exists('eject_compair_rmse_e.txt') else None
-os.remove('eject_compair_rmse_th.txt') if os.path.exists('eject_compair_rmse_th.txt') else None
-os.remove('eject_compair_rmse_Nej.txt') if os.path.exists('eject_compair_rmse_Nej.txt') else None
-os.remove('eject_compair_rmse_vn.txt') if os.path.exists('eject_compair_rmse_vn.txt') else None
+os.remove('epsilon_nu_CCA_weights.txt') if os.path.exists('epsilon_nu_CCA_weights.txt') else None
+os.remove('epsilon_nu_corr.txt') if os.path.exists('epsilon_nu_corr.txt') else None
 for epsilon in tqdm(epsilon_list):
     for nu in tqdm(nu_list):
         rebound_ratio0_list_0 = []
@@ -595,184 +590,143 @@ for epsilon in tqdm(epsilon_list):
         size_c = 80
         size_m = 50
         size_f = 20
-        x_array_total = []
-        y_array_total = []
-        x_array_total_e = []
-        y_array_total_e = []
-        x_array_total_theta2 = []
-        y_array_total_theta2 = []
-        x_array_total_Nej = []
-        y_array_total_Nej = []
-        x_array_total_vn = []
-        y_array_total_vn = []
-        output_kind = 0
-        rmse_array = []
+        e_data_list_c = []
+        e_rslt_list_c = []
+        e_data_list_m = []
+        e_rslt_list_m = []
+        e_data_list_f = []
+        e_rslt_list_f = []
+        th_data_list_c = []
+        th_rslt_list_c = []
+        th_data_list_m = []
+        th_rslt_list_m = []
+        th_data_list_f = []
+        th_rslt_list_f = []
         if output_e:
-            x_array = [Rice95_v_many_coarse['e']]
-            y_array = [e0_bar_list_0[0]]
-            x_array_total_e += x_array
-            y_array_total_e += y_array
+            e_data_list_c += [Rice95_v_many_coarse['e']]
+            e_rslt_list_c += [e0_bar_list_0[0]]
 
-            x_array = [Rice95_v_many_medium['e']]
-            y_array = [e0_bar_list_0[1]]
-            x_array_total_e += x_array
-            y_array_total_e += y_array
+            e_data_list_m += [Rice95_v_many_medium['e']]
+            e_rslt_list_m += [e0_bar_list_0[1]]
 
-            x_array = [Rice95_v_many_fine['e']]
-            y_array = [e0_bar_list_0[2]]
-            x_array_total_e += x_array
-            y_array_total_e += y_array
+            e_data_list_f += [Rice95_v_many_fine['e']]
+            e_rslt_list_f += [e0_bar_list_0[2]]
             len0 = 3
 
-            x_array = Willetts89_v_many_coarse['e']
-            y_array = e0_bar_list_0[len0:len0 + len_W89_c]
+            e_data_list_c += Willetts89_v_many_coarse['e']
+            e_rslt_list_c += e0_bar_list_0[len0:len0 + len_W89_c]
             len0 += len_W89_c
-            x_array_total_e += x_array
-            y_array_total_e += y_array
 
-            x_array = Willetts89_v_many_medium['e']
-            y_array = e0_bar_list_0[len0:len0 + len_W89_m]
+            e_data_list_m += Willetts89_v_many_medium['e']
+            e_rslt_list_m += e0_bar_list_0[len0:len0 + len_W89_m]
             len0 += len_W89_m
-            x_array_total_e += x_array
-            y_array_total_e += y_array
 
-            x_array = Willetts89_v_many_fine['e']
-            y_array = e0_bar_list_0[len0:len0 + len_W89_f]
+            e_data_list_f += Willetts89_v_many_fine['e']
+            e_rslt_list_f += e0_bar_list_0[len0:len0 + len_W89_f]
             len0 += len_W89_f
-            x_array_total_e += x_array
-            y_array_total_e += y_array
 
-            e_scale = np.std(x_array_total_e)
-            e_elements = (np.array(x_array_total_e)/e_scale - np.array(y_array_total_e)/e_scale)**2
-            e_rmse = np.sqrt(np.mean(e_elements))
-            with open('eject_compair_rmse_e.txt', 'a') as f:
-                f.write(f'{epsilon:.4f}, {nu:.4f}, {e_rmse:.4f}\n')
-            e_elements = e_elements.tolist()
-            rmse_array += e_elements
+            e_data_list = e_data_list_c + e_data_list_m + e_data_list_f
+            e_rslt_list = e_rslt_list_c + e_rslt_list_m + e_rslt_list_f
 
         if output_theta2:
-            x_array = [Rice95_v_many_coarse['ang_re']]
-            y_array = [np.degrees(theta20_bar_list_0[0])]
-            x_array_total_theta2 += x_array
-            y_array_total_theta2 += y_array
+            th_data_list_c += [Rice95_v_many_coarse['ang_re']]
+            th_rslt_list_c += [np.degrees(theta20_bar_list_0[0])]
 
-            x_array = [Rice95_v_many_medium['ang_re']]
-            y_array = [np.degrees(theta20_bar_list_0[1])]
-            x_array_total_theta2 += x_array
-            y_array_total_theta2 += y_array
+            th_data_list_m += [Rice95_v_many_medium['ang_re']]
+            th_rslt_list_m += [np.degrees(theta20_bar_list_0[1])]
 
-            x_array = [Rice95_v_many_fine['ang_re']]
-            y_array = [np.degrees(theta20_bar_list_0[2])]
-            x_array_total_theta2 += x_array
-            y_array_total_theta2 += y_array
+            th_data_list_f += [Rice95_v_many_fine['ang_re']]
+            th_rslt_list_f += [np.degrees(theta20_bar_list_0[2])]
             len0 = 3
 
-            x_array = Willetts89_v_many_coarse['ang_re']
-            y_array = np.degrees(theta20_bar_list_0[len0:len0 + len_W89_c])
-            y_array = y_array.tolist()
+            th_data_list_c += Willetts89_v_many_coarse['ang_re']
+            th_rslt_list_c += np.degrees(theta20_bar_list_0[len0:len0 + len_W89_c]).tolist()
             len0 += len_W89_c
-            x_array_total_theta2 += x_array
-            y_array_total_theta2 += y_array
 
-            x_array = Willetts89_v_many_medium['ang_re']
-            y_array = np.degrees(theta20_bar_list_0[len0:len0 + len_W89_m])
-            y_array = y_array.tolist()
+            th_data_list_m += Willetts89_v_many_medium['ang_re']
+            th_rslt_list_m += np.degrees(theta20_bar_list_0[len0:len0 + len_W89_m]).tolist()
             len0 += len_W89_m
-            x_array_total_theta2 += x_array
-            y_array_total_theta2 += y_array
 
-            x_array = Willetts89_v_many_fine['ang_re']
-            y_array = np.degrees(theta20_bar_list_0[len0:len0 + len_W89_f])
-            y_array = y_array.tolist()
+            th_data_list_f += Willetts89_v_many_fine['ang_re']
+            th_rslt_list_f += np.degrees(theta20_bar_list_0[len0:len0 + len_W89_f]).tolist()
             len0 += len_W89_f
-            x_array_total_theta2 += x_array
-            y_array_total_theta2 += y_array
 
-            theta2_scale = np.std(x_array_total_theta2)
-            theta2_elements = (np.array(x_array_total_theta2)/theta2_scale - np.array(y_array_total_theta2)/theta2_scale)**2
-            theta2_rmse = np.sqrt(np.mean(theta2_elements))
-            with open('eject_compair_rmse_th.txt', 'a') as f:
-                f.write(f'{epsilon:.4f}, {nu:.4f}, {theta2_rmse:.4f}\n')
-            theta2_elements = theta2_elements.tolist()
-            rmse_array += theta2_elements
+            th_data_list = th_data_list_c + th_data_list_m + th_data_list_f
+            th_rslt_list = th_rslt_list_c + th_rslt_list_m + th_rslt_list_f
 
-        #if output_Nej:
-        #    x_array = Rice95_v_many_coarse['Nej']
-        #    y_array = Nej_bar_list_0[0:len_R95_c]
-        #    len0 = len_R95_c
-        #    x_array_total_Nej += x_array
-        #    y_array_total_Nej += y_array
+        e_data_array = np.array(e_data_list)
+        e_rslt_array = np.array(e_rslt_list)
+        e_corr = np.corrcoef(e_data_array, e_rslt_array)[0, 1]
+        th_data_array = np.array(th_data_list)
+        th_rslt_array = np.array(th_rslt_list)
+        th_corr = np.corrcoef(th_data_array, th_rslt_array)[0, 1]
+        total_corr = np.sqrt(e_corr* th_corr)
+        with open('epsilon_nu_corr.txt', 'a') as f:
+            f.write(f'{epsilon:.4f}, {nu:.4f}, {total_corr:.4f}\n')
+        data_matrix = np.vstack((e_data_array, th_data_array)).T
+        rslt_matrix = np.vstack((e_rslt_array, th_rslt_array)).T
+        cca = CCA(n_components=1)
+        cca.fit(data_matrix, rslt_matrix)
+        data_c, result_c = cca.transform(data_matrix, rslt_matrix)
+        M = data_c[:, 0]
+        N = result_c[:, 0]
+        max_corr = np.corrcoef(M, N)[0, 1]
+        data_weights = cca.x_weights_
+        rslt_weights = cca.y_weights_
+        w_data = data_weights.flatten()
+        w_rslt = rslt_weights.flatten()
+        w_data_e = w_data[0]
+        w_data_th = w_data[1]
+        w_rslt_e = w_rslt[0]
+        w_rslt_th = w_rslt[1]
+        with open('epsilon_nu_CCA_weights.txt', 'a') as f:
+            f.write(f'{epsilon:.4f}, {nu:.4f}, {max_corr:.4f}, {w_data_e:.4f}, {w_data_th:.4f}, {w_rslt_e:.4f}, {w_rslt_th:.4f}\n')
 
-        #    x_array = Rice95_v_many_medium['Nej']
-        #    y_array = Nej_bar_list_0[len0:len0 + len_R95_m]
-        #    len0 += len_R95_m
-        #    x_array_total_Nej += x_array
-        #    y_array_total_Nej += y_array
-
-        #    x_array = Rice95_v_many_fine['Nej']
-        #    y_array = Nej_bar_list_0[len0:len0 + len_R95_f]
-        #    len0 += len_R95_f
-        #    x_array_total_Nej += x_array
-        #    y_array_total_Nej += y_array
-
-        #    Nej_scale = np.std(x_array_total_Nej)
-        #    Nej_elements = (np.array(x_array_total_Nej)/Nej_scale - np.array(y_array_total_Nej)/Nej_scale)**2
-        #    Nej_rmse = np.sqrt(np.mean(Nej_elements))
-        #    with open('eject_compair_rmse_Nej.txt', 'a') as f:
-        #        f.write(f'{epsilon:.4f}, {nu:.4f}, {Nej_rmse:.4f}\n')
-        #    Nej_elements = Nej_elements.tolist()
-        #    rmse_array += Nej_elements
-
-        #if output_vn:
-        #    x_array = Rice95_v_many_coarse['v_ej']
-        #    y_array = vn_bar_list_0[0:len_R95_c]
-        #    len0 = len_R95_c
-        #    x_array_total += x_array
-        #    y_array_total += y_array
-        #    x_array_total_vn += x_array
-        #    y_array_total_vn += y_array
-
-        #    x_array = Rice95_v_many_medium['v_ej']
-        #    y_array = vn_bar_list_0[len0:len0 + len_R95_m]
-        #    len0 += len_R95_m
-        #    x_array_total += x_array
-        #    y_array_total += y_array
-        #    x_array_total_vn += x_array
-        #    y_array_total_vn += y_array
-
-        #    x_array = Rice95_v_many_fine['v_ej']
-        #    y_array = vn_bar_list_0[len0:len0 + len_R95_f]
-        #    len0 += len_R95_f
-        #    x_array_total += x_array
-        #    y_array_total += y_array
-        #    x_array_total_vn += x_array
-        #    y_array_total_vn += y_array
-
-        #    vn_scale = np.std(x_array_total_vn)
-        #    vn_elements = (np.array(x_array_total_vn)/vn_scale - np.array(y_array_total_vn)/vn_scale)**2
-        #    vn_rmse = np.sqrt(np.mean(vn_elements))
-        #    with open('eject_compair_rmse_vn.txt', 'a') as f:
-        #        f.write(f'{epsilon:.4f}, {nu:.4f}, {vn_rmse:.4f}\n')
-        #    vn_elements = vn_elements.tolist()
-        #    rmse_array += vn_elements
-
-        delta_norm = [np.sqrt(delta_e + delta_theta2) for delta_e, delta_theta2 in zip(e_elements, theta2_elements)]
-        rmse = np.mean(delta_norm)
-        #rmse = np.sqrt(np.mean(np.array(rmse_array)))
-        rmse_list.append(rmse)
-        with open('eject_compair_rmse.txt', 'a') as f:
-            f.write(f'{epsilon:.4f}, {nu:.4f}, {rmse:.4f}\n')
-mesh_x, mesh_y = np.meshgrid(epsilon_list, nu_list)
-mesh_z = np.array(rmse_list).reshape(len(nu_list), len(epsilon_list))
-plt.contourf(mesh_x, mesh_y, mesh_z, cmap='jet')
-plt.colorbar(label='RMSE')
+plt.figure(1, figsize=(10, 8))
+corr_data = np.loadtxt('epsilon_nu_corr.txt', delimiter=',')
+read_epsilon = corr_data[:, 0]
+read_nu = corr_data[:, 1]
+read_corr = corr_data[:, 2]
+unique_epsilon = np.unique(read_epsilon)
+unique_nu = np.unique(read_nu)
+corr = read_corr.reshape(len(unique_nu), len(unique_epsilon))
+plt.contourf(unique_epsilon, unique_nu, corr, cmap='viridis', levels=100)
+plt.colorbar(ticks=np.linspace(0, 1, 11), label='Correlation Coefficient')
 plt.xlabel('Epsilon')
 plt.ylabel('Nu')
-plt.title('RMSE of Eject Compair')
+
+plt.figure(2, figsize=(10, 8))
+CCA_data = np.loadtxt('epsilon_nu_CCA_weights.txt', delimiter=',')
+read_CCA_corr = CCA_data[:, 2]
+CCA_corr = read_CCA_corr.reshape(len(unique_nu), len(unique_epsilon))
+plt.contourf(unique_epsilon, unique_nu, CCA_corr, cmap='jet', levels=100)
+plt.colorbar(ticks=np.linspace(0, 1, 11), label='CCA Correlation Coefficient')
+plt.xlabel('Epsilon')
+plt.ylabel('Nu')
+
+plt.figure(3, figsize=(10, 8))
+read_w_data_e = CCA_data[:, 3]
+read_w_data_th = CCA_data[:, 4]
+w_data_e = read_w_data_e.reshape(len(unique_nu), len(unique_epsilon))
+w_data_th = read_w_data_th.reshape(len(unique_nu), len(unique_epsilon))
+plt.quiver(unique_epsilon, unique_nu, w_data_e, w_data_th, color='k')
+plt.xlabel('Epsilon')
+plt.ylabel('Nu')
+
+plt.figure(4, figsize=(10, 8))
+read_w_rslt_e = CCA_data[:, 5]
+read_w_rslt_th = CCA_data[:, 6]
+w_rslt_e = read_w_rslt_e.reshape(len(unique_nu), len(unique_epsilon))
+w_rslt_th = read_w_rslt_th.reshape(len(unique_nu), len(unique_epsilon))
+plt.quiver(unique_epsilon, unique_nu, w_rslt_e, w_rslt_th, color='r')
+plt.xlabel('Epsilon')
+plt.ylabel('Nu')
+
 plt.show()
-min_index = np.argmin(mesh_z)
-min_index_x, min_index_y = np.unravel_index(min_index, mesh_z.shape)
-min_x = mesh_x.flatten()[min_index_x]
-min_y = mesh_y.flatten()[min_index_y]
-min_z = mesh_z.flatten()[min_index]
-print(f'Minimum distace: {min_z:.4f} at Epsilon: {min_x:.4f}, Nu: {min_y:.4f}')
+
+max_indices = np.argpartition(read_corr, -10)[-10:]  # Get indices of the 10 largest corr values
+for max_index in max_indices:
+    print(f'Max corr: {read_corr[max_index]:.4f} at Epsilon: {read_epsilon[max_index]:.4f}, Nu: {read_nu[max_index]:.4f}')
+max_indices = np.argpartition(read_CCA_corr, -10)[-10:]  # Get indices of the 10 largest CCA corr values
+for max_index in max_indices:
+    print(f'Max CCA corr: {read_CCA_corr[max_index]:.4f} at Epsilon: {read_epsilon[max_index]:.4f}, Nu: {read_nu[max_index]:.4f}, Weights: Exp_e:{read_w_data_e[max_index]:.4f}, Exp_th:{read_w_data_th[max_index]:.4f}, Mod_e:{read_w_rslt_e[max_index]:.4f}, Mod_th:{read_w_rslt_th[max_index]:.4f}')

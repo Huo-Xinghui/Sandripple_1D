@@ -1,6 +1,5 @@
 import numpy as np
 import sys
-from scipy.optimize import minimize
 from skopt import gp_minimize
 from skopt.space import Real
 from skopt.utils import use_named_args
@@ -14,17 +13,17 @@ objective_function_num = 2  # 0: CCA, 1: correlation, 2: Euclidean distance, 3: 
 epsilon_min = 0.1
 epsilon_max = 1.0
 nu_min = -2.0
-nu_max = 2.0
+nu_max = 0.0
 # Bed PSD parameters
 dist_params = {
     'd_min': 1.5e-4,
     'd_max': 6e-4,
     'mu': -8.30271,
     'sigma': 0.25778,
-    'sampling_num': 200
+    'sampling_num': 1000
 }
 # Average bed diameter
-sampling_num = 10000
+sampling_num = 100000
 mu = dist_params['mu']
 sigma = dist_params['sigma']
 d_min = dist_params['d_min']
@@ -32,10 +31,22 @@ d_max = dist_params['d_max']
 d2_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
 d2_mid = np.percentile(d2_array, 50)
 # Impactor diameters
+# d1_coarse = averaged d2 within the range [0.0002, d_max]
+d1_coarse = np.mean(d2_array[(d2_array > 3.55e-4) & (d2_array <= d_max)])
+d1_medium = np.mean(d2_array[(d2_array > 2.5e-4) & (d2_array <= 3.55e-4)])
+d1_fine = np.mean(d2_array[(d2_array > d_min) & (d2_array <= 2.5e-4)])
+#d1_dict = {
+#    'coarse': 1.4*d2_mid,
+#    'medium': d2_mid,
+#    'fine': 0.73*d2_mid
+#}
+r_c = d1_coarse/d2_mid
+r_m = d1_medium/d2_mid
+r_f = d1_fine/d2_mid
 d1_dict = {
-    'coarse': 1.4*d2_mid,
-    'medium': d2_mid,
-    'fine': 0.73*d2_mid
+    'coarse': d1_coarse,
+    'medium': d1_medium,
+    'fine': d1_fine
 }
 # Control parameters
 test_normalization = False # test the normalization of data

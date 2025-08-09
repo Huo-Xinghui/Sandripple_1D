@@ -328,15 +328,14 @@ output_Nej = False # output eject number
 
 
 distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse, 4:normal
-variation_param = 1 # 0: v1, 1: theta1
 shallow = False # shallow impact
 simplify = False # first order approximation
 lognormal_param = True # lognormal distribution parameters
-Three_D = True # 3D bed
-impactor = 3 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine
+Three_D = False # 3D bed
+impactor = 2 #impactor type: 0: bed, 1: coarse, 2: medium, 3: fine
 
 d_min = 1.5e-4
-d_max = 3e-4
+d_max = 6e-4
 d_min_impactor_c = 3.55e-4
 d_max_impactor_c = d_max
 d_min_impactor_m = 2.5e-4
@@ -355,19 +354,16 @@ weight1 = 0.5 # 第一个峰的权重
 gamma_ej = 0.049 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-#epsilon = 0.71
-#nu = -0.88
-#epsilon = 0.73
-#nu = -0.90
-epsilon = 0.6605
-nu = -0.8310
-epsilon_La = 0.7538
-nu_La = -0.9131
-v1_single = 3.38
+epsilon = 0.71
+nu = -0.88
+#epsilon = 0.61
+#nu = -0.73
+epsilon_La = 0.94
+nu_La = -1.2
+v1_single = 30.38
 theta1_single = np.pi/18
 v1_start = 1
 v1_end = 10
-case_num = 45
 theta1_start = 0.5*np.pi/180
 if shallow:
     theta1_end = 30/180*np.pi
@@ -428,16 +424,71 @@ elif distribution == 4:
         d1 = d_mid
     elif impactor == 3:
         d1 = np.percentile(d1_array, 10)
+
+"""other's data"""
+Rice95_v_many_coarse= {
+    'ang_in': np.mean([13.94, 14.75, 14.73, 15.04]),
+    'ang_in_std': np.std([13.94, 14.75, 14.73, 15.04]),
+    'ang_re': np.mean([20.95, 23.03, 22.55, 25.63]),
+    'ang_re_std': np.std([20.95, 23.03, 22.55, 25.63]),
+    'e': np.mean([0.58, 0.56, 0.56, 0.58]),
+    'e_std': np.std([0.58, 0.56, 0.56, 0.58]),
+    'Nej': np.mean([5.7, 5.09, 5.12, 4.64]),
+    'Nej_std': np.std([5.7, 5.09, 5.12, 4.64])
+}
+Rice95_v_many_medium= {
+    'ang_in': np.mean([11.82, 11.47, 11.53, 11.36]),
+    'ang_in_std': np.std([11.82, 11.47, 11.53, 11.36]),
+    'ang_re': np.mean([29.95, 30.31, 31.06, 29.56]),
+    'ang_re_std': np.std([29.95, 30.31, 31.06, 29.56]),
+    'e': np.mean([0.57, 0.54, 0.59, 0.58]),
+    'e_std': np.std([0.57, 0.54, 0.59, 0.58]),
+    'Nej': np.mean([2.68, 3.43, 2.67, 2.76]),
+    'Nej_std': np.std([2.68, 3.43, 2.67, 2.76])
+}
+Rice95_v_many_fine= {
+    'ang_in': np.mean([10.85, 10.24, 10.46]),
+    'ang_in_std': np.std([10.85, 10.24, 10.46]),
+    'ang_re': np.mean([44.63, 38.03, 37.85]),
+    'ang_re_std': np.std([44.63, 38.03, 37.85]),
+    'e': np.mean([0.52, 0.56, 0.58]),
+    'e_std': np.std([0.52, 0.56, 0.58]),
+    'Nej': np.mean([1.86, 1.71, 1.58]),
+    'Nej_std': np.std([1.86, 1.71, 1.58])
+}
+Willetts89_v_many_coarse= {
+    'ang_in': [12.7, 17.8, 23.2, 27.7],
+    'ang_re': [19.1, 25.2, 21.4, 27.2],
+    'e': [0.63, 0.57, 0.54, 0.46]
+}
+Willetts89_v_many_medium= {
+    'ang_in': [11.7, 18.2, 21.4, 26.3],
+    'ang_re': [24.9, 33.4, 33.3, 44.7],
+    'e': [0.61, 0.53, 0.50, 0.40]
+}
+Willetts89_v_many_fine= {
+    'ang_in': [9.5, 15.4, 19.7, 24.9],
+    'ang_re': [38.8, 42, 42.2, 42.5],
+    'e': [0.57, 0.50, 0.48, 0.46]
+}
+Rioual20_v_many= {
+    'ang_in': 53.0,
+    'e': 0.37813
+}
+Gordon21_v_many= {
+    'ang_in': [16.7, 11.0],
+    'e': [0.6, 0.62]
+}
+Gordon09_v_many= {
+    'ang_in': [8.5, 9.5],
+    'ang_re': [22.8, 18.0],
+    'e': [0.79, 0.64]
+}
+
 # impact velocity
-if variation_param == 0:
-    x_array = np.linspace(v1_start, v1_end, case_num)
-else:
-    v1 = v1_single
+v1 = v1_single
 # impact angle
-if variation_param == 1:
-    x_array = np.linspace(theta1_start, theta1_end, case_num)
-else:
-    theta1 = theta1_single
+x_array = [Rice95_v_many_coarse['ang_in']] 
 
 rebound_ratio_list_0 = []
 rebound_ratio_list_1 = []
@@ -788,83 +839,6 @@ for n, x in enumerate(tqdm(x_array)):
     rebound_ratio_list_0.append(rebound_ratio_array[0])
     rebound_ratio_list_1.append(rebound_ratio_array[1])
     rebound_ratio0_list_0.append(rebound_ratio_array0[0])
-
-"""other's data"""
-Beladjine07_v26= {
-    'ang_in': [10, 20, 40, 60, 90],
-    'ang_re': [21.21, 26.68, 33.87, 40.94, 90.01],
-    'e': [0.77, 0.61, 0.43, 0.26, 0.22]
-}
-Zhou06_v_many= {
-    'ang_in': [8, 11.5],
-    'ang_re_mean': [46.97, 47.53],
-    'ang_re_std': [0.59, 0.75],
-    'e_mean': [0.63, 0.61],
-    'e_std': [0.006, 0.009]
-}
-Rice95_v_many_coarse= {
-    'ang_in': np.mean([13.94, 14.75, 14.73, 15.04]),
-    'ang_in_std': np.std([13.94, 14.75, 14.73, 15.04]),
-    'ang_re': np.mean([20.95, 23.03, 22.55, 25.63]),
-    'ang_re_std': np.std([20.95, 23.03, 22.55, 25.63]),
-    'e': np.mean([0.58, 0.56, 0.56, 0.58]),
-    'e_std': np.std([0.58, 0.56, 0.56, 0.58]),
-    'Nej': np.mean([5.7, 5.09, 5.12, 4.64]),
-    'Nej_std': np.std([5.7, 5.09, 5.12, 4.64])
-}
-Rice95_v_many_medium= {
-    'ang_in': np.mean([11.82, 11.47, 11.53, 11.36]),
-    'ang_in_std': np.std([11.82, 11.47, 11.53, 11.36]),
-    'ang_re': np.mean([29.95, 30.31, 31.06, 29.56]),
-    'ang_re_std': np.std([29.95, 30.31, 31.06, 29.56]),
-    'e': np.mean([0.57, 0.54, 0.59, 0.58]),
-    'e_std': np.std([0.57, 0.54, 0.59, 0.58]),
-    'Nej': np.mean([2.68, 3.43, 2.67, 2.76]),
-    'Nej_std': np.std([2.68, 3.43, 2.67, 2.76])
-}
-Rice95_v_many_fine= {
-    'ang_in': np.mean([10.85, 10.24, 10.46]),
-    'ang_in_std': np.std([10.85, 10.24, 10.46]),
-    'ang_re': np.mean([44.63, 38.03, 37.85]),
-    'ang_re_std': np.std([44.63, 38.03, 37.85]),
-    'e': np.mean([0.52, 0.56, 0.58]),
-    'e_std': np.std([0.52, 0.56, 0.58]),
-    'Nej': np.mean([1.86, 1.71, 1.58]),
-    'Nej_std': np.std([1.86, 1.71, 1.58])
-}
-Chen18_v_many= {
-    'ang_in': [23.2, 21.8, 21.9, 30.7, 30.6, 37.6, 47.1, 46.6, 46],
-    'ang_re': [32.83, 35.59, 29.90, 43, 33.28, 44.16, 57.62, 50.97, 39.88],
-    'e': [0.38, 0.4, 0.45, 0.32, 0.37, 0.27, 0.2, 0.19, 0.22]
-}
-Willetts89_v_many_coarse= {
-    'ang_in': [12.7, 17.8, 23.2, 27.7],
-    'ang_re': [19.1, 25.2, 21.4, 27.2],
-    'e': [0.63, 0.57, 0.54, 0.46]
-}
-Willetts89_v_many_medium= {
-    'ang_in': [11.7, 18.2, 21.4, 26.3],
-    'ang_re': [24.9, 33.4, 33.3, 44.7],
-    'e': [0.61, 0.53, 0.50, 0.40]
-}
-Willetts89_v_many_fine= {
-    'ang_in': [9.5, 15.4, 19.7, 24.9],
-    'ang_re': [38.8, 42, 42.2, 42.5],
-    'e': [0.57, 0.50, 0.48, 0.46]
-}
-Rioual20_v_many= {
-    'ang_in': 53.0,
-    'e': 0.37813
-}
-Gordon21_v_many= {
-    'ang_in': [16.7, 11.0],
-    'e': [0.6, 0.62]
-}
-Gordon09_v_many= {
-    'ang_in': [8.5, 9.5],
-    'ang_re': [22.8, 18.0],
-    'e': [0.79, 0.64]
-}
 
 if impactor == 1:
     output_file_e = 'rebound_e_coarse.txt'

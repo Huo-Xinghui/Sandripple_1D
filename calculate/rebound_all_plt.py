@@ -106,7 +106,7 @@ Gordon09_v_many= {
     'e': [0.79, 0.64]
 }
 
-fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+plt.figure(1, figsize=(8, 6))
 """read e data"""
 #data_coarse = np.loadtxt('rebound_e_coarse_7390.txt')
 #data_medium = np.loadtxt('rebound_e_medium_7390.txt')
@@ -114,38 +114,56 @@ fig, ax = plt.subplots(1, 2, figsize=(10, 5))
 #data_coarse = np.loadtxt('rebound_e_coarse_7692.txt')
 #data_medium = np.loadtxt('rebound_e_medium_7692.txt')
 #data_fine = np.loadtxt('rebound_e_fine_7692.txt')
-data_coarse = np.loadtxt('rebound_e_fine_6680_3D_randk.txt')
-data_medium = np.loadtxt('rebound_e_fine_7188.txt')
-data_fine = np.loadtxt('rebound_e_fine_6680_3D.txt')
-x = data_coarse[:, 0]
-e0_coarse = data_coarse[:, 1]
-e0_medium = data_medium[:, 1]
-e0_fine = data_fine[:, 1]
+data_coarse = np.loadtxt('rebound_e_coarse_7188.txt')
+data_medium = np.loadtxt('rebound_e_medium_7188.txt')
+data_fine = np.loadtxt('rebound_e_fine_7188.txt')
+data_coarse_3D = np.loadtxt('rebound_e_coarse_6173_3D_randk.txt')
+data_medium_3D = np.loadtxt('rebound_e_medium_6173_3D_randk.txt')
+data_fine_3D = np.loadtxt('rebound_e_fine_6173_3D_randk.txt')
+xc = data_coarse[:, 0]
+xm = data_medium[:, 0]
+xf = data_fine[:, 0]
 e_coarse = data_coarse[:, 2]
 e_medium = data_medium[:, 2]
 e_fine = data_fine[:, 2]
 e_coarse_1 = data_coarse[:, 3]
 e_medium_1 = data_medium[:, 3]
 e_fine_1 = data_fine[:, 3]
+xc_3D = data_coarse_3D[:, 0]
+xm_3D = data_medium_3D[:, 0]
+xf_3D = data_fine_3D[:, 0]
+e_coarse_3D = data_coarse_3D[:, 2]
+e_medium_3D = data_medium_3D[:, 2]
+e_fine_3D = data_fine_3D[:, 2]
+e_coarse_3D_1 = data_coarse_3D[:, 3]
+e_medium_3D_1 = data_medium_3D[:, 3]
+e_fine_3D_1 = data_fine_3D[:, 3]
 """plot read e data"""
-ax1 = ax[0]
 if variation_param == 0:
-    ax1.set_xlabel('$\\hat{v}_1$', fontsize=label_size)
+    plt.xlabel('$\\hat{v}_1$', fontsize=label_size)
     x_exp = 'v_in'
 elif variation_param == 1:
-    ax1.set_xlabel('$\\theta$ (degree)', fontsize=label_size)
+    plt.xlabel('$\\theta$ (degree)', fontsize=label_size)
     x_exp = 'ang_in'
-ax1.set_ylabel('$\\overline{e}$', fontsize=label_size)
+plt.ylabel('$\\overline{e}$', fontsize=label_size)
 strlabel1 = 'Fine'
 strlabel2 = 'Medium'
 strlabel3 = 'Coarse'
-pf = ax1.plot(x, e_fine, 'r-', label=strlabel1)
-pm = ax1.plot(x, e_medium, 'g-', label=strlabel2)
-pc = ax1.plot(x, e_coarse, 'b-', label=strlabel3)
-pf1 = ax1.plot(x, e_fine_1, 'r--', label=strlabel1)
-pm1 = ax1.plot(x, e_medium_1, 'g--', label=strlabel2)
-pc1 = ax1.plot(x, e_coarse_1, 'b--', label=strlabel3)
-ax1.set_xlim(0, x[-1])
+pf = plt.plot(xf, e_fine, 'r--', label=strlabel1)
+pm = plt.plot(xm, e_medium, 'g--', label=strlabel2)
+pc = plt.plot(xc, e_coarse, 'b--', label=strlabel3)
+pf1 = plt.plot(xf, e_fine_1, 'r:', label=strlabel1)
+pm1 = plt.plot(xm, e_medium_1, 'g:', label=strlabel2)
+pc1 = plt.plot(xc, e_coarse_1, 'b:', label=strlabel3)
+pf_3D = plt.plot(xf_3D, e_fine_3D, 'r-', label=strlabel1)
+pm_3D = plt.plot(xm_3D, e_medium_3D, 'g-', label=strlabel2)
+pc_3D = plt.plot(xc_3D, e_coarse_3D, 'b-', label=strlabel3)
+#pf1_3D = ax1.plot(xf_3D, e_fine_3D_1, 'r-.', label=strlabel1)
+#pm1_3D = ax1.plot(xm_3D, e_medium_3D_1, 'g-.', label=strlabel2)
+#pc1_3D = ax1.plot(xc_3D, e_coarse_3D_1, 'b-.', label=strlabel3)
+
+plt.xlim(0, xc[-1])
+plt.ylim(0.4, 0.65)
 """plot other's data"""
 #plt.plot(Chen18_v_many[x_exp], Chen18_v_many['e'], 'kP', label='Chen18')
 #plt.plot(Beladjine07_v26[x_exp], Beladjine07_v26['e'], 'k*', label='Beladjine07')
@@ -153,7 +171,7 @@ ax1.set_xlim(0, x[-1])
 #plt.plot(Rioual20_v_many[x_exp], Rioual20_v_many['e'], 'k.', label='Rioual20')
 #plt.plot(Gordon21_v_many[x_exp], Gordon21_v_many['e'], 'k1', label='Gordon21')
 #plt.plot(Gordon09_v_many[x_exp], Gordon09_v_many['e'], 'k2', label='Gordon09')
-ebf = ax1.errorbar(
+ebf = plt.errorbar(
     Rice95_v_many_fine[x_exp],
     Rice95_v_many_fine['e'],
     yerr=Rice95_v_many_fine['e_std'],
@@ -164,7 +182,7 @@ ebf = ax1.errorbar(
     label='Ri95 fine',
     capsize=5
 )
-ebm = ax1.errorbar(
+ebm = plt.errorbar(
     Rice95_v_many_medium[x_exp],
     Rice95_v_many_medium['e'],
     yerr=Rice95_v_many_medium['e_std'],
@@ -175,7 +193,7 @@ ebm = ax1.errorbar(
     label='Ri95 medium',
     capsize=5
 )
-ebc = ax1.errorbar(
+ebc = plt.errorbar(
     Rice95_v_many_coarse[x_exp],
     Rice95_v_many_coarse['e'],
     yerr=Rice95_v_many_coarse['e_std'],
@@ -186,15 +204,15 @@ ebc = ax1.errorbar(
     label='Ri95 coarse',
     capsize=5
 )
-pwf = ax1.plot(Willetts89_v_many_fine[x_exp], Willetts89_v_many_fine['e'], 'ro', markersize=marker_size, label='Willetts89 fine')
-pwm = ax1.plot(Willetts89_v_many_medium[x_exp], Willetts89_v_many_medium['e'], 'g^', markersize=marker_size, label='Willetts89 medium')
-pwc = ax1.plot(Willetts89_v_many_coarse[x_exp], Willetts89_v_many_coarse['e'], 'bs', markersize=marker_size, label='Willetts89 coarse')
+pwf = plt.plot(Willetts89_v_many_fine[x_exp], Willetts89_v_many_fine['e'], 'ro', markersize=marker_size, label='Willetts89 fine')
+pwm = plt.plot(Willetts89_v_many_medium[x_exp], Willetts89_v_many_medium['e'], 'g^', markersize=marker_size, label='Willetts89 medium')
+pwc = plt.plot(Willetts89_v_many_coarse[x_exp], Willetts89_v_many_coarse['e'], 'bs', markersize=marker_size, label='Willetts89 coarse')
 
-ax1.tick_params(labelsize=ticks_size)
+plt.tick_params(labelsize=ticks_size)
 
-ax1.legend([pwf[0], pwm[0], pwc[0]], ['Fine', 'Medium', 'Coarse'], fontsize=ticks_size, loc='best')
-ax1.text(0, 1, '(a)', transform=ax1.transAxes, fontsize=label_size, fontweight='bold', va='bottom', ha='right')
+plt.legend([pwf[0], pwm[0], pwc[0]], ['Fine', 'Medium', 'Coarse'], fontsize=ticks_size, loc='best')
 
+plt.figure(2, figsize=(8, 6))
 """read th data"""
 #data_coarse = np.loadtxt('rebound_th_coarse_7390.txt')
 #data_medium = np.loadtxt('rebound_th_medium_7390.txt')
@@ -202,42 +220,54 @@ ax1.text(0, 1, '(a)', transform=ax1.transAxes, fontsize=label_size, fontweight='
 #data_coarse = np.loadtxt('rebound_th_coarse_7692.txt')
 #data_medium = np.loadtxt('rebound_th_medium_7692.txt')
 #data_fine = np.loadtxt('rebound_th_fine_7692.txt')
-data_coarse = np.loadtxt('rebound_th_fine_6680_3D_randk.txt')
-data_medium = np.loadtxt('rebound_th_fine_7188.txt')
-data_fine = np.loadtxt('rebound_th_fine_6680_3D.txt')
-x = data_coarse[:, 0]
-th0_coarse = data_coarse[:, 1]
-th0_medium = data_medium[:, 1]
-th0_fine = data_fine[:, 1]
+data_coarse = np.loadtxt('rebound_th_coarse_7188.txt')
+data_medium = np.loadtxt('rebound_th_medium_7188.txt')
+data_fine = np.loadtxt('rebound_th_fine_7188.txt')
+data_coarse_3D = np.loadtxt('rebound_th_coarse_6173_3D_randk.txt')
+data_medium_3D = np.loadtxt('rebound_th_medium_6173_3D_randk.txt')
+data_fine_3D = np.loadtxt('rebound_th_fine_6173_3D_randk.txt')
+xc = data_coarse[:, 0]
+xm = data_medium[:, 0]
+xf = data_fine[:, 0]
 th_coarse = data_coarse[:, 2]
 th_medium = data_medium[:, 2]
 th_fine = data_fine[:, 2]
 th_coarse_1 = data_coarse[:, 3]
 th_medium_1 = data_medium[:, 3]
 th_fine_1 = data_fine[:, 3]
+xc_3D = data_coarse_3D[:, 0]
+xm_3D = data_medium_3D[:, 0]
+xf_3D = data_fine_3D[:, 0]
+th_coarse_3D = data_coarse_3D[:, 2]
+th_medium_3D = data_medium_3D[:, 2]
+th_fine_3D = data_fine_3D[:, 2]
 """plot read th data"""
-ax2 = ax[1]
 if variation_param == 0:
-    ax2.set_xlabel('$\\hat{v}_1$', fontsize=label_size)
+    plt.xlabel('$\\hat{v}_1$', fontsize=label_size)
 elif variation_param == 1:
-    ax2.set_xlabel('$\\theta$ (degree)', fontsize=label_size)
-ax2.set_ylabel('$\\overline{\\theta \'}$(degree)', fontsize=label_size)
+    plt.xlabel('$\\theta$ (degree)', fontsize=label_size)
+plt.ylabel('$\\overline{\\theta \'}$(degree)', fontsize=label_size)
 strlabel1 = 'Fine'
 strlabel2 = 'Medium'
 strlabel3 = 'Coarse'
-pf = ax2.plot(x, th_fine, 'r-', label=strlabel1)
-pm = ax2.plot(x, th_medium, 'g-', label=strlabel2)
-pc = ax2.plot(x, th_coarse, 'b-', label=strlabel3)
-pf1 = ax2.plot(x, th_fine_1, 'r--', label=strlabel1)
-pm1 = ax2.plot(x, th_medium_1, 'g--', label=strlabel2)
-pc1 = ax2.plot(x, th_coarse_1, 'b--', label=strlabel3)
-ax2.set_xlim(0, x[-1])
+pf = plt.plot(xf, th_fine, 'r--', label=strlabel1)
+pm = plt.plot(xm, th_medium, 'g--', label=strlabel2)
+pc = plt.plot(xc, th_coarse, 'b--', label=strlabel3)
+pf1 = plt.plot(xf, th_fine_1, 'r:', label=strlabel1)
+pm1 = plt.plot(xm, th_medium_1, 'g:', label=strlabel2)
+pc1 = plt.plot(xc, th_coarse_1, 'b:', label=strlabel3)
+pf_3D = plt.plot(xf_3D, th_fine_3D, 'r-', label=strlabel1)
+pm_3D = plt.plot(xm_3D, th_medium_3D, 'g-', label=strlabel2)
+pc_3D = plt.plot(xc_3D, th_coarse_3D, 'b-', label=strlabel3)
+
+plt.xlim(0, xc[-1])
+plt.ylim(0, 70)
 
 """plot other's data"""
-#ax2.plot(Chen18_v_many[x_exp], Chen18_v_many['ang_re'], 'kP', label='Chen et al. 2018')
-#ax2.plot(Beladjine07_v26[x_exp], Beladjine07_v26['ang_re'], 'k*', label='Beladjine et al. 2007')
-#ax2.plot(Zhou06_v_many[x_exp], Zhou06_v_many['ang_re_mean'], 'k^', label='Zhou et al. 2006')
-ax2.errorbar(
+#plt.plot(Chen18_v_many[x_exp], Chen18_v_many['ang_re'], 'kP', label='Chen et al. 2018')
+#plt.plot(Beladjine07_v26[x_exp], Beladjine07_v26['ang_re'], 'k*', label='Beladjine et al. 2007')
+#plt.plot(Zhou06_v_many[x_exp], Zhou06_v_many['ang_re_mean'], 'k^', label='Zhou et al. 2006')
+plt.errorbar(
     Rice95_v_many_fine[x_exp],
     Rice95_v_many_fine['ang_re'],
     yerr=Rice95_v_many_fine['ang_re_std'],
@@ -247,7 +277,7 @@ ax2.errorbar(
     markersize=marker_size,
     capsize=5
 )
-ax2.errorbar(
+plt.errorbar(
     Rice95_v_many_medium[x_exp],
     Rice95_v_many_medium['ang_re'],
     yerr=Rice95_v_many_medium['ang_re_std'],
@@ -257,7 +287,7 @@ ax2.errorbar(
     markersize=marker_size,
     capsize=5
 )
-ax2.errorbar(
+plt.errorbar(
     Rice95_v_many_coarse[x_exp],
     Rice95_v_many_coarse['ang_re'],
     yerr=Rice95_v_many_coarse['ang_re_std'],
@@ -267,13 +297,11 @@ ax2.errorbar(
     markersize=marker_size,
     capsize=5
 )
-pwf = ax2.plot(Willetts89_v_many_fine[x_exp], Willetts89_v_many_fine['ang_re'], 'ro', markersize=marker_size)
-pwm = ax2.plot(Willetts89_v_many_medium[x_exp], Willetts89_v_many_medium['ang_re'], 'g^', markersize=marker_size)
-pwc = ax2.plot(Willetts89_v_many_coarse[x_exp], Willetts89_v_many_coarse['ang_re'], 'bs', markersize=marker_size)
-ax2.tick_params(labelsize=ticks_size)
+pwf = plt.plot(Willetts89_v_many_fine[x_exp], Willetts89_v_many_fine['ang_re'], 'ro', markersize=marker_size)
+pwm = plt.plot(Willetts89_v_many_medium[x_exp], Willetts89_v_many_medium['ang_re'], 'g^', markersize=marker_size)
+pwc = plt.plot(Willetts89_v_many_coarse[x_exp], Willetts89_v_many_coarse['ang_re'], 'bs', markersize=marker_size)
+plt.tick_params(labelsize=ticks_size)
 
-#ax2.legend([pwf[0], pwm[0], pwc[0]], ['Fine', 'Medium', 'Coarse'], fontsize=label_size, loc='best')
-ax2.text(0, 1, '(b)', transform=ax2.transAxes, fontsize=label_size, fontweight='bold', va='bottom', ha='right')
+#plt.legend([pwf[0], pwm[0], pwc[0]], ['Fine', 'Medium', 'Coarse'], fontsize=label_size, loc='best')
 
-plt.tight_layout()
 plt.show()
