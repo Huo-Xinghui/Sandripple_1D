@@ -138,6 +138,31 @@ def calculate_rebound(d1, d2, d3, th, epsilon, nu, td):
             e /= (x_max - x_min)
     return e
 
+def f_erfc1(mu, sigma, d_c):
+    f1 = erfc((np.log(d_c) - mu) / (np.sqrt(2) * sigma))
+    return f1
+
+def f_erfc2(mu, sigma, d_c):
+    f2 = erfc((np.log(d_c) - mu - sigma**2) / (np.sqrt(2) * sigma))
+    return f2
+
+def calculate_Ec(mu, sigma, d_min, d_max, C_Ec):
+    a = np.log(d_min)
+    b_max = np.log(d_max)
+    x_min = (a - mu) / sigma
+    x_max = (b_max - mu) / sigma
+    b = 3.0*np.log(2.0)*(2.0 - np.log(2.0))
+    erfc1 = erfc(-(x_max - b*sigma)/np.sqrt(2))
+    erfc2 = erfc(-(x_min - b*sigma)/np.sqrt(2))
+    erfc3 = erfc(-x_max/np.sqrt(2))
+    erfc4 = erfc(-x_min/np.sqrt(2))
+    erfc5 = erfc(-(x_max - sigma)/np.sqrt(2))
+    erfc6 = erfc(-(x_min - sigma)/np.sqrt(2))
+    A = np.exp((b - 1)*sigma**2/2)*((erfc1 - erfc2) / (erfc5 - erfc6))**(1/b)
+    dc = np.exp(mu + b*sigma**2 / 2) * ((erfc1 - erfc2)/(erfc3 - erfc4))**(1/b)
+    Ec = C_Ec * dc**3
+    return Ec
+
 def calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params):
     td = bed_type['three_D']
     d_min = dist_params['d_min']
@@ -147,8 +172,8 @@ def calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params)
     d1 = d_dict['d1']
     d2 = d_dict['d2']
     d3 = d_dict['d3']
-    dc = d_dict['dc']
-    #dc = bed_type['d50']
+    zc = d_dict['zc']
+    #zc = bed_type['d50']
     epsilon = physical_dict['epsilon']
     nu = physical_dict['nu']
     rho = physical_dict['rho']
@@ -160,15 +185,16 @@ def calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params)
     if bed_type['monodisperse']:
         Ec = m2*g*d2
     else:
-        C_Ec = rho*g*np.pi/6*dc
-        Ec_min = C_Ec*d_min**3
-        Ec_max = C_Ec*d_max**3
-        mu_Ec = np.log(C_Ec) + 3.0*mu
-        sigma_Ec = 3.0*sigma
-        z_min = (np.log(Ec_min) - mu_Ec - sigma_Ec**2) / sigma_Ec
-        z_max = (np.log(Ec_max) - mu_Ec - sigma_Ec**2) / sigma_Ec
-        P_Ec = norm.cdf((np.log(Ec_max) - mu_Ec) / sigma_Ec) - norm.cdf((np.log(Ec_min) - mu_Ec) / sigma_Ec)
-        Ec = (C_Ec*np.exp(3.0*mu + 9.0*sigma**2/2.0) * (norm.cdf(z_max) - norm.cdf(z_min))) / P_Ec
+        C_Ec = rho*g*np.pi/6*zc
+        #Ec_min = C_Ec*d_min**3
+        #Ec_max = C_Ec*d_max**3
+        #mu_Ec = np.log(C_Ec) + 3.0*mu
+        #sigma_Ec = 3.0*sigma
+        #z_min = (np.log(Ec_min) - mu_Ec - sigma_Ec**2) / sigma_Ec
+        #z_max = (np.log(Ec_max) - mu_Ec - sigma_Ec**2) / sigma_Ec
+        #P_Ec = norm.cdf((np.log(Ec_max) - mu_Ec) / sigma_Ec) - norm.cdf((np.log(Ec_min) - mu_Ec) / sigma_Ec)
+        #Ec = (C_Ec*np.exp(3.0*mu + 9.0*sigma**2/2.0) * (norm.cdf(z_max) - norm.cdf(z_min))) / P_Ec
+        Ec = calculate_Ec(mu, sigma, d_min, d_max, C_Ec)
     Ee1 = 0.5*m1*v1**2
     k_max = (1.0 - e**2)*Ee1/Ec
     lambda_ej = 2.0*np.log(k_max)

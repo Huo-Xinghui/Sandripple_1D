@@ -290,7 +290,7 @@ def get_model_data_array(epsilon, nu, d1_array, th_array, dist_params, bed_type)
     e_list = []
     for d1, th in zip(d1_array, th_array):
         if bed_type['monodisperse']:
-            d2 = bed_type['d50']
+            d2 = bed_type['d_mean']
             #d3 = d2
             if th > 1:
                 d3 = d2

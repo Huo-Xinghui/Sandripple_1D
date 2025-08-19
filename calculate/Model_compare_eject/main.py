@@ -20,7 +20,7 @@ dist_params = {
     'd_max': 6e-4,
     'mu': -8.30271,
     'sigma': 0.25778,
-    'sampling_num': 1000
+    'sampling_num': 100
 }
 # Average bed diameter
 sampling_num = 100000
@@ -68,7 +68,7 @@ epsilon_3D = 0.8154  # restitution coefficient for 3D bed
 nu_3D = -1.0574  # friction coefficient for 3D bed
 gamma = 0.047
 # Calculation parameters
-perform_calculations = False
+perform_calculations = True
 thd_min = 0.1  # minimum impact angle
 thd_max = 85.0  # maximum impact angle
 v1_min = 1.0
@@ -466,9 +466,9 @@ plt.plot(
 plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['Nej_f'], 'r:', label='Model mono fine')
 plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['Nej_m'], 'g:', label='Model mono medium')
 plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['Nej_c'], 'b:', label='Model mono coarse')
-plt.plot(rslt_3D_vs_th_d50['thd'], rslt_3D_vs_th_d50['Nej_f'], 'r--', label='Model 3D fine d50')
-plt.plot(rslt_3D_vs_th_d50['thd'], rslt_3D_vs_th_d50['Nej_m'], 'g--', label='Model 3D medium d50')
-plt.plot(rslt_3D_vs_th_d50['thd'], rslt_3D_vs_th_d50['Nej_c'], 'b--', label='Model 3D coarse d50')
+plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['Nej_f'], 'r--', label='Model 3D fine d50')
+plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['Nej_m'], 'g--', label='Model 3D medium d50')
+plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['Nej_c'], 'b--', label='Model 3D coarse d50')
 plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_f'], 'r-', label='Model 3D fine d90')
 plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_m'], 'g-', label='Model 3D medium d90')
 plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_c'], 'b-', label='Model 3D coarse d90')
@@ -547,9 +547,9 @@ plt.plot(
 plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['Nej_f'], 'r:', label='Model mono fine')
 plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['Nej_m'], 'g:', label='Model mono medium')
 plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['Nej_c'], 'b:', label='Model mono coarse')
-plt.plot(rslt_3D_vs_v1_d50['v1']/sgd, rslt_3D_vs_v1_d50['Nej_f'], 'r--', label='Model 3D fine d50')
-plt.plot(rslt_3D_vs_v1_d50['v1']/sgd, rslt_3D_vs_v1_d50['Nej_m'], 'g--', label='Model 3D medium d50')
-plt.plot(rslt_3D_vs_v1_d50['v1']/sgd, rslt_3D_vs_v1_d50['Nej_c'], 'b--', label='Model 3D coarse d50')
+plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['Nej_f'], 'r--', label='Model 3D fine d50')
+plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['Nej_m'], 'g--', label='Model 3D medium d50')
+plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['Nej_c'], 'b--', label='Model 3D coarse d50')
 plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['Nej_f'], 'r-', label='Model 3D fine d90')
 plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['Nej_m'], 'g-', label='Model 3D medium d90')
 plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['Nej_c'], 'b-', label='Model 3D coarse d90')
@@ -623,9 +623,9 @@ p3=plt.plot(
 plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['vn_f']/sgd, 'r:', label='Model mono fine')
 plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['vn_m']/sgd, 'g:', label='Model mono medium')
 plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['vn_c']/sgd, 'b:', label='Model mono coarse')
-plt.plot(rslt_3D_vs_th_d50['thd'], rslt_3D_vs_th_d50['vn_f']/sgd, 'r--', label='Model 3D fine d50')
-plt.plot(rslt_3D_vs_th_d50['thd'], rslt_3D_vs_th_d50['vn_m']/sgd, 'g--', label='Model 3D medium d50')
-plt.plot(rslt_3D_vs_th_d50['thd'], rslt_3D_vs_th_d50['vn_c']/sgd, 'b--', label='Model 3D coarse d50')
+plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['vn_f']/sgd, 'r--', label='Model 3D fine d50')
+plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['vn_m']/sgd, 'g--', label='Model 3D medium d50')
+plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['vn_c']/sgd, 'b--', label='Model 3D coarse d50')
 plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_f']/sgd, 'r-', label='Model 3D fine D90')
 plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_m']/sgd, 'g-', label='Model 3D medium D90')
 plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_c']/sgd, 'b-', label='Model 3D coarse D90')
@@ -710,9 +710,9 @@ plt.plot(
 plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['vn_f']/sgd, 'r:', label='Model mono fine')
 plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['vn_m']/sgd, 'g:', label='Model mono medium')
 plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['vn_c']/sgd, 'b:', label='Model mono coarse')
-plt.plot(rslt_3D_vs_v1_d50['v1']/sgd, rslt_3D_vs_v1_d50['vn_f']/sgd, 'r--', label='Model 2D fine d50')
-plt.plot(rslt_3D_vs_v1_d50['v1']/sgd, rslt_3D_vs_v1_d50['vn_m']/sgd, 'g--', label='Model 2D medium d50')
-plt.plot(rslt_3D_vs_v1_d50['v1']/sgd, rslt_3D_vs_v1_d50['vn_c']/sgd, 'b--', label='Model 2D coarse d50')
+plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['vn_f']/sgd, 'r--', label='Model 2D fine d50')
+plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['vn_m']/sgd, 'g--', label='Model 2D medium d50')
+plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['vn_c']/sgd, 'b--', label='Model 2D coarse d50')
 plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['vn_f']/sgd, 'r-', label='Model 3D fine d90')
 plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['vn_m']/sgd, 'g-', label='Model 3D medium d90')
 plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['vn_c']/sgd, 'b-', label='Model 3D coarse d90')

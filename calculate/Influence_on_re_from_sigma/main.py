@@ -28,9 +28,9 @@ thd_list = [15, 30, 45] # incident angle
 case_num = 100  # number of cases
 # Bed PSD parameters
 dist_params = {
-    'd_min': 1.5e-4,
-    'd_max': 6e-4,
-    'mu': -8, #-8.30271,
+    'd_min': 0.5e-4,
+    'd_max': 10e-4,
+    'mu': -8.30271,
     'sampling_num': 100
 }
 bed_type = {
@@ -39,7 +39,7 @@ bed_type = {
     'three_D': False
 }
 sigma_min = 0.01
-sigma_max = 1.0
+sigma_max = 5.0
 
 # *****************************************************************
 

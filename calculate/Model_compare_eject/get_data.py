@@ -270,14 +270,14 @@ def sample_averaged_eject(th, v1, gamma, d1, physical_dict, bed_type, dist_param
     sampling_num = dist_params['sampling_num']
     d2_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
     d3_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
-    dc = bed_type['d90']
+    zc = bed_type['d90']
     # calculating
     for i in range(sampling_num):
         d_dict = {
             'd1': d1,
             'd2': d2_array[i],
             'd3': d3_array[i],
-            'dc': dc
+            'zc': zc
         }
         Nej, vn = calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params)
         Nej_list.append(Nej)
@@ -298,7 +298,7 @@ def get_model_data_array_v1(th, v1_array, gamma, d1_array, physical_dict, bed_ty
                 'd1': d1,
                 'd2': d2,
                 'd3': d2,
-                'dc': d2
+                'zc': d2
             }
             Nej, vn = calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params)
             Nej_list.append(Nej)
@@ -321,7 +321,7 @@ def get_model_data_array_th(th_array, v1, gamma, d1_array, physical_dict, bed_ty
                 'd1': d1,
                 'd2': d2,
                 'd3': d2,
-                'dc': d2
+                'zc': d2
             }
             Nej, vn = calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params)
             Nej_list.append(Nej)
