@@ -10,10 +10,10 @@ from objective_functions import cca_objective, corr_objective, Eucl_distance_obj
 # Objective function for optimization
 objective_function_num = 2  # 0: CCA, 1: correlation, 2: Euclidean distance, 3: Mahalanobis distance
 # Boundaries of epsilon and nu (invalid for Nelder-Mead)
-epsilon_min = 0.1
+epsilon_min = 0.5
 epsilon_max = 1.0
-nu_min = -2.0
-nu_max = 0.0
+nu_min = -1.5
+nu_max = -0.5
 # Bed PSD parameters
 dist_params = {
     'd_min': 1.5e-4,
@@ -31,28 +31,27 @@ d_max = dist_params['d_max']
 d2_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
 d2_mid = np.percentile(d2_array, 50)
 # Impactor diameters
-# d1_coarse = averaged d2 within the range [0.0002, d_max]
-d1_coarse = np.mean(d2_array[(d2_array > 3.55e-4) & (d2_array <= d_max)])
-d1_medium = np.mean(d2_array[(d2_array > 2.5e-4) & (d2_array <= 3.55e-4)])
-d1_fine = np.mean(d2_array[(d2_array > d_min) & (d2_array <= 2.5e-4)])
-#d1_dict = {
-#    'coarse': 1.4*d2_mid,
-#    'medium': d2_mid,
-#    'fine': 0.73*d2_mid
-#}
-r_c = d1_coarse/d2_mid
-r_m = d1_medium/d2_mid
-r_f = d1_fine/d2_mid
 d1_dict = {
-    'coarse': d1_coarse,
-    'medium': d1_medium,
-    'fine': d1_fine
+    'coarse': 1.4*d2_mid,
+    'medium': d2_mid,
+    'fine': 0.73*d2_mid
 }
+#d1_coarse = np.percentile(d2_array[(d2_array > 3.55e-4) & (d2_array <= d_max)], 50)
+#d1_medium = np.percentile(d2_array[(d2_array > 2.5e-4) & (d2_array <= 3.55e-4)], 50)
+#d1_fine = np.percentile(d2_array[(d2_array > d_min) & (d2_array <= 2.5e-4)], 50)
+#r_c = d1_coarse/d2_mid
+#r_m = d1_medium/d2_mid
+#r_f = d1_fine/d2_mid
+#d1_dict = {
+#    'coarse': d1_coarse,
+#    'medium': d1_medium,
+#    'fine': d1_fine
+#}
 # Control parameters
 test_normalization = False # test the normalization of data
 bed_type = {
-    'three_D': True,  # 3D bed
-    'monodisperse': False,  # monodisperse bed
+    'three_D': False,  # 3D bed
+    'monodisperse': True,  # monodisperse bed
     'd50': d2_mid,  # average bed diameter
 }
 

@@ -220,8 +220,8 @@ output_e = True # output e
 output_ex = False # output e_x
 output_ez = False # output e_z
 output_theta2 = True # output rebound angle
-output_vn = False # output eject velocity
-output_Nej = False # output eject number
+output_vn = True # output eject velocity
+output_Nej = True # output eject number
 
 distribution = 1 # 0:uniform, 1:lognormal, 2:bidisperse, 3:polydisperse, 4:normal
 shallow = False # shallow impact
@@ -239,14 +239,14 @@ mu2 = (d_min + d_max) * 0.7  # 第二个峰靠右
 sigma1 = (d_max - d_min) * 0.1
 sigma2 = (d_max - d_min) * 0.1
 weight1 = 0.5 # 第一个峰的权重
-gamma_ej = 0.05 # the fraction of remaining energy to eject particles
+gamma_ej = 0.049 # the fraction of remaining energy to eject particles
 rho = 2650
 g = 9.8*(1 - 1.263/rho)
-epsilon = 0.71
+epsilon = 0.6814
 nu = -0.88
 epsilon_La = 0.94
 nu_La = -1.2
-num_samples = 1000
+num_samples = 100
 #------------------------------------------------------------------
 # average bed diameter
 if distribution == 0:
@@ -500,8 +500,8 @@ for n in tqdm(range(iteration_num)):
             dn = generate_truncated_lognormal(mu, sigma, d_min, d_max, 1)[0]
             m1 = rho*(d1**3*np.pi/6)
             mn = rho*(dn**3*np.pi/6)
-            m_mid = rho*(d2_mid**3*np.pi/6)
             C_Ec = rho*g*np.pi/6*d2_90
+            #Ec = C_Ec*d2_90**3
             Ec_min = C_Ec*d_min**3
             Ec_max = C_Ec*d_max**3
             mu_Ec = np.log(C_Ec) + 3.0*mu
@@ -910,29 +910,29 @@ if output_vn:
     x_array_total += x_array
     y_array_total += y_array
 
-    #colors = Willetts89_v_many_coarse['ang_in']
-    #x_array = Willetts89_v_many_coarse['v_ej']
-    #y_array = vn_bar_list_0[len0:len0 + len_W89_c]
-    #len0 += len_W89_c
-    #plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='^', label='Willetts89 coarse')
-    #min_xy = min(min(x_array + y_array), min_xy)
-    #max_xy = max(max(x_array + y_array), max_xy)
+    colors = Willetts89_v_many_coarse['ang_in']
+    x_array = Willetts89_v_many_coarse['v_ej']
+    y_array = vn_bar_list_0[len0:len0 + len_W89_c]
+    len0 += len_W89_c
+    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_c, marker='^', label='Willetts89 coarse')
+    min_xy = min(min(x_array + y_array), min_xy)
+    max_xy = max(max(x_array + y_array), max_xy)
 
-    #colors = Willetts89_v_many_medium['ang_in']
-    #x_array = Willetts89_v_many_medium['v_ej']
-    #y_array = vn_bar_list_0[len0:len0 + len_W89_m]
-    #len0 += len_W89_m
-    #plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='^', label='Willetts89 medium')
-    #min_xy = min(min(x_array + y_array), min_xy)
-    #max_xy = max(max(x_array + y_array), max_xy)
+    colors = Willetts89_v_many_medium['ang_in']
+    x_array = Willetts89_v_many_medium['v_ej']
+    y_array = vn_bar_list_0[len0:len0 + len_W89_m]
+    len0 += len_W89_m
+    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_m, marker='^', label='Willetts89 medium')
+    min_xy = min(min(x_array + y_array), min_xy)
+    max_xy = max(max(x_array + y_array), max_xy)
 
-    #colors = Willetts89_v_many_fine['ang_in']
-    #x_array = Willetts89_v_many_fine['v_ej']
-    #y_array = vn_bar_list_0[len0:len0 + len_W89_f]
-    #len0 += len_W89_f
-    #plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='^', label='Willetts89 fine')
-    #min_xy = min(min(x_array + y_array), min_xy)
-    #max_xy = max(max(x_array + y_array), max_xy)
+    colors = Willetts89_v_many_fine['ang_in']
+    x_array = Willetts89_v_many_fine['v_ej']
+    y_array = vn_bar_list_0[len0:len0 + len_W89_f]
+    len0 += len_W89_f
+    plt.scatter(x_array, y_array, c=colors, cmap=color_map, s=size_f, marker='^', label='Willetts89 fine')
+    min_xy = min(min(x_array + y_array), min_xy)
+    max_xy = max(max(x_array + y_array), max_xy)
 
     line_points = [min_xy, max_xy]
     plt.plot(line_points, line_points, 'k--', label='y=x')
