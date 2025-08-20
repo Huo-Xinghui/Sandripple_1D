@@ -30,11 +30,12 @@ d_min = dist_params['d_min']
 d_max = dist_params['d_max']
 d2_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
 d2_mid = np.percentile(d2_array, 50)
+d2_mean = np.mean(d2_array)
 # Impactor diameters
 d1_dict = {
-    'coarse': 1.4*d2_mid,
-    'medium': d2_mid,
-    'fine': 0.73*d2_mid
+    'coarse': 1.4*d2_mean,
+    'medium': d2_mean,
+    'fine': 0.73*d2_mean
 }
 #d1_coarse = np.percentile(d2_array[(d2_array > 3.55e-4) & (d2_array <= d_max)], 50)
 #d1_medium = np.percentile(d2_array[(d2_array > 2.5e-4) & (d2_array <= 3.55e-4)], 50)
@@ -50,9 +51,10 @@ d1_dict = {
 # Control parameters
 test_normalization = False # test the normalization of data
 bed_type = {
-    'three_D': False,  # 3D bed
-    'monodisperse': True,  # monodisperse bed
+    'three_D': True,  # 3D bed
+    'monodisperse': False,  # monodisperse bed
     'd50': d2_mid,  # average bed diameter
+    'd_mean': d2_mean  # mean bed diameter
 }
 
 # *****************************************************************

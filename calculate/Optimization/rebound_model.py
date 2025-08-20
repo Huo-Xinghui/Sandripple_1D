@@ -48,7 +48,7 @@ def calculate_x_min_3D(alpha, beta, d1, d2, d3, d4, th):
     zeta = np.random.uniform(0, zeta_max)
     #zeta = zeta_max/2
     d13_temp = d13*np.sqrt(1.0 - (np.sin(zeta)*d23/d13)**2)
-    d23_temp = d23*np.cos(zeta)
+    d23_temp = (d2 + d3*np.sqrt(1.0 - (np.sin(zeta)*d23/d13)**2))/2
     while d23_temp - d13_temp >= 1.0:
         zeta = np.random.uniform(0, zeta_max)
         #zeta = zeta_max/2

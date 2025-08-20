@@ -70,7 +70,7 @@ nu_2D = nu  # friction coefficient for 2D bed
 epsilon_3D = epsilon  # restitution coefficient for 3D bed
 nu_3D = nu  # friction coefficient for 3D bed
 # Calculation parameters
-perform_calculations = True
+perform_calculations = False
 thd_min = 0.1  # minimum impact angle
 thd_max = 85.0  # maximum impact angle
 case_num = 100  # number of cases
@@ -195,8 +195,8 @@ if perform_calculations:
 
 # Load results
 rslt_dict_mono = np.load('model_results_mono_same.npz')
-rslt_dict_2D = np.load('model_results_2D.npz')
-rslt_dict_3D = np.load('model_results_3D.npz')
+rslt_dict_2D = np.load('model_results_2D_same.npz')
+rslt_dict_3D = np.load('model_results_3D_old.npz')
 rslt_dict_mono_in = np.load('model_results_mono_old.npz')
 rslt_dict_2D_in = np.load('model_results_2D_old.npz')
 rslt_dict_3D_in = np.load('model_results_3D_old.npz')

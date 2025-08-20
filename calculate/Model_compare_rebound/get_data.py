@@ -291,22 +291,22 @@ def get_model_data_array(epsilon, nu, d1_array, th_array, dist_params, bed_type)
     for d1, th in zip(d1_array, th_array):
         if bed_type['monodisperse']:
             d2 = bed_type['d_mean']
-            #d3 = d2
-            if th > 1:
-                d3 = d2
-            else:
-                sigma = dist_params['sigma']
-                mu = dist_params['mu']
-                dmin = dist_params['d_min']
-                c = d1 + d2
-                c1 = d1/c
-                c2 = d2/c
-                dc = (1.0 + c2*th - c1)*c/(1.0 - th)
-                erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-                erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
-                erfc3 = erfc(-(np.log(dmin) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-                erfc4 = erfc(-(np.log(dmin) - mu)/(np.sqrt(2.0)*sigma))
-                d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
+            d3 = d2
+            #if th > 1:
+            #    d3 = d2
+            #else:
+            #    sigma = dist_params['sigma']
+            #    mu = dist_params['mu']
+            #    dmin = dist_params['d_min']
+            #    c = d1 + d2
+            #    c1 = d1/c
+            #    c2 = d2/c
+            #    dc = (1.0 + c2*th - c1)*c/(1.0 - th)
+            #    erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
+            #    erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
+            #    erfc3 = erfc(-(np.log(dmin) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
+            #    erfc4 = erfc(-(np.log(dmin) - mu)/(np.sqrt(2.0)*sigma))
+            #    d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
             #sigma = dist_params['sigma']
             #mu = dist_params['mu']
             #c = d1 + d2
@@ -317,7 +317,6 @@ def get_model_data_array(epsilon, nu, d1_array, th_array, dist_params, bed_type)
             #erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
             #d3 = np.exp(mu + sigma**2/2)*erfc1/erfc2
             if bed_type['three_D']:
-                d4 = d2
                 phi, e = calculate_rebound_3D(d1, d2, d3, th, epsilon, nu)
             else:
                 phi, e = calculate_rebound_2D(d1, d2, d3, th, epsilon, nu)

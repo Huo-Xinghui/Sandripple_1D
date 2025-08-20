@@ -8,6 +8,10 @@ def sample_averaged_rebound(epsilon, nu, th, sigma, dist_params, bed_type):
     """Sample average rebound angle and restitution coefficient (average over bed PSD)."""
     phi_list = []
     e_list = []
+    ez_list = []
+    ex_list = []
+    ecx_list = []
+    ecz_list = []
     # sampling
     mu = dist_params['mu']
     d_min = dist_params['d_min']
@@ -24,20 +28,32 @@ def sample_averaged_rebound(epsilon, nu, th, sigma, dist_params, bed_type):
     # calculating
     for i in range(sampling_num):
         if bed_type['three_D']:
-            phi, e = calculate_rebound_3D(d1, d2_array[i], d3_array[i], th, epsilon, nu)
+            phi, e, ecx, ecz, ez, ex = calculate_rebound_3D(d1, d2_array[i], d3_array[i], th, epsilon, nu)
         else:
-            phi, e = calculate_rebound_2D(d1, d2_array[i], d3_array[i], th, epsilon, nu)
+            phi, e, ecx, ecz, ez, ex = calculate_rebound_2D(d1, d2_array[i], d3_array[i], th, epsilon, nu)
         phi_list.append(phi)
         e_list.append(e)
+        ecx_list.append(ecx)
+        ecz_list.append(ecz)
+        ez_list.append(ez)
+        ex_list.append(ex)
     phi_avg = np.mean(phi_list)
     e_avg = np.mean(e_list)
+    ecx_avg = np.mean(ecx_list)
+    ecz_avg = np.mean(ecz_list)
+    ez_avg = np.mean(ez_list)
+    ex_avg = np.mean(ex_list)
 
-    return phi_avg, e_avg
+    return phi_avg, e_avg, ecx_avg, ecz_avg, ez_avg, ex_avg
 
 def sample_averaged_rebound_simple(epsilon, nu, th, sigma, dist_params, bed_type):
     """Sample average rebound angle and restitution coefficient (average over bed PSD)."""
     phi_list = []
     e_list = []
+    ecx_list = []
+    ecz_list = []
+    ez_list = []
+    ex_list = []
     # sampling
     mu = dist_params['mu']
     d_min = dist_params['d_min']
@@ -52,72 +68,60 @@ def sample_averaged_rebound_simple(epsilon, nu, th, sigma, dist_params, bed_type
     d2_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
     d3_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
     # calculating
-    for i in range(sampling_num):
+    for d2, d3 in zip(d2_array, d3_array):
         if bed_type['three_D']:
-            d2 = d2_array[i]
-            #if th > 1:
-            #    d3 = d2
-            #else:
-            #    dc = d2*(1.0 + th)/(1.0 - th)
-            #    erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-            #    erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
-            #    erfc3 = erfc(-(np.log(dmin) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-            #    erfc4 = erfc(-(np.log(dmin) - mu)/(np.sqrt(2.0)*sigma))
-            #    d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
             if bed_type['monodisperse']:
-                d3 = d2
+                d2 = d_mean
             else:
-                c = d1 + d2
-                c1 = d1/c
-                c2 = d2/c
-                dc = (1.0 + c2*np.tan(th) - c1/np.cos(th))*c/(1.0/np.cos(th) - np.tan(th))
-                erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-                erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
-                erfc3 = erfc(-(np.log(d_min) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-                erfc4 = erfc(-(np.log(d_min) - mu)/(np.sqrt(2.0)*sigma))
-                d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
+                d3 = d_mean
+                #c = d1 + d2
+                #c1 = d1/c
+                #c2 = d2/c
+                #dc = (1.0 + c2*np.tan(th) - c1/np.cos(th))*c/(1.0/np.cos(th) - np.tan(th))
                 #erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
                 #erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
-                #d3 = np.exp(mu + sigma**2/2)*erfc1/erfc2
-            phi, e = calculate_rebound_3D(d1, d2, d3, th, epsilon, nu)
+                #erfc3 = erfc(-(np.log(d_min) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
+                #erfc4 = erfc(-(np.log(d_min) - mu)/(np.sqrt(2.0)*sigma))
+                #d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
+            phi, e, ecx, ecz, ez, ex = calculate_rebound_3D(d1, d2, d3, th, epsilon, nu)
         else:
-            d2 = d2_array[i]
-            #if th > 1:
-            #    d3 = d2
-            #else:
-            #    dc = d2*(1.0 + th)/(1.0 - th)
-            #    erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-            #    erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
-            #    erfc3 = erfc(-(np.log(d_min) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-            #    erfc4 = erfc(-(np.log(d_min) - mu)/(np.sqrt(2.0)*sigma))
-            #    d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
             if bed_type['monodisperse']:
-                d3 = d2
+                d2 = d_mean
             else:
-                c = d1 + d2
-                c1 = d1/c
-                c2 = d2/c
-                dc = (1.0 + c2*np.tan(th) - c1/np.cos(th))*c/(1.0/np.cos(th) - np.tan(th))
-                erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-                erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
-                erfc3 = erfc(-(np.log(d_min) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-                erfc4 = erfc(-(np.log(d_min) - mu)/(np.sqrt(2.0)*sigma))
-                d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
+                d3 = d_mean
+                #c = d1 + d2
+                #c1 = d1/c
+                #c2 = d2/c
+                #dc = (1.0 + c2*np.tan(th) - c1/np.cos(th))*c/(1.0/np.cos(th) - np.tan(th))
                 #erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
                 #erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
-                #d3 = np.exp(mu + sigma**2/2)*erfc1/erfc2
-            phi, e = calculate_rebound_2D(d1, d2, d3, th, epsilon, nu)
+                #erfc3 = erfc(-(np.log(d_min) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
+                #erfc4 = erfc(-(np.log(d_min) - mu)/(np.sqrt(2.0)*sigma))
+                #d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
+            phi, e, ecx, ecz, ez, ex = calculate_rebound_2D(d1, d2, d3, th, epsilon, nu)
         phi_list.append(phi)
         e_list.append(e)
+        ecx_list.append(ecx)
+        ecz_list.append(ecz)
+        ez_list.append(ez)
+        ex_list.append(ex)
     phi_avg = np.mean(phi_list)
     e_avg = np.mean(e_list)
+    ecx_avg = np.mean(ecx_list)
+    ecz_avg = np.mean(ecz_list)
+    ez_avg = np.mean(ez_list)
+    ex_avg = np.mean(ex_list)
 
-    return phi_avg, e_avg
+    return phi_avg, e_avg, ecx_avg, ecz_avg, ez_avg, ex_avg
 
 def get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type):
     """Get model data array for rebound angle and restitution coefficient."""
     phi_list = []
     e_list = []
+    ecx_list = []
+    ecz_list = []
+    ez_list = []
+    ex_list = []
     d_min = dist_params['d_min']
     d_max = dist_params['d_max']
     mu = dist_params['mu']
@@ -128,44 +132,52 @@ def get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type):
             d10 = np.percentile(d_array, 10)
             d90 = np.percentile(d_array, 90)
             d_mean = np.mean(d_array)
+            d_mode = stats.mode(d_array).mode
             d1 = d_mean
-            d2 = d_mean
-            #if th > 1:
-            #    d3 = d2
-            #else:
-            #    dc = d2*(1.0 + th)/(1.0 - th)
-            #    erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-            #    erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
-            #    erfc3 = erfc(-(np.log(dmin) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-            #    erfc4 = erfc(-(np.log(dmin) - mu)/(np.sqrt(2.0)*sigma))
-            #    d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
             if bed_type['monodisperse']:
+                d2 = d_mean
                 d3 = d2
+                #dc = (d2*(np.cos(th) + np.sin(th)) - d1*(1.0 - np.cos(th)))/(1.0 - np.sin(th))
+                #d_max = dc
+                #erfc1 = erfc(-(np.log(d_max) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
+                #erfc2 = erfc(-(np.log(d_max) - mu)/(np.sqrt(2.0)*sigma))
+                #erfc3 = erfc(-(np.log(d_min) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
+                #erfc4 = erfc(-(np.log(d_min) - mu)/(np.sqrt(2.0)*sigma))
+                #d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
             else:
-                c = d1 + d2
-                c1 = d1/c
-                c2 = d2/c
-                dc = (1.0 + c2*np.tan(th) - c1/np.cos(th))*c/(1.0/np.cos(th) - np.tan(th))
-                erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-                erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
+                d3 = d50
+                #d3 = d2
+                dc1 = (d3*(1.0 - np.sin(th)) + d1*(1.0 - np.cos(th)))/(np.cos(th) + np.sin(th))
+                d_min = dc1
+                erfc1 = erfc(-(np.log(d_max) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
+                erfc2 = erfc(-(np.log(d_max) - mu)/(np.sqrt(2.0)*sigma))
                 erfc3 = erfc(-(np.log(d_min) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
                 erfc4 = erfc(-(np.log(d_min) - mu)/(np.sqrt(2.0)*sigma))
-                d3 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
-                #erfc1 = erfc(-(np.log(dc) - mu - sigma**2)/(np.sqrt(2.0)*sigma))
-                #erfc2 = erfc(-(np.log(dc) - mu)/(np.sqrt(2.0)*sigma))
-                #d3 = np.exp(mu + sigma**2/2)*erfc1/erfc2
+                d2 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
             if bed_type['three_D']:
-                phi, e = calculate_rebound_3D(d1, d2, d3, th, epsilon, nu)
+                phi, e, ecx, ecz, ez, ex = calculate_rebound_3D(d1, d2, d3, th, epsilon, nu)
             else:
-                phi, e = calculate_rebound_2D(d1, d2, d3, th, epsilon, nu)
+                phi, e, ecx, ecz, ez, ex = calculate_rebound_2D(d1, d2, d3, th, epsilon, nu)
             phi_list.append(phi)
             e_list.append(e)
-            #phi, e = sample_averaged_rebound_simple(epsilon, nu, th, sigma, dist_params, bed_type)
+            ecx_list.append(ecx)
+            ecz_list.append(ecz)
+            ez_list.append(ez)
+            ex_list.append(ex)
+            #phi, e, ecx, ecz, ez, ex = sample_averaged_rebound_simple(epsilon, nu, th, sigma, dist_params, bed_type)
             #phi_list.append(phi)
             #e_list.append(e)
+            #ecx_list.append(ecx)
+            #ecz_list.append(ecz)
+            #ez_list.append(ez)
+            #ex_list.append(ex)
         else:
-            phi, e = sample_averaged_rebound(epsilon, nu, th, sigma, dist_params, bed_type)
+            phi, e, ecx, ecz, ez, ex = sample_averaged_rebound(epsilon, nu, th, sigma, dist_params, bed_type)
             phi_list.append(phi)
             e_list.append(e)
+            ecx_list.append(ecx)
+            ecz_list.append(ecz)
+            ez_list.append(ez)
+            ex_list.append(ex)
 
-    return np.array(phi_list), np.array(e_list)
+    return np.array(phi_list), np.array(e_list), np.array(ecx_list), np.array(ecz_list), np.array(ez_list), np.array(ex_list)

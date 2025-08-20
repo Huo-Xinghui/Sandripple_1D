@@ -46,7 +46,7 @@ def calculate_x_min_3D(alpha, beta, d1, d2, d3, th):
     zeta = np.random.uniform(0, zeta_max)
     #zeta = zeta_max/2
     d13_temp = d13*np.sqrt(1.0 - (np.sin(zeta)*d23/d13)**2)
-    d23_temp = d23*np.cos(zeta)
+    d23_temp = (d2 + d3*np.sqrt(1.0 - (np.sin(zeta)*d23/d13)**2))/2
     while d23_temp - d13_temp >= 1.0:
         zeta = np.random.uniform(0, zeta_max)
         #zeta = zeta_max/2
@@ -134,6 +134,30 @@ def rebound_res_eq(x, alpha, beta, th):
     res = np.sqrt(e_vx**2 + e_vz**2)
     return res
 
+def rebound_resx_eq(x, alpha, beta, th):
+    e_vx = -alpha*np.cos(th) + (alpha + beta)*x**2*np.sin(th)**2*np.cos(th) + (alpha + beta)*x*np.sin(th)**2*np.sqrt(1 - x**2*np.sin(th)**2)
+    return e_vx
+
+def rebound_resz_eq(x, alpha, beta, th):
+    e_vz = alpha*np.sin(th) - (alpha + beta)*x**2*np.sin(th)**3 + (alpha + beta)*x*np.sin(th)*np.cos(th)*np.sqrt(1 - x**2*np.sin(th)**2)
+    return e_vz
+
+def rebound_ez_eq(x, alpha, beta, th):
+    e_vx = -alpha*np.cos(th) + (alpha + beta)*x**2*np.sin(th)**2*np.cos(th) + (alpha + beta)*x*np.sin(th)**2*np.sqrt(1 - x**2*np.sin(th)**2)
+    e_vz = alpha*np.sin(th) - (alpha + beta)*x**2*np.sin(th)**3 + (alpha + beta)*x*np.sin(th)*np.cos(th)*np.sqrt(1 - x**2*np.sin(th)**2)
+    phi = np.arctan2(e_vz, e_vx)
+    e = np.sqrt(e_vx**2 + e_vz**2)
+    ez = e * np.sin(phi)/np.sin(th)
+    return ez
+
+def rebound_ex_eq(x, alpha, beta, th):
+    e_vx = -alpha*np.cos(th) + (alpha + beta)*x**2*np.sin(th)**2*np.cos(th) + (alpha + beta)*x*np.sin(th)**2*np.sqrt(1 - x**2*np.sin(th)**2)
+    e_vz = alpha*np.sin(th) - (alpha + beta)*x**2*np.sin(th)**3 + (alpha + beta)*x*np.sin(th)*np.cos(th)*np.sqrt(1 - x**2*np.sin(th)**2)
+    phi = np.arctan2(e_vz, e_vx)
+    e = np.sqrt(e_vx**2 + e_vz**2)
+    ex = e * np.cos(phi)/np.cos(th)
+    return ex
+
 def calculate_rebound_2D(d1, d2, d3, th, epsilon, nu):
     # normalize diameters
     D = (d1 + d2)/2
@@ -151,6 +175,14 @@ def calculate_rebound_2D(d1, d2, d3, th, epsilon, nu):
         phi /= (x_max - x_min)
         e, error = quad(rebound_res_eq, x_min, x_max, args=(alpha, beta, th))
         e /= (x_max - x_min)
+        ecx, error = quad(rebound_resx_eq, x_min, x_max, args=(alpha, beta, th))
+        ecx /= (x_max - x_min)
+        ecz, error = quad(rebound_resz_eq, x_min, x_max, args=(alpha, beta, th))
+        ecz /= (x_max - x_min)
+        ez, error = quad(rebound_ez_eq, x_min, x_max, args=(alpha, beta, th))
+        ez /= (x_max - x_min)
+        ex, error = quad(rebound_ex_eq, x_min, x_max, args=(alpha, beta, th))
+        ex /= (x_max - x_min)
     else:
         # exchange d2 and d3
         d_temp = d2
@@ -174,7 +206,15 @@ def calculate_rebound_2D(d1, d2, d3, th, epsilon, nu):
             phi /= (x_max - x_min)
             e, error = quad(rebound_res_eq, x_min, x_max, args=(alpha, beta, th))
             e /= (x_max - x_min)
-    return phi, e
+            ecx, error = quad(rebound_resx_eq, x_min, x_max, args=(alpha, beta, th))
+            ecx /= (x_max - x_min)
+            ecz, error = quad(rebound_resz_eq, x_min, x_max, args=(alpha, beta, th))
+            ecz /= (x_max - x_min)
+            ez, error = quad(rebound_ez_eq, x_min, x_max, args=(alpha, beta, th))
+            ez /= (x_max - x_min)
+            ex, error = quad(rebound_ex_eq, x_min, x_max, args=(alpha, beta, th))
+            ex /= (x_max - x_min)
+    return phi, e, ecx, ecz, ez, ex
 
 def calculate_rebound_3D(d1, d2, d3, th, epsilon, nu):
     # normalize diameters
@@ -193,6 +233,14 @@ def calculate_rebound_3D(d1, d2, d3, th, epsilon, nu):
         phi /= (x_max - x_min)
         e, error = quad(rebound_res_eq, x_min, x_max, args=(alpha, beta, th))
         e /= (x_max - x_min)
+        ecx, error = quad(rebound_resx_eq, x_min, x_max, args=(alpha, beta, th))
+        ecx /= (x_max - x_min)
+        ecz, error = quad(rebound_resz_eq, x_min, x_max, args=(alpha, beta, th))
+        ecz /= (x_max - x_min)
+        ez, error = quad(rebound_ez_eq, x_min, x_max, args=(alpha, beta, th))
+        ez /= (x_max - x_min)
+        ex, error = quad(rebound_ex_eq, x_min, x_max, args=(alpha, beta, th))
+        ex /= (x_max - x_min)
     else:
         # exchange d2 and d3
         d_temp = d2
@@ -216,4 +264,12 @@ def calculate_rebound_3D(d1, d2, d3, th, epsilon, nu):
             phi /= (x_max - x_min)
             e, error = quad(rebound_res_eq, x_min, x_max, args=(alpha, beta, th))
             e /= (x_max - x_min)
-    return phi, e
+            ecx, error = quad(rebound_resx_eq, x_min, x_max, args=(alpha, beta, th))
+            ecx /= (x_max - x_min)
+            ecz, error = quad(rebound_resz_eq, x_min, x_max, args=(alpha, beta, th))
+            ecz /= (x_max - x_min)
+            ez, error = quad(rebound_ez_eq, x_min, x_max, args=(alpha, beta, th))
+            ez /= (x_max - x_min)
+            ex, error = quad(rebound_ex_eq, x_min, x_max, args=(alpha, beta, th))
+            ex /= (x_max - x_min)
+    return phi, e, ecx, ecz, ez, ex
