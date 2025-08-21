@@ -1,1 +1,1 @@
-thin_line = mlines.Line2D([], [], color='k', linestyle='-', linewidth=linewidth*0.5)
+d1_
