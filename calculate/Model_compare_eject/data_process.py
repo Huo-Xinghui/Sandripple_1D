@@ -42,24 +42,24 @@ def print_time(ct, lt, st, cs, ts):
     """Printing remaining minutes and seconds from a time in seconds."""
     print_dict={
         1: 'Experimental data loaded',
-        2: '2DM-fine model data vs thd calculated',
-        3: '2DM-medium model data vs thd calculated',
-        4: '2DM-coarse model data vs thd calculated',
-        5: '2DP-fine model data vs thd calculated',
-        6: '2DP-medium model data vs thd calculated',
-        7: '2DP-coarse model data vs thd calculated',
-        8: '3D-fine model data vs thd calculated',
-        9: '3D-medium model data vs thd calculated',
-        10: '3D-coarse model data vs thd calculated',
-        11: '2DM-fine model data vs v1 calculated',
-        12: '2DM-medium model data vs v1 calculated',
-        13: '2DM-coarse model data vs v1 calculated',
-        14: '2DP-fine model data vs v1 calculated',
-        15: '2DP-medium model data vs v1 calculated',
-        16: '2DP-coarse model data vs v1 calculated',
-        17: '3D-fine model data vs v1 calculated',
-        18: '3D-medium model data vs v1 calculated',
-        19: '3D-coarse model data vs v1 calculated'
+        2: 'mono-fine model data vs thd calculated',
+        3: 'mono-medium model data vs thd calculated',
+        4: 'mono-coarse model data vs thd calculated',
+        5: 'poly-fine model data vs thd calculated',
+        6: 'poly-medium model data vs thd calculated',
+        7: 'poly-coarse model data vs thd calculated',
+        8: 'poly-d50-fine model data vs thd calculated',
+        9: 'poly-d50-medium model data vs thd calculated',
+        10: 'poly-d50-coarse model data vs thd calculated',
+        11: 'mono-fine model data vs v1 calculated',
+        12: 'mono-medium model data vs v1 calculated',
+        13: 'mono-coarse model data vs v1 calculated',
+        14: 'poly-fine model data vs v1 calculated',
+        15: 'poly-medium model data vs v1 calculated',
+        16: 'poly-coarse model data vs v1 calculated',
+        17: 'poly-d50-fine model data vs v1 calculated',
+        18: 'poly-d50-medium model data vs v1 calculated',
+        19: 'poly-d50-coarse model data vs v1 calculated'
     }
     cost_time = ct - lt
     total_time = ct - st

@@ -25,7 +25,7 @@ linewidth = 1.5
 epsilon = 0.6442
 nu = -0.7857
 # Calculation parameters
-perform_calculations = True
+perform_calculations = False
 thd_list = [15, 30, 45] # incident angle
 case_num = 50  # number of cases
 # Bed PSD parameters
@@ -73,127 +73,127 @@ if perform_calculations:
     }
     np.savez('d_vs_sigma.npz', **rslt_dict_simple)
 
-    ## Get model data
-    #th = thd_list[0] * np.pi / 180  # convert to radians
-    #sigma_array = np.linspace(sigma_min, sigma_max, case_num)  # standard deviation array
+    # Get model data
+    th = thd_list[0] * np.pi / 180  # convert to radians
+    sigma_array = np.linspace(sigma_min, sigma_max, case_num)  # standard deviation array
 
-    #phi_array_15, e_array_15, ecx_array_15, ecz_array_15, ez_array_15, ex_array_15 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
-    #current_time = time.time()
-    #current_step += 1
-    #print_time(current_time, last_time, start_time, current_step, total_steps)
-    #last_time = current_time
+    phi_array_15, e_array_15, ecx_array_15, ecz_array_15, ez_array_15, ex_array_15 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
 
-    #th = thd_list[1] * np.pi / 180  # convert to radians
+    th = thd_list[1] * np.pi / 180  # convert to radians
 
-    #phi_array_30, e_array_30, ecx_array_30, ecz_array_30, ez_array_30, ex_array_30 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
-    #current_time = time.time()
-    #current_step += 1
-    #print_time(current_time, last_time, start_time, current_step, total_steps)
-    #last_time = current_time
+    phi_array_30, e_array_30, ecx_array_30, ecz_array_30, ez_array_30, ex_array_30 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
 
-    #th = thd_list[2] * np.pi / 180  # convert to radians
+    th = thd_list[2] * np.pi / 180  # convert to radians
 
-    #phi_array_45, e_array_45, ecx_array_45, ecz_array_45, ez_array_45, ex_array_45 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
-    #current_time = time.time()
-    #current_step += 1
-    #print_time(current_time, last_time, start_time, current_step, total_steps)
-    #last_time = current_time
+    phi_array_45, e_array_45, ecx_array_45, ecz_array_45, ez_array_45, ex_array_45 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
 
+    rslt_dict_simple = {
+        'sigma': sigma_array,
+        'phid_15': np.degrees(phi_array_15),
+        'e_15': e_array_15,
+        'ecx_15': ecx_array_15,
+        'ecz_15': ecz_array_15,
+        'ez_15': ez_array_15,
+        'ex_15': ex_array_15,
+        'phid_30': np.degrees(phi_array_30),
+        'e_30': e_array_30,
+        'ecx_30': ecx_array_30,
+        'ecz_30': ecz_array_30,
+        'ez_30': ez_array_30,
+        'ex_30': ex_array_30,
+        'phid_45': np.degrees(phi_array_45),
+        'e_45': e_array_45,
+        'ecx_45': ecx_array_45,
+        'ecz_45': ecz_array_45,
+        'ez_45': ez_array_45,
+        'ex_45': ex_array_45,
+    }
     #rslt_dict_simple = {
     #    'sigma': sigma_array,
-    #    'phid_15': np.degrees(phi_array_15),
-    #    'e_15': e_array_15,
-    #    'ecx_15': ecx_array_15,
-    #    'ecz_15': ecz_array_15,
-    #    'ez_15': ez_array_15,
-    #    'ex_15': ex_array_15,
-    #    'phid_30': np.degrees(phi_array_30),
-    #    'e_30': e_array_30,
-    #    'ecx_30': ecx_array_30,
-    #    'ecz_30': ecz_array_30,
-    #    'ez_30': ez_array_30,
-    #    'ex_30': ex_array_30,
-    #    'phid_45': np.degrees(phi_array_45),
-    #    'e_45': e_array_45,
-    #    'ecx_45': ecx_array_45,
-    #    'ecz_45': ecz_array_45,
-    #    'ez_45': ez_array_45,
-    #    'ex_45': ex_array_45,
+    #    'phid_10': np.degrees(phi_array_15),
+    #    'e_10': e_array_15,
+    #    'ecx_10': ecx_array_15,
+    #    'ecz_10': ecz_array_15,
+    #    'ez_10': ez_array_15,
+    #    'ex_10': ex_array_15,
+    #    'phid_20': np.degrees(phi_array_30),
+    #    'e_20': e_array_30,
+    #    'ecx_20': ecx_array_30,
+    #    'ecz_20': ecz_array_30,
+    #    'ez_20': ez_array_30,
+    #    'ex_20': ex_array_30,
+    #    'phid_25': np.degrees(phi_array_45),
+    #    'e_25': e_array_45,
+    #    'ecx_25': ecx_array_45,
+    #    'ecz_25': ecz_array_45,
+    #    'ez_25': ez_array_45,
+    #    'ex_25': ex_array_45,
     #}
-    ##rslt_dict_simple = {
-    ##    'sigma': sigma_array,
-    ##    'phid_10': np.degrees(phi_array_15),
-    ##    'e_10': e_array_15,
-    ##    'ecx_10': ecx_array_15,
-    ##    'ecz_10': ecz_array_15,
-    ##    'ez_10': ez_array_15,
-    ##    'ex_10': ex_array_15,
-    ##    'phid_20': np.degrees(phi_array_30),
-    ##    'e_20': e_array_30,
-    ##    'ecx_20': ecx_array_30,
-    ##    'ecz_20': ecz_array_30,
-    ##    'ez_20': ez_array_30,
-    ##    'ex_20': ex_array_30,
-    ##    'phid_25': np.degrees(phi_array_45),
-    ##    'e_25': e_array_45,
-    ##    'ecx_25': ecx_array_45,
-    ##    'ecz_25': ecz_array_45,
-    ##    'ez_25': ez_array_45,
-    ##    'ex_25': ex_array_45,
-    ##}
-    #np.savez('rb_vs_sigma_simple_mono_d2.npz', **rslt_dict_simple)
+    np.savez('rb_vs_sigma_simple_mono_d2.npz', **rslt_dict_simple)
 
-    #bed_type['simple'] = True  # switch to polydisperse bed
-    #bed_type['monodisperse'] = False  # switch to polydisperse bed
-    #bed_type['three_D'] = False  # switch to 3D bed
+    bed_type['simple'] = True  # switch to polydisperse bed
+    bed_type['monodisperse'] = False  # switch to polydisperse bed
+    bed_type['three_D'] = False  # switch to 3D bed
 
-    ## Get model data
-    #th = thd_list[0] * np.pi / 180  # convert to radians
+    # Get model data
+    th = thd_list[0] * np.pi / 180  # convert to radians
 
-    #phi_array_15, e_array_15, ecx_array_15, ecz_array_15, ez_array_15, ex_array_15 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
-    #current_time = time.time()
-    #current_step += 1
-    #print_time(current_time, last_time, start_time, current_step, total_steps)
-    #last_time = current_time
+    phi_array_15, e_array_15, ecx_array_15, ecz_array_15, ez_array_15, ex_array_15 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
 
-    #th = thd_list[1] * np.pi / 180  # convert to radians
+    th = thd_list[1] * np.pi / 180  # convert to radians
 
-    #phi_array_30, e_array_30, ecx_array_30, ecz_array_30, ez_array_30, ex_array_30 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
-    #current_time = time.time()
-    #current_step += 1
-    #print_time(current_time, last_time, start_time, current_step, total_steps)
-    #last_time = current_time
+    phi_array_30, e_array_30, ecx_array_30, ecz_array_30, ez_array_30, ex_array_30 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
 
-    #th = thd_list[2] * np.pi / 180  # convert to radians
+    th = thd_list[2] * np.pi / 180  # convert to radians
 
-    #phi_array_45, e_array_45, ecx_array_45, ecz_array_45, ez_array_45, ex_array_45 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
-    #current_time = time.time()
-    #current_step += 1
-    #print_time(current_time, last_time, start_time, current_step, total_steps)
-    #last_time = current_time
+    phi_array_45, e_array_45, ecx_array_45, ecz_array_45, ez_array_45, ex_array_45 = get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
 
-    #rslt_dict_3D = {
-    #    'sigma': sigma_array,
-    #    'phid_15': np.degrees(phi_array_15),
-    #    'e_15': e_array_15,
-    #    'ecx_15': ecx_array_15,
-    #    'ecz_15': ecz_array_15,
-    #    'ez_15': ez_array_15,
-    #    'ex_15': ex_array_15,
-    #    'phid_30': np.degrees(phi_array_30),
-    #    'e_30': e_array_30,
-    #    'ecx_30': ecx_array_30,
-    #    'ecz_30': ecz_array_30,
-    #    'ez_30': ez_array_30,
-    #    'ex_30': ex_array_30,
-    #    'phid_45': np.degrees(phi_array_45),
-    #    'e_45': e_array_45,
-    #    'ecx_45': ecx_array_45,
-    #    'ecz_45': ecz_array_45,
-    #    'ez_45': ez_array_45,
-    #    'ex_45': ex_array_45,
-    #}
-    #np.savez('rb_vs_sigma_simple_mono_d3.npz', **rslt_dict_3D)
+    rslt_dict_3D = {
+        'sigma': sigma_array,
+        'phid_15': np.degrees(phi_array_15),
+        'e_15': e_array_15,
+        'ecx_15': ecx_array_15,
+        'ecz_15': ecz_array_15,
+        'ez_15': ez_array_15,
+        'ex_15': ex_array_15,
+        'phid_30': np.degrees(phi_array_30),
+        'e_30': e_array_30,
+        'ecx_30': ecx_array_30,
+        'ecz_30': ecz_array_30,
+        'ez_30': ez_array_30,
+        'ex_30': ex_array_30,
+        'phid_45': np.degrees(phi_array_45),
+        'e_45': e_array_45,
+        'ecx_45': ecx_array_45,
+        'ecz_45': ecz_array_45,
+        'ez_45': ez_array_45,
+        'ex_45': ex_array_45,
+    }
+    np.savez('rb_vs_sigma_simple_mono_d3.npz', **rslt_dict_3D)
 
     #bed_type['simple'] = True  # switch to simple bed
     #bed_type['monodisperse'] = True  # switch to monodisperse bed
@@ -298,6 +298,7 @@ ex_array_3D_ex_25 = rslt_dict_3D_ex['ex_25'][::skip]
 
 sigma_array_2D = rslt_dict_2D['sigma'][::skip]
 sigma_array_3D = rslt_dict_3D['sigma'][::skip]
+sigma_array_d2 = rslt_dict_monod2['sigma'][::skip]
 
 # smooth ez
 #ez_array_2D_15 = gaussian_filter1d(ez_array_2D_15, sigma=1)
@@ -414,12 +415,12 @@ ax.tick_params(axis='x', labelsize=ticks_size)
 ax.tick_params(axis='y', labelsize=ticks_size)
 
 inset_ax = inset_axes(ax, width='45%', height='45%', loc='upper left')
-inset_ax.plot(sigma_array_2D, ez_array_2D_15, 'ro', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_array_2D, ez_array_2D_45, 'bs', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+inset_ax.plot(sigma_array_d2, ez_array_d2_15, 'mx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+inset_ax.plot(sigma_array_d2, ez_array_d2_45, 'gx', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
 inset_ax.plot(sigma_array_3D, ez_array_3D_15, 'ro', markersize=marker_size_in, markeredgewidth=marker_width_in)
 inset_ax.plot(sigma_array_3D, ez_array_3D_45, 'bs', markersize=marker_size_in, markeredgewidth=marker_width_in)
-inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ez_15'], 'm--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ez_45'], 'g--', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ez_15'], 'm--', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ez_45'], 'g--', linewidth=linewidth)
 inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ez_15'], 'm-', linewidth=linewidth)
 inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ez_45'], 'g-', linewidth=linewidth)
 inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ez_15'], 'k-', linewidth=linewidth*0.5)
@@ -435,15 +436,15 @@ inset_ax.tick_params(axis='both', length=0)
 inset_ax.set_xticks([])
 inset_ax.set_yticks([])
 # 创建自定义图例句柄
-solid_line_m = mlines.Line2D([], [], color='m', linestyle='-', linewidth=linewidth)
-dashed_line_m = mlines.Line2D([], [], color='m', linestyle='--', linewidth=linewidth)
-solid_line_g = mlines.Line2D([], [], color='g', linestyle='-', linewidth=linewidth)
-dashed_line_g = mlines.Line2D([], [], color='g', linestyle='--', linewidth=linewidth)
-inset_ax.legend([dashed_line_m, solid_line_m, dashed_line_g, solid_line_g],
-                ['$\\theta = 15^{\\circ}$ $d_2 = d_{50}$, $d_3 = \\mathbb{E}[d]$', '$\\theta = 15^{\\circ}$ $d_3 = d_{50}$, $d_2 = \\mathbb{E}[d]$', '$\\theta = 45^{\\circ}$ $d_2 = d_{50}$, $d_3 = \\mathbb{E}[d]$', '$\\theta = 45^{\\circ}$ $d_3 = d_{50}$, $d_2 = \\mathbb{E}[d]$'],
+solid_line_m = inset_ax.plot([], [], 'm-', linewidth=linewidth)[0]
+x_line_m = inset_ax.plot([], [], 'mx-', linewidth=linewidth)[0]
+solid_line_g = inset_ax.plot([], [], 'g-', linewidth=linewidth)[0]
+x_line_g = inset_ax.plot([], [], 'gx-', linewidth=linewidth)[0]
+inset_ax.legend([solid_line_m, x_line_m, solid_line_g, x_line_g],
+                ['$\\theta = 15^{\\circ}$, $d_3 \\equiv d_{50}$', '$\\theta = 15^{\\circ}$, Sampled $d_3$', '$\\theta = 45^{\\circ}$, $d_3 \\equiv d_{50}$', '$\\theta = 45^{\\circ}$, Sampled $d_3$'],
                 fontsize=ticks_size,
                 loc='upper right',
-                bbox_to_anchor=(2.18, 1.06),
+                bbox_to_anchor=(2.0, 1.06),
                 frameon=True)
 
 
@@ -490,12 +491,12 @@ ax.legend([thin_line, dashed_line, dotted_line],
           frameon=True)
 
 inset_ax = inset_axes(ax, width='45%', height='45%', loc='lower left')
-inset_ax.plot(sigma_array_2D, ex_array_2D_15, 'ro', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_array_2D, ex_array_2D_45, 'bs', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+inset_ax.plot(sigma_array_d2, ex_array_d2_15, 'mx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+inset_ax.plot(sigma_array_d2, ex_array_d2_45, 'gx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
 inset_ax.plot(sigma_array_3D, ex_array_3D_15, 'ro', markersize=marker_size_in, markeredgewidth=marker_width_in)
 inset_ax.plot(sigma_array_3D, ex_array_3D_45, 'bs', markersize=marker_size_in, markeredgewidth=marker_width_in)
-inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ex_15'], 'm--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ex_45'], 'g--', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ex_15'], 'm--', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ex_45'], 'g--', linewidth=linewidth)
 inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ex_15'], 'm-', linewidth=linewidth)
 inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ex_45'], 'g-', linewidth=linewidth)
 inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ex_15'], 'k-', linewidth=linewidth*0.5)

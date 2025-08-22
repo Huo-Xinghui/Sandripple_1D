@@ -9,6 +9,7 @@ from get_data import get_exp_data_array, get_model_data_array_v1, get_model_data
 # Set up matplotlib parameters
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['text.usetex'] = True
+mpl.rcParams['text.latex.preamble'] = r'\usepackage{amssymb}'
 A = 1/0.6 # amplification factor
 label_size = 20*A
 ticks_size = 15*A
@@ -31,18 +32,20 @@ d_max = dist_params['d_max']
 d2_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
 d2_mid = np.percentile(d2_array, 50)
 d90 = np.percentile(d2_array, 90)
+d2_mean = np.mean(d2_array)
 # Bed type parameters
 bed_type = {
-    'three_D': False,  # 3D bed
+    'good_zc': False,  # whether set d90
     'monodisperse': True,  # monodisperse bed
     'd50': d2_mid,  # average bed diameter
-    'd90': d90  # 90th percentile diameter
+    'd90': d90,  # 90th percentile diameter
+    'd_mean': d2_mean
 }
 # Impactor diameters
 d1_dict = {
-    'coarse': 1.4*d2_mid,
-    'medium': d2_mid,
-    'fine': 0.73*d2_mid
+    'coarse': 1.4*d2_mean,
+    'medium': d2_mean,
+    'fine': 0.73*d2_mean
 }
 #d1_coarse = np.mean(d2_array[(d2_array > 3.55e-4) & (d2_array <= d_max)])
 #d1_medium = np.mean(d2_array[(d2_array > 2.5e-4) & (d2_array <= 3.55e-4)])
@@ -60,15 +63,13 @@ rho = 2650
 rhof = 1.263
 s = rho/rhof
 g = 9.8*(1 - 1/s)
-epsilon_2DM = 1.0435  # restitution coefficient for monodisperse bed
-nu_2DM = -1.2743  # friction coefficient for monodisperse bed
-epsilon_2DP = 0.8570  # restitution coefficient for 2D bed
-nu_2DP = -1.0726  # friction coefficient for 2D bed
-epsilon_3D = 0.8154  # restitution coefficient for 3D bed
-nu_3D = -1.0574  # friction coefficient for 3D bed
-gamma = 0.047
+epsilon_mono = 0.8208  # restitution coefficient for monodisperse bed
+nu_mono = -1.0098  # friction coefficient for monodisperse bed
+epsilon_3D = 0.6821  # restitution coefficient for 3D bed
+nu_3D = -0.8606  # friction coefficient for 3D bed
+gamma = 0.042
 # Calculation parameters
-perform_calculations = True
+perform_calculations = False
 thd_min = 0.1  # minimum impact angle
 thd_max = 85.0  # maximum impact angle
 v1_min = 1.0
@@ -103,8 +104,8 @@ if perform_calculations:
     v1_c = np.mean(exp_dicts['Ri95_c']['v1'])
 
     physical_dict = {
-        'epsilon': epsilon_2DM,
-        'nu': nu_2DM,
+        'epsilon': epsilon_mono,
+        'nu': nu_mono,
         'rho': rho,
         'g': g
     }
@@ -127,7 +128,7 @@ if perform_calculations:
     print_time(current_time, last_time, start_time, current_step, total_steps)
     last_time = current_time
 
-    rslt_dict_2DM_th = {
+    rslt_dict_mono_th = {
         'th': th_array,
         'thd': thd_array,
         'Nej_f': Nej_array_f,
@@ -144,57 +145,10 @@ if perform_calculations:
         'd1_m': d1_dict['medium'],
         'd1_c': d1_dict['coarse']
     }
-    np.savez('eject_2DM_vs_th.npz', **rslt_dict_2DM_th)
-    #np.savez('eject_2DM_vs_th_d50.npz', **rslt_dict_2DM_th)
+    np.savez('eject_mono_vs_th.npz', **rslt_dict_mono_th)
 
+    bed_type['good_zc'] = True  # switch to zc=d90
     bed_type['monodisperse'] = False  # switch to polydisperse bed
-
-    physical_dict = {
-        'epsilon': epsilon_2DP,
-        'nu': nu_2DP,
-        'rho': rho,
-        'g': g
-    }
-
-    Nej_array_f, vn_array_f = get_model_data_array_th(th_array, v1_f, gamma, d1_array_f, physical_dict, bed_type, dist_params)
-    current_time = time.time()
-    current_step += 1
-    print_time(current_time, last_time, start_time, current_step, total_steps)
-    last_time = current_time
-
-    Nej_array_m, vn_array_m = get_model_data_array_th(th_array, v1_m, gamma, d1_array_m, physical_dict, bed_type, dist_params)
-    current_time = time.time()
-    current_step += 1
-    print_time(current_time, last_time, start_time, current_step, total_steps)
-    last_time = current_time
-
-    Nej_array_c, vn_array_c = get_model_data_array_th(th_array, v1_c, gamma, d1_array_c, physical_dict, bed_type, dist_params)
-    current_time = time.time()
-    current_step += 1
-    print_time(current_time, last_time, start_time, current_step, total_steps)
-    last_time = current_time
-
-    rslt_dict_2DP_th = {
-        'th': th_array,
-        'thd': thd_array,
-        'Nej_f': Nej_array_f,
-        'vn_f': vn_array_f,
-        'Nej_m': Nej_array_m,
-        'vn_m': vn_array_m,
-        'Nej_c': Nej_array_c,
-        'vn_c': vn_array_c,
-        'v1_f': v1_f,
-        'v1_m': v1_m,
-        'v1_c': v1_c,
-        'd2_mid': d2_mid,
-        'd1_f': d1_dict['fine'],
-        'd1_m': d1_dict['medium'],
-        'd1_c': d1_dict['coarse']
-    }
-    np.savez('eject_2DP_vs_th.npz', **rslt_dict_2DP_th)
-    #np.savez('eject_2DP_vs_th_d50.npz', **rslt_dict_2DP_th)
-
-    bed_type['three_D'] = True  # switch to 3D bed
 
     physical_dict = {
         'epsilon': epsilon_3D,
@@ -239,7 +193,53 @@ if perform_calculations:
         'd1_c': d1_dict['coarse']
     }
     np.savez('eject_3D_vs_th.npz', **rslt_dict_3D_th)
-    #np.savez('eject_3D_vs_th_d50.npz', **rslt_dict_3D_th)
+
+    bed_type['good_zc'] = False  # switch to zc=d50
+    bed_type['monodisperse'] = False  # switch to polydisperse bed
+
+    physical_dict = {
+        'epsilon': epsilon_3D,
+        'nu': nu_3D,
+        'rho': rho,
+        'g': g
+    }
+
+    Nej_array_f, vn_array_f = get_model_data_array_th(th_array, v1_f, gamma, d1_array_f, physical_dict, bed_type, dist_params)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
+
+    Nej_array_m, vn_array_m = get_model_data_array_th(th_array, v1_m, gamma, d1_array_m, physical_dict, bed_type, dist_params)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
+
+    Nej_array_c, vn_array_c = get_model_data_array_th(th_array, v1_c, gamma, d1_array_c, physical_dict, bed_type, dist_params)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
+
+    rslt_dict_d50_th = {
+        'th': th_array,
+        'thd': thd_array,
+        'Nej_f': Nej_array_f,
+        'vn_f': vn_array_f,
+        'Nej_m': Nej_array_m,
+        'vn_m': vn_array_m,
+        'Nej_c': Nej_array_c,
+        'vn_c': vn_array_c,
+        'v1_f': v1_f,
+        'v1_m': v1_m,
+        'v1_c': v1_c,
+        'd2_mid': d2_mid,
+        'd1_f': d1_dict['fine'],
+        'd1_m': d1_dict['medium'],
+        'd1_c': d1_dict['coarse']
+    }
+    np.savez('eject_3D_d50_vs_th.npz', **rslt_dict_d50_th)
 
     # Get model data vs v1
     v1_array = np.linspace(v1_min, v1_max, case_num)  # impact angle array
@@ -254,12 +254,12 @@ if perform_calculations:
     th_m = np.radians(thd_m)
     th_c = np.radians(thd_c)
 
+    bed_type['good_zc'] = False  # switch to zc=d50
     bed_type['monodisperse'] = True  # switch to monodisperse bed
-    bed_type['three_D'] = False  # switch to 2D bed
 
     physical_dict = {
-        'epsilon': epsilon_2DM,
-        'nu': nu_2DM,
+        'epsilon': epsilon_mono,
+        'nu': nu_mono,
         'rho': rho,
         'g': g
     }
@@ -282,7 +282,7 @@ if perform_calculations:
     print_time(current_time, last_time, start_time, current_step, total_steps)
     last_time = current_time
 
-    rslt_dict_2DM_v1 = {
+    rslt_dict_mono_v1 = {
         'v1': v1_array,
         'Nej_f': Nej_array_f,
         'vn_f': vn_array_f,
@@ -298,56 +298,10 @@ if perform_calculations:
         'd1_m': d1_dict['medium'],
         'd1_c': d1_dict['coarse']
     }
-    np.savez('eject_2DM_vs_v1.npz', **rslt_dict_2DM_v1)
-    #np.savez('eject_2DM_vs_v1_d50.npz', **rslt_dict_2DM_v1)
+    np.savez('eject_mono_vs_v1.npz', **rslt_dict_mono_v1)
 
+    bed_type['good_zc'] = True  # switch to zc=d90
     bed_type['monodisperse'] = False  # switch to polydisperse bed
-
-    physical_dict = {
-        'epsilon': epsilon_2DP,
-        'nu': nu_2DP,
-        'rho': rho,
-        'g': g
-    }
-
-    Nej_array_f, vn_array_f = get_model_data_array_v1(th_f, v1_array, gamma, d1_array_f, physical_dict, bed_type, dist_params)
-    current_time = time.time()
-    current_step += 1
-    print_time(current_time, last_time, start_time, current_step, total_steps)
-    last_time = current_time
-
-    Nej_array_m, vn_array_m = get_model_data_array_v1(th_m, v1_array, gamma, d1_array_m, physical_dict, bed_type, dist_params)
-    current_time = time.time()
-    current_step += 1
-    print_time(current_time, last_time, start_time, current_step, total_steps)
-    last_time = current_time
-
-    Nej_array_c, vn_array_c = get_model_data_array_v1(th_c, v1_array, gamma, d1_array_c, physical_dict, bed_type, dist_params)
-    current_time = time.time()
-    current_step += 1
-    print_time(current_time, last_time, start_time, current_step, total_steps)
-    last_time = current_time
-
-    rslt_dict_2DP_v1 = {
-        'v1': v1_array,
-        'Nej_f': Nej_array_f,
-        'vn_f': vn_array_f,
-        'Nej_m': Nej_array_m,
-        'vn_m': vn_array_m,
-        'Nej_c': Nej_array_c,
-        'vn_c': vn_array_c,
-        'thd_f': thd_f,
-        'thd_m': thd_m,
-        'thd_c': thd_c,
-        'd2_mid': d2_mid,
-        'd1_f': d1_dict['fine'],
-        'd1_m': d1_dict['medium'],
-        'd1_c': d1_dict['coarse']
-    }
-    np.savez('eject_2DP_vs_v1.npz', **rslt_dict_2DP_v1)
-    #np.savez('eject_2DP_vs_v1_d50.npz', **rslt_dict_2DP_v1)
-
-    bed_type['three_D'] = True  # switch to 3D bed
 
     physical_dict = {
         'epsilon': epsilon_3D,
@@ -391,22 +345,73 @@ if perform_calculations:
         'd1_c': d1_dict['coarse']
     }
     np.savez('eject_3D_vs_v1.npz', **rslt_dict_3D_v1)
-    #np.savez('eject_3D_vs_v1_d50.npz', **rslt_dict_3D_v1)
+
+    bed_type['good_zc'] = False  # switch to zc=d50
+    bed_type['monodisperse'] = False  # switch to polydisperse bed
+
+    physical_dict = {
+        'epsilon': epsilon_3D,
+        'nu': nu_3D,
+        'rho': rho,
+        'g': g
+    }
+
+    Nej_array_f, vn_array_f = get_model_data_array_v1(th_f, v1_array, gamma, d1_array_f, physical_dict, bed_type, dist_params)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
+
+    Nej_array_m, vn_array_m = get_model_data_array_v1(th_m, v1_array, gamma, d1_array_m, physical_dict, bed_type, dist_params)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
+
+    Nej_array_c, vn_array_c = get_model_data_array_v1(th_c, v1_array, gamma, d1_array_c, physical_dict, bed_type, dist_params)
+    current_time = time.time()
+    current_step += 1
+    print_time(current_time, last_time, start_time, current_step, total_steps)
+    last_time = current_time
+
+    rslt_dict_d50_v1 = {
+        'v1': v1_array,
+        'Nej_f': Nej_array_f,
+        'vn_f': vn_array_f,
+        'Nej_m': Nej_array_m,
+        'vn_m': vn_array_m,
+        'Nej_c': Nej_array_c,
+        'vn_c': vn_array_c,
+        'thd_f': thd_f,
+        'thd_m': thd_m,
+        'thd_c': thd_c,
+        'd2_mid': d2_mid,
+        'd1_f': d1_dict['fine'],
+        'd1_m': d1_dict['medium'],
+        'd1_c': d1_dict['coarse']
+    }
+    np.savez('eject_3D_d50_vs_v1.npz', **rslt_dict_d50_v1)
 
 # Load results
-rslt_2DM_vs_th = np.load('eject_2DM_vs_th.npz')
-rslt_2DP_vs_th = np.load('eject_2DP_vs_th.npz')
-rslt_3D_vs_th = np.load('eject_3D_vs_th.npz')
-rslt_2DM_vs_v1 = np.load('eject_2DM_vs_v1.npz')
-rslt_2DP_vs_v1 = np.load('eject_2DP_vs_v1.npz')
-rslt_3D_vs_v1 = np.load('eject_3D_vs_v1.npz')
+#rslt_2DM_vs_th = np.load('eject_2DM_vs_th.npz')
+#rslt_2DP_vs_th = np.load('eject_2DP_vs_th.npz')
+#rslt_3D_vs_th = np.load('eject_3D_vs_th.npz')
+#rslt_2DM_vs_v1 = np.load('eject_2DM_vs_v1.npz')
+#rslt_2DP_vs_v1 = np.load('eject_2DP_vs_v1.npz')
+#rslt_3D_vs_v1 = np.load('eject_3D_vs_v1.npz')
+#rslt_2DM_vs_th_d50 = np.load('eject_2DM_vs_th_d50.npz')
+#rslt_2DP_vs_th_d50 = np.load('eject_2DP_vs_th_d50.npz')
+#rslt_3D_vs_th_d50 = np.load('eject_3D_vs_th_d50.npz')
+#rslt_2DM_vs_v1_d50 = np.load('eject_2DM_vs_v1_d50.npz')
+#rslt_2DP_vs_v1_d50 = np.load('eject_2DP_vs_v1_d50.npz')
+#rslt_3D_vs_v1_d50 = np.load('eject_3D_vs_v1_d50.npz')
 
-rslt_2DM_vs_th_d50 = np.load('eject_2DM_vs_th_d50.npz')
-rslt_2DP_vs_th_d50 = np.load('eject_2DP_vs_th_d50.npz')
-rslt_3D_vs_th_d50 = np.load('eject_3D_vs_th_d50.npz')
-rslt_2DM_vs_v1_d50 = np.load('eject_2DM_vs_v1_d50.npz')
-rslt_2DP_vs_v1_d50 = np.load('eject_2DP_vs_v1_d50.npz')
-rslt_3D_vs_v1_d50 = np.load('eject_3D_vs_v1_d50.npz')
+rslt_mono_vs_th = np.load('eject_mono_vs_th.npz')
+rslt_mono_vs_v1 = np.load('eject_mono_vs_v1.npz')
+rslt_3D_vs_th = np.load('eject_3D_vs_th.npz')
+rslt_3D_vs_v1 = np.load('eject_3D_vs_v1.npz')
+rslt_d50_vs_th = np.load('eject_3D_d50_vs_th.npz')
+rslt_d50_vs_v1 = np.load('eject_3D_d50_vs_v1.npz')
 
 # Draw Nej vs thd
 plt.figure(1, figsize=(8, 6))
@@ -463,32 +468,37 @@ plt.plot(
     markersize=marker_size
 )
 
-plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['Nej_f'], 'r:', label='Model mono fine')
-plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['Nej_m'], 'g:', label='Model mono medium')
-plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['Nej_c'], 'b:', label='Model mono coarse')
-plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['Nej_f'], 'r--', label='Model 3D fine d50')
-plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['Nej_m'], 'g--', label='Model 3D medium d50')
-plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['Nej_c'], 'b--', label='Model 3D coarse d50')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_f'], 'r-', label='Model 3D fine d90')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_m'], 'g-', label='Model 3D medium d90')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_c'], 'b-', label='Model 3D coarse d90')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['Nej_f'], 'r:')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['Nej_m'], 'g:')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['Nej_c'], 'b:')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['Nej_f'], 'r--')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['Nej_m'], 'g--')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['Nej_c'], 'b--')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_f'], 'r-')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_m'], 'g-')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_c'], 'b-')
 
 plt.xlim(0, 80)
 plt.ylim(0, 12)
 plt.xlabel('$\\theta$ (degree)', fontsize=label_size)
-plt.ylabel('$N_{e}$', fontsize=label_size)
+plt.ylabel('$\\overline{N_{ej}}$', fontsize=label_size)
 plt.xticks(fontsize=ticks_size)
 plt.yticks(fontsize=ticks_size)
-plt.legend([p1[0], p2[0], p3[0]],
+# 创建自定义图例句柄
+symbol_f = mlines.Line2D([], [], color='r', marker='o', markersize=marker_size, markeredgewidth=marker_width)
+symbol_m = mlines.Line2D([], [], color='g', marker='^', markersize=marker_size, markeredgewidth=marker_width)
+symbol_c = mlines.Line2D([], [], color='b', marker='s', markersize=marker_size, markeredgewidth=marker_width)
+plt.legend([symbol_f, symbol_m, symbol_c],
            ['Fine', 'Medium', 'Coarse'],
-           fontsize=ticks_size,
-           loc='upper right',
-           frameon=True)
+          fontsize=ticks_size,
+          loc='upper right',
+          #bbox_to_anchor=(1.66, 0.65),
+          frameon=True)
 plt.tight_layout()
 
 # Draw Nej vs v1
 plt.figure(2, figsize=(8, 6))
-sgd = np.sqrt(g*d2_mid)
+sgd = np.sqrt(g*d2_mean)
 sgd1 = np.sqrt(g*3.2e-4)
 p1=plt.plot(
     np.array(exp_dicts['Ri95_f']['v1'])/sgd,
@@ -544,54 +554,57 @@ plt.plot(
 )
 
 
-plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['Nej_f'], 'r:', label='Model mono fine')
-plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['Nej_m'], 'g:', label='Model mono medium')
-plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['Nej_c'], 'b:', label='Model mono coarse')
-plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['Nej_f'], 'r--', label='Model 3D fine d50')
-plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['Nej_m'], 'g--', label='Model 3D medium d50')
-plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['Nej_c'], 'b--', label='Model 3D coarse d50')
-plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['Nej_f'], 'r-', label='Model 3D fine d90')
-plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['Nej_m'], 'g-', label='Model 3D medium d90')
-plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['Nej_c'], 'b-', label='Model 3D coarse d90')
+plt.plot(rslt_mono_vs_v1['v1']/sgd, rslt_mono_vs_v1['Nej_f'], 'r:')
+plt.plot(rslt_mono_vs_v1['v1']/sgd, rslt_mono_vs_v1['Nej_m'], 'g:')
+plt.plot(rslt_mono_vs_v1['v1']/sgd, rslt_mono_vs_v1['Nej_c'], 'b:')
+plt.plot(rslt_d50_vs_v1['v1']/sgd, rslt_d50_vs_v1['Nej_f'], 'r--')
+plt.plot(rslt_d50_vs_v1['v1']/sgd, rslt_d50_vs_v1['Nej_m'], 'g--')
+plt.plot(rslt_d50_vs_v1['v1']/sgd, rslt_d50_vs_v1['Nej_c'], 'b--')
+plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['Nej_f'], 'r-')
+plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['Nej_m'], 'g-')
+plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['Nej_c'], 'b-')
 
 plt.xlim(20, 150)
 plt.ylim(0, 30)
-plt.xlabel('$v_1/\\sqrt{\\hat{g} d_{50}}$', fontsize=label_size)
-plt.ylabel('$N_{e}$', fontsize=label_size)
+plt.xlabel('$v_1/\\sqrt{\\hat{g} \\mathbb{E}[d]}$', fontsize=label_size)
+plt.ylabel('$\\overline{N_{ej}}$', fontsize=label_size)
 plt.xticks(fontsize=ticks_size)
 plt.yticks(fontsize=ticks_size)
 # 创建自定义图例句柄
-line_2DP = mlines.Line2D([], [], color='k', linestyle=':', label='2D-P')
-line_2DM = mlines.Line2D([], [], color='k', linestyle='--', label='2D-M')
-line_3D2D = mlines.Line2D([], [], color='k', linestyle='-', label='3D-2D')
-plt.legend([line_2DP, line_2DM, line_3D2D], ['2D-P', '3D-2D $z_c=d_{50}$', '3D-2D $z_c=d_{90}$'], fontsize=ticks_size, loc='best', frameon=True)
+line_mono = mlines.Line2D([], [], color='k', linestyle=':')
+line_3D = mlines.Line2D([], [], color='k', linestyle='--')
+line_d50 = mlines.Line2D([], [], color='k', linestyle='-')
+plt.legend([line_mono, line_3D, line_d50],
+           ['Mono', '3D-Poly $z_c=d_{50}$', '3D-Poly $z_c=d_{90}$'],
+           fontsize=ticks_size,
+           loc='best',
+           frameon=True)
 plt.tight_layout()
 
 # Draw vn vs thd
 plt.figure(3, figsize=(8, 6))
-sgd = np.sqrt(g*d2_mid)
-p1=plt.plot(
-    exp_dicts['Ri95_f']['thd'],
-    exp_dicts['Ri95_f']['vn']/sgd,
-    'ro',
-    label='Rice95 fine',
-    markersize=marker_size
-)
-p2=plt.plot(
-    exp_dicts['Ri95_m']['thd'],
-    exp_dicts['Ri95_m']['vn']/sgd,
-    'g^',
-    label='Rice95 medium',
-    markersize=marker_size
-)
+sgd = np.sqrt(g*d2_mean)
+plt.plot(
+ exp_dicts['Ri95_f']['thd'],
+ exp_dicts['Ri95_f']['vn']/sgd,
+ 'ro',
+ label='Rice95 fine',
+ markersize=marker_size)
 
-p3=plt.plot(
-    exp_dicts['Ri95_c']['thd'],
-    exp_dicts['Ri95_c']['vn']/sgd,
-    'bs',
-    label='Rice95 coarse',
-    markersize=marker_size
-)
+plt.plot(
+  exp_dicts['Ri95_m']['thd'],
+  exp_dicts['Ri95_m']['vn']/sgd,
+  'g^',
+  label='Rice95 medium',
+  markersize=marker_size)
+
+
+plt.plot(
+ exp_dicts['Ri95_c']['thd'],
+ exp_dicts['Ri95_c']['vn']/sgd,
+ 'bs',
+ label='Rice95 coarse',
+ markersize=marker_size)
 
 #plt.plot(
 #    exp_dicts['Wi89_f']['thd'],
@@ -620,32 +633,27 @@ p3=plt.plot(
 #    markersize=marker_size
 #)
 
-plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['vn_f']/sgd, 'r:', label='Model mono fine')
-plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['vn_m']/sgd, 'g:', label='Model mono medium')
-plt.plot(rslt_2DM_vs_th['thd'], rslt_2DM_vs_th['vn_c']/sgd, 'b:', label='Model mono coarse')
-plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['vn_f']/sgd, 'r--', label='Model 3D fine d50')
-plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['vn_m']/sgd, 'g--', label='Model 3D medium d50')
-plt.plot(rslt_2DP_vs_th['thd'], rslt_2DP_vs_th['vn_c']/sgd, 'b--', label='Model 3D coarse d50')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_f']/sgd, 'r-', label='Model 3D fine D90')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_m']/sgd, 'g-', label='Model 3D medium D90')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_c']/sgd, 'b-', label='Model 3D coarse D90')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['vn_f']/sgd, 'r:')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['vn_m']/sgd, 'g:')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['vn_c']/sgd, 'b:')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['vn_f']/sgd, 'r--')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['vn_m']/sgd, 'g--')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['vn_c']/sgd, 'b--')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_f']/sgd, 'r-')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_m']/sgd, 'g-')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_c']/sgd, 'b-')
 
 plt.xlim(0, 80)
 plt.ylim(3, 6.5)
 plt.xlabel('$\\theta$ (degree)', fontsize=label_size)
-plt.ylabel('$\\overline{v_{e}}/\\sqrt{\\hat{g} d_{50}}$', fontsize=label_size)
+plt.ylabel('$\\overline{v_{ej}}/\\sqrt{\\hat{g} \\mathbb{E}[d]}$', fontsize=label_size)
 plt.xticks(fontsize=ticks_size)
 plt.yticks(fontsize=ticks_size)
-#plt.legend([p1[0], p2[0], p3[0]],
-#           ['Fine', 'Medium', 'Coarse'],
-#           fontsize=ticks_size,
-#           loc='upper right',
-#           frameon=True)
 plt.tight_layout()
 
 # Draw vn vs v1
 plt.figure(4, figsize=(8, 6))
-sgd = np.sqrt(g*d2_mid)
+sgd = np.sqrt(g*d2_mean)
 sgd1 = np.sqrt(g*3.2e-4)
 p1=plt.plot(
     np.array(exp_dicts['Ri95_f']['v1'])/sgd,
@@ -707,27 +715,22 @@ plt.plot(
 #    markersize=marker_size
 #)
 
-plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['vn_f']/sgd, 'r:', label='Model mono fine')
-plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['vn_m']/sgd, 'g:', label='Model mono medium')
-plt.plot(rslt_2DM_vs_v1['v1']/sgd, rslt_2DM_vs_v1['vn_c']/sgd, 'b:', label='Model mono coarse')
-plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['vn_f']/sgd, 'r--', label='Model 2D fine d50')
-plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['vn_m']/sgd, 'g--', label='Model 2D medium d50')
-plt.plot(rslt_2DP_vs_v1['v1']/sgd, rslt_2DP_vs_v1['vn_c']/sgd, 'b--', label='Model 2D coarse d50')
-plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['vn_f']/sgd, 'r-', label='Model 3D fine d90')
-plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['vn_m']/sgd, 'g-', label='Model 3D medium d90')
-plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['vn_c']/sgd, 'b-', label='Model 3D coarse d90')
+plt.plot(rslt_mono_vs_v1['v1']/sgd, rslt_mono_vs_v1['vn_f']/sgd, 'r:')
+plt.plot(rslt_mono_vs_v1['v1']/sgd, rslt_mono_vs_v1['vn_m']/sgd, 'g:')
+plt.plot(rslt_mono_vs_v1['v1']/sgd, rslt_mono_vs_v1['vn_c']/sgd, 'b:')
+plt.plot(rslt_d50_vs_v1['v1']/sgd, rslt_d50_vs_v1['vn_f']/sgd, 'r--')
+plt.plot(rslt_d50_vs_v1['v1']/sgd, rslt_d50_vs_v1['vn_m']/sgd, 'g--')
+plt.plot(rslt_d50_vs_v1['v1']/sgd, rslt_d50_vs_v1['vn_c']/sgd, 'b--')
+plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['vn_f']/sgd, 'r-')
+plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['vn_m']/sgd, 'g-')
+plt.plot(rslt_3D_vs_v1['v1']/sgd, rslt_3D_vs_v1['vn_c']/sgd, 'b-')
 
 plt.xlim(20, 150)
 plt.ylim(3, 6.5)
-plt.xlabel('$v_1/\\sqrt{\\hat{g} d_{50}}$', fontsize=label_size)
-plt.ylabel('$\\overline{v_{e}}/\\sqrt{\\hat{g} d_{50}}$', fontsize=label_size)
+plt.xlabel('$v_1/\\sqrt{\\hat{g} \\mathbb{E}[d]}$', fontsize=label_size)
+plt.ylabel('$\\overline{v_{e}}/\\sqrt{\\hat{g} \\mathbb{E}[d]}$', fontsize=label_size)
 plt.xticks(fontsize=ticks_size)
 plt.yticks(fontsize=ticks_size)
-## 创建自定义图例句柄
-#line_2DP = mlines.Line2D([], [], color='k', linestyle=':', label='2D-P')
-#line_2DM = mlines.Line2D([], [], color='k', linestyle='--', label='2D-M')
-#line_3D2D = mlines.Line2D([], [], color='k', linestyle='-', label='3D-2D')
-#plt.legend([line_2DP, line_2DM, line_3D2D], ['2D-P', '3D-2D $z_c=d_{50}$', '3D-2D $z_c=d_{90}$'], fontsize=ticks_size, loc='best', frameon=True)
 plt.tight_layout()
 
 plt.show()

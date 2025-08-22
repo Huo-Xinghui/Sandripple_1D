@@ -270,7 +270,10 @@ def sample_averaged_eject(th, v1, gamma, d1, physical_dict, bed_type, dist_param
     sampling_num = dist_params['sampling_num']
     d2_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
     d3_array = generate_truncated_lognormal(mu, sigma, d_min, d_max, sampling_num)
-    zc = bed_type['d90']
+    if bed_type['good_zc']:
+        zc = bed_type['d90']
+    else:
+        zc = bed_type['d50']
     # calculating
     for i in range(sampling_num):
         d_dict = {
@@ -293,7 +296,7 @@ def get_model_data_array_v1(th, v1_array, gamma, d1_array, physical_dict, bed_ty
     vn_list = []
     for d1, v1 in zip(d1_array, v1_array):
         if bed_type['monodisperse']:
-            d2 = bed_type['d50']
+            d2 = bed_type['d_mean']
             d_dict = {
                 'd1': d1,
                 'd2': d2,
@@ -311,12 +314,12 @@ def get_model_data_array_v1(th, v1_array, gamma, d1_array, physical_dict, bed_ty
     return np.array(Nej_list), np.array(vn_list)
 
 def get_model_data_array_th(th_array, v1, gamma, d1_array, physical_dict, bed_type, dist_params):
-    """Get model data array for Nej and vn vs th."""
+    """Get model result array for [Nej vs th] and [vn vs th]."""
     Nej_list = []
     vn_list = []
     for d1, th in zip(d1_array, th_array):
         if bed_type['monodisperse']:
-            d2 = bed_type['d50']
+            d2 = bed_type['d_mean']
             d_dict = {
                 'd1': d1,
                 'd2': d2,

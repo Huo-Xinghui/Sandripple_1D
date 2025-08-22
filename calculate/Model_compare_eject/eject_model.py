@@ -37,14 +37,12 @@ def calculate_x_min_3D(alpha, beta, d1, d2, d3, th):
     sin_zeta_max = (d3/2)/d23
     zeta_max = np.arcsin(sin_zeta_max)
     zeta = np.random.uniform(0, zeta_max)
-    #zeta = zeta_max/2
     d13_temp = d13*np.sqrt(1.0 - (np.sin(zeta)*d23/d13)**2)
-    d23_temp = d23*np.cos(zeta)
+    d23_temp = (d2 + d3*np.sqrt(1.0 - (np.sin(zeta)*d23/d13)**2))/2
     while d23_temp - d13_temp >= 1.0:
         zeta = np.random.uniform(0, zeta_max)
-        #zeta = zeta_max/2
         d13_temp = d13*np.sqrt(1.0 - (np.sin(zeta)*d23/d13)**2)
-        d23_temp = d23*np.cos(zeta)
+        d23_temp = (d2 + d3*np.sqrt(1.0 - (np.sin(zeta)*d23/d13)**2))/2
         print("d23-d13<1")
     d13 = d13_temp
     d23 = d23_temp
@@ -95,7 +93,7 @@ def rebound_res_eq(x, alpha, beta, th):
     res = np.sqrt(e_vx**2 + e_vz**2)
     return res
 
-def calculate_rebound(d1, d2, d3, th, epsilon, nu, td):
+def calculate_rebound(d1, d2, d3, th, epsilon, nu, mono):
     # normalize diameters
     D = (d1 + d2)/2
     D1 = d1/D
@@ -105,10 +103,10 @@ def calculate_rebound(d1, d2, d3, th, epsilon, nu, td):
     mu = epsilon*D1**3/(D1**3 + epsilon*D2**3)
     alpha = (1 + epsilon)/(1 + mu) - 1
     beta = 1 - (2/7)*(1 - nu)/(1 + mu)
-    if td:
-        x_min = calculate_x_min_3D(alpha, beta, D1, D2, D3, th)
-    else:
+    if mono:
         x_min = calculate_x_min(alpha, beta, D1, D2, D3, th)
+    else:
+        x_min = calculate_x_min_3D(alpha, beta, D1, D2, D3, th)
     x_max = calculate_x_max(alpha, beta, th)
     if x_min < x_max:
         e, error = quad(rebound_res_eq, x_min, x_max, args=(alpha, beta, th))
@@ -126,10 +124,10 @@ def calculate_rebound(d1, d2, d3, th, epsilon, nu, td):
         mu = epsilon*D1**3/(D1**3 + epsilon*D2**3)
         alpha = (1 + epsilon)/(1 + mu) - 1
         beta = 1 - (2/7)*(1 - nu)/(1 + mu)
-        if td:
-            x_min = calculate_x_min_3D(alpha, beta, D1, D2, D3, th)
-        else:
+        if mono:
             x_min = calculate_x_min(alpha, beta, D1, D2, D3, th)
+        else:
+            x_min = calculate_x_min_3D(alpha, beta, D1, D2, D3, th)
         x_max = calculate_x_max(alpha, beta, th)
         if x_min > x_max:
             e = rebound_res_eq(x_max, alpha, beta, th)
@@ -164,7 +162,7 @@ def calculate_Ec(mu, sigma, d_min, d_max, C_Ec):
     return Ec
 
 def calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params):
-    td = bed_type['three_D']
+    """calculate ejection of one impact"""
     d_min = dist_params['d_min']
     d_max = dist_params['d_max']
     mu = dist_params['mu']
@@ -173,17 +171,17 @@ def calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params)
     d2 = d_dict['d2']
     d3 = d_dict['d3']
     zc = d_dict['zc']
-    #zc = bed_type['d50']
     epsilon = physical_dict['epsilon']
     nu = physical_dict['nu']
     rho = physical_dict['rho']
     g = physical_dict['g']
+    mono = bed_type['monodisperse']
 
-    e = calculate_rebound(d1, d2, d3, th, epsilon, nu, td)
+    e = calculate_rebound(d1, d2, d3, th, epsilon, nu, mono)
     m1 = rho*(d1**3*np.pi/6)
     m2 = rho*(d2**3*np.pi/6)
     if bed_type['monodisperse']:
-        Ec = m2*g*d2
+        Ec = m2*g*zc
     else:
         C_Ec = rho*g*np.pi/6*zc
         #Ec_min = C_Ec*d_min**3
@@ -227,5 +225,5 @@ def calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params)
         erfc1 = erfc((np.log(Ec_ej) - mu_ej - sigma_ej**2/2)/(np.sqrt(2.0)*sigma_ej))
         erfc2 = erfc((np.log(Ec_ej) - mu_ej)/(np.sqrt(2.0)*sigma_ej))
         #vn_mean = erfc1/erfc2 * np.sqrt(2.0/mn)*np.exp(mu_ej/2 + sigma_ej**2/8)
-        vn_mean = erfc1/erfc2 * np.sqrt(12.0/(rho*np.pi))*np.exp(mu_ej/2 - 3/2*(-8.30271) + sigma_ej**2/8 + 9/8*0.25778**2)
+        vn_mean = erfc1/erfc2 * np.sqrt(12.0/(rho*np.pi))*np.exp(mu_ej/2 - 3/2*mu + sigma_ej**2/8 + 9/8*sigma**2)
     return Nej, vn_mean

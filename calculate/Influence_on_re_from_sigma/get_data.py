@@ -2,7 +2,7 @@ import numpy as np
 from scipy.special import erfc
 from scipy import stats
 from data_process import generate_truncated_lognormal
-from rebound_model import calculate_rebound_2D, calculate_rebound_3D
+from rebound_model import calculate_rebound_2D, calculate_rebound_3D, calculate_rebound_simple
 
 def sample_averaged_rebound(epsilon, nu, th, sigma, dist_params, bed_type):
     """Sample average rebound angle and restitution coefficient (average over bed PSD)."""
@@ -156,10 +156,8 @@ def get_model_data_array(epsilon, nu, th, sigma_array, dist_params, bed_type):
                 erfc4 = erfc(-(np.log(d_min) - mu)/(np.sqrt(2.0)*sigma))
                 d2 = np.exp(mu + sigma**2/2)*(erfc1 - erfc3)/(erfc2 - erfc4)
                 #d2 = d_mean
-            if bed_type['three_D']:
-                phi, e, ecx, ecz, ez, ex = calculate_rebound_3D(d1, d2, d3, th, epsilon, nu)
-            else:
-                phi, e, ecx, ecz, ez, ex = calculate_rebound_2D(d1, d2, d3, th, epsilon, nu)
+            phi, e, ecx, ecz, ez, ex = calculate_rebound_2D(d1, d2, d3, th, epsilon, nu)
+            #phi, e, ecx, ecz, ez, ex = calculate_rebound_simple(d1, d2, d3, th, epsilon, nu, sigma)
             phi_list.append(phi)
             e_list.append(e)
             ecx_list.append(ecx)

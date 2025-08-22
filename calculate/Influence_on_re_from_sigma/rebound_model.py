@@ -160,15 +160,15 @@ def rebound_ex_eq(x, alpha, beta, th):
 
 def calculate_rebound_2D(d1, d2, d3, th, epsilon, nu):
     # normalize diameters
-    D = (d1 + d2)/2
-    D1 = d1/D
-    D2 = d2/D
-    D3 = d3/D
+    d = (d1 + d2)/2
+    d1 = d1/d
+    d2 = d2/d
+    d3 = d3/d
     # restitution coefficient
-    mu = epsilon*D1**3/(D1**3 + epsilon*D2**3)
+    mu = epsilon*d1**3/(d1**3 + epsilon*d2**3)
     alpha = (1 + epsilon)/(1 + mu) - 1
     beta = 1 - (2/7)*(1 - nu)/(1 + mu)
-    x_min = calculate_x_min(alpha, beta, D1, D2, D3, th)
+    x_min = calculate_x_min(alpha, beta, d1, d2, d3, th)
     x_max = calculate_x_max(alpha, beta, th)
     if x_min < x_max:
         phi, error = quad(rebound_angle_eq, x_min, x_max, args=(alpha, beta, th))
@@ -188,15 +188,15 @@ def calculate_rebound_2D(d1, d2, d3, th, epsilon, nu):
         d_temp = d2
         d2 = d3
         d3 = d_temp
-        D = (d1 + d2)/2
-        D1 = d1/D
-        D2 = d2/D
-        D3 = d3/D
+        d = (d1 + d2)/2
+        d1 = d1/d
+        d2 = d2/d
+        d3 = d3/d
         # restitution coefficient
-        mu = epsilon*D1**3/(D1**3 + epsilon*D2**3)
+        mu = epsilon*d1**3/(d1**3 + epsilon*d2**3)
         alpha = (1 + epsilon)/(1 + mu) - 1
         beta = 1 - (2/7)*(1 - nu)/(1 + mu)
-        x_min = calculate_x_min(alpha, beta, D1, D2, D3, th)
+        x_min = calculate_x_min(alpha, beta, d1, d2, d3, th)
         x_max = calculate_x_max(alpha, beta, th)
         if x_min > x_max:
             phi = rebound_angle_eq(x_max, alpha, beta, th)
@@ -272,4 +272,31 @@ def calculate_rebound_3D(d1, d2, d3, th, epsilon, nu):
             ez /= (x_max - x_min)
             ex, error = quad(rebound_ex_eq, x_min, x_max, args=(alpha, beta, th))
             ex /= (x_max - x_min)
+    return phi, e, ecx, ecz, ez, ex
+
+def calculate_rebound_simple(d1, d2, d3, th, epsilon, nu, sigma):
+    # normalize diameters
+    d = (d1 + d2)/2
+    D1 = d1/d
+    D2 = d2/d
+    D3 = d3/d
+    # restitution coefficient
+    mu = epsilon*D1**3/(D1**3 + epsilon*D2**3)
+    alpha = (1 + epsilon)/(1 + mu) - 1
+    beta = 1 - (2/7)*(1 - nu)/(1 + mu)
+    x_min = (d1 + d3)/((d1 + d2)*np.sin(th)) - (d2 + d3)/(d1 + d2)
+    x_min += d2**2*(np.exp(sigma**2) - 1)/(d1 + d2)**3*((d1 + d3)/np.sin(th) + (d1 - d3))
+    x_max = 1.0/np.tan(th)
+    phi, error = quad(rebound_angle_eq, x_min, x_max, args=(alpha, beta, th))
+    phi /= (x_max - x_min)
+    e, error = quad(rebound_res_eq, x_min, x_max, args=(alpha, beta, th))
+    e /= (x_max - x_min)
+    ecx, error = quad(rebound_resx_eq, x_min, x_max, args=(alpha, beta, th))
+    ecx /= (x_max - x_min)
+    ecz, error = quad(rebound_resz_eq, x_min, x_max, args=(alpha, beta, th))
+    ecz /= (x_max - x_min)
+    ez, error = quad(rebound_ez_eq, x_min, x_max, args=(alpha, beta, th))
+    ez /= (x_max - x_min)
+    ex, error = quad(rebound_ex_eq, x_min, x_max, args=(alpha, beta, th))
+    ex /= (x_max - x_min)
     return phi, e, ecx, ecz, ez, ex
