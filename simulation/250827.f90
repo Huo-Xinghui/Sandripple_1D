@@ -24,7 +24,7 @@ module public_val
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
     ! whichDiameterDist=3: npdf must >= 3, mu=logMu, sigma=logSigma
     integer, parameter :: whichDiameterDist = 3 ! particle diameter distribution type
-    integer, parameter :: npdf = 31 ! bin num of particle distribution
+    integer, parameter :: npdf = 15 ! bin num of particle distribution
     integer, parameter :: pNumInit = 10 ! initial particle num
     integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
     integer, parameter :: maxNum = 100000 ! max particle num in one subdomain
@@ -33,8 +33,8 @@ module public_val
     real(kind=dbPc), parameter :: dpa = 3.0e-4 ! average particle diameter
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
-    real(kind=dbPc), parameter :: logMu = -8.1254 ! mu of lognormal distribution
-    real(kind=dbPc), parameter :: logSigma = 0.1655 ! sigma of lognormal distribution
+    real(kind=dbPc), parameter :: logMu = -8.3221 ! mu of lognormal distribution
+    real(kind=dbPc), parameter :: logSigma = 0.6167 ! sigma of lognormal distribution
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
     real(kind=dbPc), parameter :: binStart = 1.0e-4 ! start of the particle diameter distribution
     real(kind=dbPc), parameter :: binEnd = 10.0e-4 ! end of the particle diameter distribution
@@ -58,7 +58,7 @@ module public_val
     real(kind=dbPc), parameter :: blockHeight = dpa*3.0 ! height of the block, must>chunkHeight. block is a temporary grid on surface
     real(kind=dbPc), parameter :: blockVol = xDiff*yDiff*blockHeight ! volume of a block
     ! fluid
-    real(kind=dbPc), parameter :: uStar = 0.50 ! fractional velocity
+    real(kind=dbPc), parameter :: uStar = 0.30 ! fractional velocity
     real(kind=dbPc), parameter :: rho = 1.263 ! fluid density
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.42 ! von Kaman's constant
@@ -629,7 +629,7 @@ program main
             if (midairCollision) then
                 call calculateMidAirColl
             end if
-            !call updateSurfGrid
+            call updateSurfGrid
             call updateFieldGrid
         end if
         call calculateFluidField
@@ -1443,34 +1443,34 @@ subroutine calculateSplash
                 pIndex(tempNum, 2) = jp
                 pIndex(tempNum, 3) = 1
                 zflux = zflux + m1/area/dt
-            !else
-            !    select case (rollTo(ipp, jpp))
-            !    case (0)
-            !        ii = ipp
-            !        jj = jpp
-            !    case (1)
-            !        ii = ipp + 1
-            !        jj = jpp
-            !    case (2)
-            !        ii = ipp - 1
-            !        jj = jpp
-            !    case (3)
-            !        ii = ipp
-            !        jj = jpp + 1
-            !    case (4)
-            !        ii = ipp
-            !        jj = jpp - 1
-            !    end select
-            !    if (jj > my) jj = 3
-            !    if (whichDiameterDist /= 1) then
-            !        iBin = floor((d1 - binStart)/binWidth) + 1
-            !        iBin = max(iBin, 1)
-            !        iBin = min(iBin, npdf)
-            !    else
-            !        iBin = 1
-            !    end if
-            !    vch = (pi*d1**3)/6.0
-            !    binChange(ii, jj, iBin) = binChange(ii, jj, iBin) + vch
+            else
+                select case (rollTo(ipp, jpp))
+                case (0)
+                    ii = ipp
+                    jj = jpp
+                case (1)
+                    ii = ipp + 1
+                    jj = jpp
+                case (2)
+                    ii = ipp - 1
+                    jj = jpp
+                case (3)
+                    ii = ipp
+                    jj = jpp + 1
+                case (4)
+                    ii = ipp
+                    jj = jpp - 1
+                end select
+                if (jj > my) jj = 3
+                if (whichDiameterDist /= 1) then
+                    iBin = floor((d1 - binStart)/binWidth) + 1
+                    iBin = max(iBin, 1)
+                    iBin = min(iBin, npdf)
+                else
+                    iBin = 1
+                end if
+                vch = (pi*d1**3)/6.0
+                binChange(ii, jj, iBin) = binChange(ii, jj, iBin) + vch
             end if
             E1 = 0.5*m1*v1**2
             Ed1 = gammaE*(1.0 - e**2)*E1
@@ -1546,49 +1546,49 @@ subroutine calculateSplash
                     tempj(nAddGlobal) = jp
                     zflux = zflux + m2/area/dt
                     ejectVol = ejectVol + vch
-                    !if (whichDiameterDist /= 1) then
-                    !    iBin = floor((d2 - binStart)/binWidth) + 1
-                    !    iBin = max(iBin, 1)
-                    !    iBin = min(iBin, npdf)
-                    !else
-                    !    iBin = 1
-                    !end if
-                    !binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) - vch
+                    if (whichDiameterDist /= 1) then
+                        iBin = floor((d2 - binStart)/binWidth) + 1
+                        iBin = max(iBin, 1)
+                        iBin = min(iBin, npdf)
+                    else
+                        iBin = 1
+                    end if
+                    binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) - vch
                 end do
-                !if (rollFrom(ipp, jpp) /= 0) then
-                !    select case (rollFrom(ipp, jpp))
-                !    case (1)
-                !        ii = ipp + 1
-                !        jj = jpp
-                !    case (2)
-                !        ii = ipp - 1
-                !        jj = jpp
-                !    case (3)
-                !        ii = ipp
-                !        jj = jpp + 1
-                !    case (4)
-                !        ii = ipp
-                !        jj = jpp - 1
-                !    end select
-                !    if (jj > my) jj = 3
-                !    rollVol = 0.0
-                !    currentHist = hist(ii, jj, :)
-                !    do while (rollVol < ejectVol)
-                !        if (whichDiameterDist /= 1) then
-                !            dRoll = valObeyCertainPDF(currentHist)
-                !            iBin = floor((dRoll - binStart)/binWidth) + 1
-                !            iBin = max(iBin, 1)
-                !            iBin = min(iBin, npdf)
-                !        else
-                !            dRoll = dpa
-                !            iBin = 1
-                !        end if
-                !        vch = (pi*dRoll**3)/6.0
-                !        rollVol = rollVol + vch
-                !        binChange(ii, jj, iBin) = binChange(ii, jj, iBin) - vch
-                !        binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) + vch
-                !    end do
-                !end if
+                if (rollFrom(ipp, jpp) /= 0) then
+                    select case (rollFrom(ipp, jpp))
+                    case (1)
+                        ii = ipp + 1
+                        jj = jpp
+                    case (2)
+                        ii = ipp - 1
+                        jj = jpp
+                    case (3)
+                        ii = ipp
+                        jj = jpp + 1
+                    case (4)
+                        ii = ipp
+                        jj = jpp - 1
+                    end select
+                    if (jj > my) jj = 3
+                    rollVol = 0.0
+                    currentHist = hist(ii, jj, :)
+                    do while (rollVol < ejectVol)
+                        if (whichDiameterDist /= 1) then
+                            dRoll = valObeyCertainPDF(currentHist)
+                            iBin = floor((dRoll - binStart)/binWidth) + 1
+                            iBin = max(iBin, 1)
+                            iBin = min(iBin, npdf)
+                        else
+                            dRoll = dpa
+                            iBin = 1
+                        end if
+                        vch = (pi*dRoll**3)/6.0
+                        rollVol = rollVol + vch
+                        binChange(ii, jj, iBin) = binChange(ii, jj, iBin) - vch
+                        binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) + vch
+                    end do
+                end if
             end if
         else
             tempNum = tempNum + 1
@@ -2034,10 +2034,12 @@ subroutine updateSurfGrid
     real(kind=dbPc) :: bottomChkVol
     real(kind=dbPc) :: surfChkVolOld, surfChkVolNew
     real(kind=dbPc) :: zsfOld, zsfNew
+    real(kind=dbPc) :: binOld
     !real(kind=dbPc) :: fixHist
     real(kind=dbPc), dimension(npdf) :: currentDia
     real(kind=dbPc), dimension(npdf) :: bin
     real(kind=dbPc), dimension(npdf) :: tempHist
+    logical :: badflag
     !real(kind=dbPc) :: check, check1, check2
 
     call addGhostData
@@ -2048,7 +2050,6 @@ subroutine updateSurfGrid
         do j = 2, my - 1
             do i = 2, mxNode - 1
                 vChange = sum(binChange(i, j, :))
-                !cycle ! ekalhxh: no bed deformation !!!
                 if (vChange == 0.0) cycle
                 zChange = vChange/(xDiff*yDiff)
                 zsfOld = zsf(i, j)
@@ -2056,10 +2057,16 @@ subroutine updateSurfGrid
                 !floatKs = real(ks0 - 1, kind=dbPc)
                 surfChkVolOld = (zsfOld - (ks0 - 1)*chunkHeight)*xDiff*yDiff
                 zsfNew = zsfOld + zChange
-                if (zsfNew - blockHeight < 0.0 .or. zsf(i, j) > zMax) then
+                badflag = .false.
+                if (zsfNew - blockHeight < 0.0 .or. zsf(i, j) > zMax .or. abs(zChange) > 0.2*zsfOld) then
                     print *, 'Error: zsf reach the lower/upper boundary', zsfOld, zsfNew, zChange, dsf(i, j)
-                    stop
+                    badflag = .true.
+                    !stop
                 end if
+                !___________________________________________
+                !zsf(i, j) = zsfNew
+                !cycle ! ekalhxh: just change bed elevation!!
+                !-------------------------------------------
                 ks = floor(zsfNew/chunkHeight) + 1
                 !floatKs = real(ks - 1, kind=dbPc)
                 surfChkVolNew = (zsfNew - (ks - 1)*chunkHeight)*xDiff*yDiff
@@ -2071,7 +2078,9 @@ subroutine updateSurfGrid
                         do k = ks - 1, ks0 - 1
                             bin(n) = bin(n) + chunkHist(i, j, k, n)*chunkVol
                         end do
+                        binOld = bin(n)
                         bin(n) = bin(n) + binChange(i, j, n)
+                        bin(n) = max(bin(n), 0.1*binOld)
                         chunkHist(i, j, ks, n) = bin(n)/(surfChkVolNew + chunkVol)
                         chunkHist(i, j, ks - 1, n) = chunkHist(i, j, ks, n)
                         chunkDia(i, j, ks) = chunkDia(i, j, ks) + chunkHist(i, j, ks, n)*currentDia(n)
@@ -2090,7 +2099,12 @@ subroutine updateSurfGrid
                     end if
                     !floatKs = real(ks - 2, kind=dbPc)
                     !zsf(i, j) = (ks - 2)*chunkHeight + sum(bin)/(xDiff*yDiff)
-                    zsf(i, j) = zsfNew
+                    if (badflag) then
+                        zsf(i, j) = zsfOld
+                    else
+                        zsf(i, j) = zsfNew
+                    end if
+                    !zsf(i, j) = zsfNew
                     !check = sum(bin) - surfChkVolNew - chunkVol
                     !if (abs(check) > 1.0e-10 .or. zsf(i, j) - blockHeight < 0.0) then
                     !    print *, 'Error1', zsf(i, j), zsfOld, zsfNew, zChange, check, fixHist/npdf, chunkDia(i, j, ks), vchange, chunkVol, surfChkVolNew
@@ -2113,7 +2127,12 @@ subroutine updateSurfGrid
                     end do
                     !floatKs = real(ks0 - 2, kind=dbPc)
                     !zsf(i, j) = (ks0 - 2)*chunkHeight + sum(bin)/(xDiff*yDiff)
-                    zsf(i, j) = zsfNew
+                    if (badflag) then
+                        zsf(i, j) = zsfOld
+                    else
+                        zsf(i, j) = zsfNew
+                    end if
+                    !zsf(i, j) = zsfNew
                     !check = sum(bin) - surfChkVolOld - chunkVol - vChange
                     !if (abs(check) > 1.0e-10 .or. zsf(i, j) - blockHeight < 0.0) then
                     !    print *, 'Error2', zsf(i, j), zsfOld, zsfNew, zChange, sum(bin)/(xDiff*yDiff), check, fixHist/npdf, chunkDia(i, j, ks)

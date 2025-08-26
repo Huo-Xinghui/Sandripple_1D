@@ -317,7 +317,7 @@ if __name__ == "__main__":
 		exit()
 
 	# 定义常量
-	xMax = 0.5 # 计算域x方向长度
+	xMax = 0.1 # 计算域x方向长度
 	yMax = 0.01 # 计算域y方向长度
 	nu = 1.51e-5 # 运动粘度
 	interval = 60 # 源文件输出时间间隔
@@ -329,22 +329,63 @@ if __name__ == "__main__":
 	if linux_flag:
 		working_dir = "/home/ekalhxh/ripple/coll13"
 	else:
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll13"
+		working_dir = "E:/Data/Q_on_ero_bed"
 
 	# 定义文件名字典
 	case_dict = {
-		0: "uStar040_300_0_2650_300",
-		1: "uStar045_300_0_2650_300",
-		2: "uStar050_300_0_2650_300",
-		3: "uStar055_300_0_2650_300",
-		4: "uStar060_300_0_2650_300",
-		5: "uStar065_300_0_2650_300",
-		6: "uStar040_400_0_2650_300",
-		7: "uStar045_400_0_2650_300",
-		8: "uStar050_400_0_2650_300",
-		9: "uStar055_400_0_2650_300",
-		10: "uStar060_400_0_2650_300",
-		11: "uStar065_400_0_2650_300",
+		0: "uStar030_300log50_0_2650_300",
+		1: "uStar040_300log50_0_2650_300",
+		2: "uStar050_300log50_0_2650_300",
+		#3: "uStar060_300log50_0_2650_300",
+		#4: "uStar030_300log100_0_2650_300",
+		#5: "uStar040_300log100_0_2650_300",
+		#6: "uStar050_300log100_0_2650_300",
+		#7: "uStar060_300log100_0_2650_300",
+		#8: "uStar030_300log200_0_2650_300",
+		#9: "uStar040_300log200_0_2650_300",
+		#10: "uStar050_300log200_0_2650_300",
+		#11: "uStar060_300log200_0_2650_300",
+		12: "uStar030_300log300_0_2650_300",
+		13: "uStar040_300log300_0_2650_300",
+		14: "uStar050_300log300_0_2650_300",
+		#15: "uStar060_300log300_0_2650_300",
+		16: "uStar035_300log50_0_2650_300",
+		17: "uStar045_300log50_0_2650_300",
+		18: "uStar055_300log50_0_2650_300",
+		#19: "uStar065_300log50_0_2650_300",
+		#20: "uStar035_300log100_0_2650_300",
+		#21: "uStar045_300log100_0_2650_300",
+		#22: "uStar055_300log100_0_2650_300",
+		#23: "uStar065_300log100_0_2650_300",
+		#24: "uStar035_300log200_0_2650_300",
+		#25: "uStar045_300log200_0_2650_300",
+		#26: "uStar055_300log200_0_2650_300",
+		#27: "uStar065_300log200_0_2650_300",
+		28: "uStar035_300log300_0_2650_300",
+		29: "uStar045_300log300_0_2650_300",
+		30: "uStar055_300log300_0_2650_300",
+		#31: "uStar065_300log300_0_2650_300",
+		#32: "uStar040_430log100_0_2650_300",
+		#33: "uStar050_430log100_0_2650_300",
+		#34: "uStar060_430log100_0_2650_300",
+		#35: "uStar030_167log100_0_2650_300",
+		#36: "uStar040_167log100_0_2650_300",
+		#37: "uStar050_167log100_0_2650_300",
+		#38: "uStar030_269log100_0_2650_300",
+		#39: "uStar040_269log100_0_2650_300",
+		#40: "uStar050_269log100_0_2650_300",
+		#41: "uStar030_321log100_0_2650_300",
+		#42: "uStar040_321log100_0_2650_300",
+		#43: "uStar050_321log100_0_2650_300",
+		#44: "uStar030_240log50_0_2650_300",
+		#45: "uStar035_240log50_0_2650_300",
+		#46: "uStar040_240log50_0_2650_300",
+		#47: "uStar045_240log50_0_2650_300",
+		#48: "uStar050_240log50_0_2650_300",
+		#49: "uStar055_240log50_0_2650_300",
+		#50: "uStar035_269log100_0_2650_300",
+		#51: "uStar045_269log100_0_2650_300",
+		#52: "uStar055_269log100_0_2650_300"
 	}
 
 	for folder_name in tqdm(case_dict.values(), desc="Processing", unit="case"):
@@ -359,6 +400,11 @@ if __name__ == "__main__":
 			dia =  (dia1 + dia2) / 2
 		elif "stdd" in dia_name:
 			dia_name_list = dia_name.split("stdd")
+			dia1 = float(dia_name_list[0])/1e6
+			dia2 = float(dia_name_list[1])/1e6
+			dia =  dia1
+		elif "log" in dia_name:
+			dia_name_list = dia_name.split("log")
 			dia1 = float(dia_name_list[0])/1e6
 			dia2 = float(dia_name_list[1])/1e6
 			dia =  dia1

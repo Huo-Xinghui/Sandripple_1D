@@ -67,7 +67,8 @@ def define_file_path(OS_name: str) -> str:
 	if OS_name == 'l':
 		working_dir = "/home/ekalhxh/ripple/coll11"
 	elif OS_name == 'w':
-		working_dir = "E:/Data/Sandripples1DFluid/ripple/coll11"
+		#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll15"
+		working_dir = "E:/Data/Q_on_flat_bed"
 	else:
 		print("Invalid OS name.")
 		exit()
@@ -157,42 +158,97 @@ if __name__ == '__main__':
 	OS_name = 'w' # 输入操作系统名称，'w'代表Windows，'l'代表Linux
 	nu = 1.51e-5 # 运动粘度
 	interval = 60 # 源文件输出时间间隔
-	start = 60 # 起始时间
-	end = 600 # 终止时间
-	temporal = True # 是否输出时间序列数据
+	start = 120 # 起始时间
+	end = 300 # 终止时间
+	temporal = False # 是否输出时间序列数据
 	semi_log = True # 是否使用半对数坐标
-	output = 5 # 输出数据类型，0代表u, 1代表tau_p, 2代表tau_f, 3代表F_p, 4代表phi_p, 5代表Sh
+	output = 0 # 输出数据类型，0代表u, 1代表tau_p, 2代表tau_f, 3代表F_p, 4代表phi_p, 5代表Sh
 	location = 0 # 输出数据所在高度，0代表床面，-1代表顶面, valid when temporal is True
+	kapa = 0.42
+	rhof = 1.263
+	rhop = 2650
+	s = rhop/rhof
+	g = 9.8 * (1 - 1/s)
 	#---------------------------------------------------
 
 	# 定义文件名字典
+	#case_dict = {
+		#0: "uStar040_300_0_2650_300",
+		#1: "uStar050_300_0_2650_300",
+		#2: "uStar060_300_0_2650_300",
+		#3: "uStar040_400_0_2650_300",
+		#4: "uStar050_400_0_2650_300",
+		#5: "uStar060_400_0_2650_300",
+		#6: "uStar040_296log366_0_2650_300",
+		#7: "uStar050_296log366_0_2650_300",
+		#8: "uStar060_296log366_0_2650_300",
+		#9: "uStar050_260log537_0_2650_300",
+		#10: "uStar055_260log537_0_2650_300",
+		#11: "uStar060_260log537_0_2650_300",
+		#12: "uStar050_268log491_0_2650_300",
+		#13: "uStar055_268log491_0_2650_300",
+		#14: "uStar060_268log491_0_2650_300",
+		#15: "uStar040_352log522_0_2650_300",
+		#16: "uStar050_352log522_0_2650_300",
+		#17: "uStar060_352log522_0_2650_300",
+		#18: "uStar040_279log368_0_2650_300",
+		#19: "uStar050_279log368_0_2650_300",
+		#20: "uStar060_279log368_0_2650_300",
+	#}
 	case_dict = {
-		0: "uStar035_300_0_2650_300",
-		1: "uStar040_300_0_2650_300",
-		2: "uStar045_300_0_2650_300",
-		3: "uStar050_300_0_2650_300",
-		4: "uStar055_300_0_2650_300",
-		5: "uStar060_300_0_2650_300",
-		6: "uStar065_300_0_2650_300",
-		7: "uStar030_200_0_2650_300",
-		8: "uStar040_200_0_2650_300",
-		9: "uStar050_200_0_2650_300",
-		10: "uStar060_200_0_2650_300",
-		11: "uStar040_400_0_2650_300",
-		12: "uStar050_400_0_2650_300",
-		13: "uStar060_400_0_2650_300",
-		14: "uStar050_500_0_2650_300",
-		15: "uStar050_600_0_2650_300",
-		16: "uStar030_300_2_2650_300",
-		17: "uStar040_300_2_2650_300",
-		18: "uStar050_300_2_2650_300",
-		19: "uStar060_300_2_2650_300",
-		20: "uStar050_300_3_2650_300",
-		21: "uStar050_300_0_500_180",
-		22: "uStar050_300_0_1000_300",
-		23: "uStar050_300_0_2000_300",
-		24: "uStar050_300_0_3000_300",
-		25: "uStar050_300_0_4000_300",
+		#0: "uStar030_300log50_0_2650_300",
+		#1: "uStar040_300log50_0_2650_300",
+		#2: "uStar050_300log50_0_2650_300",
+		#3: "uStar060_300log50_0_2650_300",
+		#16: "uStar035_300log50_0_2650_300",
+		#17: "uStar045_300log50_0_2650_300",
+		#18: "uStar055_300log50_0_2650_300",
+		#19: "uStar065_300log50_0_2650_300",
+		#4: "uStar030_300log100_0_2650_300",
+		#5: "uStar040_300log100_0_2650_300",
+		#6: "uStar050_300log100_0_2650_300",
+		#7: "uStar060_300log100_0_2650_300",
+		#20: "uStar035_300log100_0_2650_300",
+		#21: "uStar045_300log100_0_2650_300",
+		#22: "uStar055_300log100_0_2650_300",
+		#23: "uStar065_300log100_0_2650_300",
+		8: "uStar030_300log200_0_2650_300",
+		9: "uStar040_300log200_0_2650_300",
+		10: "uStar050_300log200_0_2650_300",
+		11: "uStar060_300log200_0_2650_300",
+		24: "uStar035_300log200_0_2650_300",
+		25: "uStar045_300log200_0_2650_300",
+		26: "uStar055_300log200_0_2650_300",
+		27: "uStar065_300log200_0_2650_300",
+		#12: "uStar030_300log300_0_2650_300",
+		#13: "uStar040_300log300_0_2650_300",
+		#14: "uStar050_300log300_0_2650_300",
+		#15: "uStar060_300log300_0_2650_300",
+		#28: "uStar035_300log300_0_2650_300",
+		#29: "uStar045_300log300_0_2650_300",
+		#30: "uStar055_300log300_0_2650_300",
+		#31: "uStar065_300log300_0_2650_300",
+		#32: "uStar040_430log100_0_2650_300",
+		#33: "uStar050_430log100_0_2650_300",
+		#34: "uStar060_430log100_0_2650_300",
+		#35: "uStar030_167log100_0_2650_300",
+		#36: "uStar040_167log100_0_2650_300",
+		#37: "uStar050_167log100_0_2650_300",
+		#38: "uStar030_269log100_0_2650_300",
+		#39: "uStar040_269log100_0_2650_300",
+		#40: "uStar050_269log100_0_2650_300",
+		#50: "uStar035_269log100_0_2650_300",
+		#51: "uStar045_269log100_0_2650_300",
+		#52: "uStar055_269log100_0_2650_300"
+		#41: "uStar030_321log100_0_2650_300",
+		#42: "uStar040_321log100_0_2650_300",
+		#43: "uStar050_321log100_0_2650_300",
+		#44: "uStar030_240log50_0_2650_300",
+	#	45: "uStar035_240log50_0_2650_300",
+	#	46: "uStar040_240log50_0_2650_300",
+	#	47: "uStar045_240log50_0_2650_300",
+		#48: "uStar050_240log50_0_2650_300",
+	#	49: "uStar055_240log50_0_2650_300",
 	}
 
 	# 定义文件路径
@@ -200,6 +256,7 @@ if __name__ == '__main__':
 
 	# 读取廓线数据
 	time_averaged_data = []
+	profile_list = []
 	for case in tqdm(case_dict.values(), desc="Processing", unit="case"):
 		case_folder = f"{working_dir}/{case}/Field"
 		case_data = read_profile_file(case_folder)
@@ -210,7 +267,9 @@ if __name__ == '__main__':
 		Sh_str = f"{case_parameters['Sh']:.2f}"
 		s_str = f"{case_parameters['s']:.2f}"
 		Ga_str = f"{case_parameters['Ga']:.2f}"
-		laber_str = f"Sh={Sh_str}, s={s_str}, Ga={Ga_str}"
+		stdd_str = f"{case_parameters['stdd']*1e6:.0f}"
+		#laber_str = f"Sh={Sh_str}, s={s_str}, Ga={Ga_str}"
+		laber_str = f"stdd = {stdd_str} μm"
 		if temporal:
 			times = [i for i in range(start, end+interval, interval)]
 			points = []
@@ -222,7 +281,8 @@ if __name__ == '__main__':
 					point = current_data[location, output + 1]
 				elif output == 5:
 					tau_f = current_data[location, 3]
-					point = tau_f/(rho_p*g_hat*dia)
+					point = tau_f #/(rho_p*g_hat*dia)
+					#point = np.sqrt(tau_f/1.263)
 				else:
 					print("Invalid output type.")
 					exit()
@@ -243,16 +303,60 @@ if __name__ == '__main__':
 					exit()
 				profiles.append(current_profile)
 			average_profile = np.mean(profiles, axis=0)
+			profile_list.append(average_profile)
 			if semi_log:
-				plt.semilogy(heights, average_profile, label=laber_str)
+				plt.semilogx(heights, average_profile, label=laber_str)
 			else:
 				plt.plot(heights, average_profile, label=laber_str)
+			d = case_parameters['dia']
+
+	# 确定Bagnold node
+	cross_x = []
+	cross_y = []
+	n = len(profile_list)
+	for i in range(n):
+		for j in range(i+1, n):
+			# 两条曲线的纵坐标
+			y1 = np.array(profile_list[i])
+			y2 = np.array(profile_list[j])
+			# 遍历相邻点，找交点
+			for k in range(len(heights)-1):
+				# 判断是否跨越
+				if (y1[k]-y2[k])*(y1[k+1]-y2[k+1]) < 0:
+            	    # 线性插值计算交点
+					x0, x1 = heights[k], heights[k+1]
+					y10, y11 = y1[k], y1[k+1]
+					y20, y21 = y2[k], y2[k+1]
+					# 交点横坐标
+					t = (y20 - y10) / ((y11 - y10) - (y21 - y20))
+					x_cross = x0 + t * (x1 - x0)
+					y_cross = y10 + t * (y11 - y10)
+					cross_x.append(x_cross)
+					cross_y.append(y_cross)
+
+	# 计算平均交点坐标
+	z_f = np.mean(cross_x)
+	u_f = np.mean(cross_y)
+	print("平均交点横坐标：", z_f)
+	print("平均交点纵坐标：", u_f)
+	H = heights[-1]
+	z_0 = d/30
+	alpha1 = kapa/np.log(H/z_0)
+	alpha2 = kapa/np.log(H/z_f)
+	u_d = alpha1*alpha2*u_f/(alpha2 - alpha1)
+	S_d = rhof*u_d**2/(rho_p*g*d)
+	print("u_d =", u_d, "m/s")
+	print("S_d =", S_d)
+
 	x_str, y_str = xy_label(temporal, output)
 	plt.xlabel(x_str)
 	plt.ylabel(y_str)
 	plt.legend()
 	plt.show()
-	time_averaged_data = np.array(time_averaged_data)
-	case_averaged_data = np.mean(time_averaged_data)
-	print(f"Time averaged data: {time_averaged_data}")
-	print(f"Case averaged data: {case_averaged_data}")
+	if temporal:
+		time_averaged_data = np.array(time_averaged_data)
+		case_averaged_data = np.mean(time_averaged_data)
+		case_averaged_stdd = np.std(time_averaged_data)
+		print(f"Time averaged data: {time_averaged_data}")
+		print(f"Case averaged data: {case_averaged_data}")
+		print(f"Case std: {case_averaged_stdd}")

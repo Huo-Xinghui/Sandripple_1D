@@ -23,8 +23,8 @@ module public_val
     ! whichDiameterDist=1: npdf must = 1, d=dpa
     ! whichDiameterDist=2: npdf must = 2, p1=prob1, p2=1-prob1, d1=dpa-dpStddDev, d2=dpa+dpStddDev
     ! whichDiameterDist=3: npdf must >= 3, mu=logMu, sigma=logSigma
-    integer, parameter :: whichDiameterDist = 3 ! particle diameter distribution type
-    integer, parameter :: npdf = 31 ! bin num of particle distribution
+    integer, parameter :: whichDiameterDist = 1 ! particle diameter distribution type
+    integer, parameter :: npdf = 1 ! bin num of particle distribution
     integer, parameter :: pNumInit = 10 ! initial particle num
     integer, parameter :: maxEjectNum = 10000 ! max eject particle num in one time step
     integer, parameter :: maxNum = 100000 ! max particle num in one subdomain
@@ -33,20 +33,20 @@ module public_val
     real(kind=dbPc), parameter :: dpa = 3.0e-4 ! average particle diameter
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
-    real(kind=dbPc), parameter :: logMu = -8.1254 ! mu of lognormal distribution
-    real(kind=dbPc), parameter :: logSigma = 0.1655 ! sigma of lognormal distribution
+    real(kind=dbPc), parameter :: logMu = -8.2956 ! mu of lognormal distribution
+    real(kind=dbPc), parameter :: logSigma = 0.6064 ! sigma of lognormal distribution
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
     real(kind=dbPc), parameter :: binStart = 1.0e-4 ! start of the particle diameter distribution
     real(kind=dbPc), parameter :: binEnd = 10.0e-4 ! end of the particle diameter distribution
     real(kind=dbPc), parameter :: binWidth = (binEnd - binStart)/npdf ! bin width of the particle diameter distribution
-    real(kind=dbPc), parameter :: resN = 0.7251 ! normal restitution coefficient
-    real(kind=dbPc), parameter :: resT = -0.9288 ! tangential restitution coefficient
-    real(kind=dbPc), parameter :: resN2 = 0.7 ! normal restitution coefficient for midair collision
+    real(kind=dbPc), parameter :: resN = 0.9 ! normal restitution coefficient
+    real(kind=dbPc), parameter :: resT = 0.0 ! tangential restitution coefficient
+    real(kind=dbPc), parameter :: resN2 = 0.9 ! normal restitution coefficient for midair collision
     real(kind=dbPc), parameter :: por = 0.6 ! bedform porosity
     ! bed surface
     logical, parameter :: predefineSurface = .false. ! whether to predefine the bed surface
     real(kind=dbPc), parameter :: initSurfElevation = 4.0e-2 ! initial bed height
-    real(kind=dbPc), parameter :: gammaE = 0.042 ! energy fraction that returns to bed surface
+    real(kind=dbPc), parameter :: gammaE = 0.06 ! energy fraction that returns to bed surface
     real(kind=dbPc), parameter :: amp = 0.005 ! amplitude of the predefined surface
     real(kind=dbPc), parameter :: omg = 32.0*pi ! wave number (friquence) of the predefined surface
     real(kind=dbPc), parameter :: z0 = dpa/30.0 ! roughness height
@@ -58,7 +58,7 @@ module public_val
     real(kind=dbPc), parameter :: blockHeight = dpa*3.0 ! height of the block, must>chunkHeight. block is a temporary grid on surface
     real(kind=dbPc), parameter :: blockVol = xDiff*yDiff*blockHeight ! volume of a block
     ! fluid
-    real(kind=dbPc), parameter :: uStar = 0.50 ! fractional velocity
+    real(kind=dbPc), parameter :: uStar = 0.30 ! fractional velocity
     real(kind=dbPc), parameter :: rho = 1.263 ! fluid density
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.42 ! von Kaman's constant
@@ -76,7 +76,7 @@ module public_val
     integer, parameter :: intervalStatistics = oneSecond*60 ! interval between statistics outputs
     integer, parameter :: intervalCreateFile = oneSecond*240 ! interval between creating output files
     real(kind=dbPc), parameter :: dt = 5.0e-5 ! time step
-    real(kind=dbPc), parameter :: endTime = 300.0 ! The time that the simulation lasts
+    real(kind=dbPc), parameter :: endTime = 241.0 ! The time that the simulation lasts
 
     ! variables
     ! MPI
@@ -629,7 +629,7 @@ program main
             if (midairCollision) then
                 call calculateMidAirColl
             end if
-            !call updateSurfGrid
+            call updateSurfGrid
             call updateFieldGrid
         end if
         call calculateFluidField
@@ -1389,10 +1389,7 @@ subroutine calculateSplash
             v2 = e*v1
             v2x = eVx*v1
             v2z = eVz*v1
-            hh = (d1 + d3)*sin(psi)
             if (v2x > 0.0) then
-                !ht = 0.5*(d1 + d2) - hh
-                !wt = 0.5*(d1 + d2)*xc
                 ht = 0.5*(d1 + d2) - 0.5*(d1+d3)*cos(angleC)
                 wt = 0.5*(d1 + d3)*xc
                 if (v2z**2/(2.0*gHat) > ht) then
@@ -1401,8 +1398,6 @@ subroutine calculateSplash
                     remx = -1.0
                 end if
             else if (v2x < 0.0) then
-                !ht = 0.5*(d1 + d3) - hh
-                !wt = 0.5*(d1 + d3)*cosPsi
                 ht = 0.5*(d1 + d3)*(1.0 - cos(angleC))
                 wt = 0.5*(d1 + d3)*sin(angleC)
                 if (v2z**2/(2.0*gHat) > ht) then
@@ -1443,34 +1438,34 @@ subroutine calculateSplash
                 pIndex(tempNum, 2) = jp
                 pIndex(tempNum, 3) = 1
                 zflux = zflux + m1/area/dt
-            !else
-            !    select case (rollTo(ipp, jpp))
-            !    case (0)
-            !        ii = ipp
-            !        jj = jpp
-            !    case (1)
-            !        ii = ipp + 1
-            !        jj = jpp
-            !    case (2)
-            !        ii = ipp - 1
-            !        jj = jpp
-            !    case (3)
-            !        ii = ipp
-            !        jj = jpp + 1
-            !    case (4)
-            !        ii = ipp
-            !        jj = jpp - 1
-            !    end select
-            !    if (jj > my) jj = 3
-            !    if (whichDiameterDist /= 1) then
-            !        iBin = floor((d1 - binStart)/binWidth) + 1
-            !        iBin = max(iBin, 1)
-            !        iBin = min(iBin, npdf)
-            !    else
-            !        iBin = 1
-            !    end if
-            !    vch = (pi*d1**3)/6.0
-            !    binChange(ii, jj, iBin) = binChange(ii, jj, iBin) + vch
+            else
+                select case (rollTo(ipp, jpp))
+                case (0)
+                    ii = ipp
+                    jj = jpp
+                case (1)
+                    ii = ipp + 1
+                    jj = jpp
+                case (2)
+                    ii = ipp - 1
+                    jj = jpp
+                case (3)
+                    ii = ipp
+                    jj = jpp + 1
+                case (4)
+                    ii = ipp
+                    jj = jpp - 1
+                end select
+                if (jj > my) jj = 3
+                if (whichDiameterDist /= 1) then
+                    iBin = floor((d1 - binStart)/binWidth) + 1
+                    iBin = max(iBin, 1)
+                    iBin = min(iBin, npdf)
+                else
+                    iBin = 1
+                end if
+                vch = (pi*d1**3)/6.0
+                binChange(ii, jj, iBin) = binChange(ii, jj, iBin) + vch
             end if
             E1 = 0.5*m1*v1**2
             Ed1 = gammaE*(1.0 - e**2)*E1
@@ -1479,13 +1474,11 @@ subroutine calculateSplash
                 zc = dpa
             else if (whichDiameterDist == 0 .or. whichDiameterDist ==3) then
                 dCube = 0.0
-                !do nnn = 1, npdf
-                !    binLeft = binStart + real(nnn - 1, kind=dbPc)*binWidth
-                !    binRight = binStart + real(nnn, kind=dbPc)*binWidth
-                !    dCube = dCube + (binLeft**2 + binRight**2)*(binLeft + binRight)*currentHist(nnn)/4.0
-                !end do
-                d2 = valObeyCertainPDF(currentHist)
-                dCube = d2**3
+                do nnn = 1, npdf
+                    binLeft = binStart + real(nnn - 1, kind=dbPc)*binWidth
+                    binRight = binStart + real(nnn, kind=dbPc)*binWidth
+                    dCube = dCube + (binLeft**2 + binRight**2)*(binLeft + binRight)*currentHist(nnn)/4.0
+                end do
                 zc = calculateD90(currentHist)
             else if (whichDiameterDist == 2) then
                 d2 = valObeyCertainPDF(currentHist)
@@ -1494,10 +1487,11 @@ subroutine calculateSplash
             end if
             m2 = (pi*dCube)/6.0*rhoP
             Ed2 = m2*gHat*zc
-            !tau_s = rho*0.0123*(rhoP/rho*gHat*dpa + 3.0e-4/(rho*dpa))
-            !Ec = Ed2*(1.0 - tau_f(1)/tau_s)
-            !Eeff = max(Ec, 0.1*Ed2)
-            Eeff = Ed2
+            ! no d2 now !!!!
+            tau_s = rho*0.0123*(rhoP/rho*gHat*dpa + 3.0e-4/(rho*dpa))
+            Ec = Ed2*(1.0 - tau_f(1)/tau_s)
+            Eeff = max(Ec, 0.1*Ed2)
+            !Eeff = Ed2
             if (Ed1 > Eeff) then
                 lambda = 2.0*log((1.0 - e**2)*E1/Eeff)
                 sigma = sqrt(lambda)*log(2.0)
@@ -1525,9 +1519,6 @@ subroutine calculateSplash
                     vch = (pi*d2**3)/6.0
                     m2 = vch*rhoP
                     v2 = sqrt(2.0*E2/m2)
-                    if (E2/(m2*gHat) < zc) then
-                        cycle
-                    end if
                     rr3 = -1.0
                     do while (rr3 < 0.0)
                         call random_number(rr1)
@@ -1546,49 +1537,49 @@ subroutine calculateSplash
                     tempj(nAddGlobal) = jp
                     zflux = zflux + m2/area/dt
                     ejectVol = ejectVol + vch
-                    !if (whichDiameterDist /= 1) then
-                    !    iBin = floor((d2 - binStart)/binWidth) + 1
-                    !    iBin = max(iBin, 1)
-                    !    iBin = min(iBin, npdf)
-                    !else
-                    !    iBin = 1
-                    !end if
-                    !binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) - vch
+                    if (whichDiameterDist /= 1) then
+                        iBin = floor((d2 - binStart)/binWidth) + 1
+                        iBin = max(iBin, 1)
+                        iBin = min(iBin, npdf)
+                    else
+                        iBin = 1
+                    end if
+                    binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) - vch
                 end do
-                !if (rollFrom(ipp, jpp) /= 0) then
-                !    select case (rollFrom(ipp, jpp))
-                !    case (1)
-                !        ii = ipp + 1
-                !        jj = jpp
-                !    case (2)
-                !        ii = ipp - 1
-                !        jj = jpp
-                !    case (3)
-                !        ii = ipp
-                !        jj = jpp + 1
-                !    case (4)
-                !        ii = ipp
-                !        jj = jpp - 1
-                !    end select
-                !    if (jj > my) jj = 3
-                !    rollVol = 0.0
-                !    currentHist = hist(ii, jj, :)
-                !    do while (rollVol < ejectVol)
-                !        if (whichDiameterDist /= 1) then
-                !            dRoll = valObeyCertainPDF(currentHist)
-                !            iBin = floor((dRoll - binStart)/binWidth) + 1
-                !            iBin = max(iBin, 1)
-                !            iBin = min(iBin, npdf)
-                !        else
-                !            dRoll = dpa
-                !            iBin = 1
-                !        end if
-                !        vch = (pi*dRoll**3)/6.0
-                !        rollVol = rollVol + vch
-                !        binChange(ii, jj, iBin) = binChange(ii, jj, iBin) - vch
-                !        binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) + vch
-                !    end do
-                !end if
+                if (rollFrom(ipp, jpp) /= 0) then
+                    select case (rollFrom(ipp, jpp))
+                    case (1)
+                        ii = ipp + 1
+                        jj = jpp
+                    case (2)
+                        ii = ipp - 1
+                        jj = jpp
+                    case (3)
+                        ii = ipp
+                        jj = jpp + 1
+                    case (4)
+                        ii = ipp
+                        jj = jpp - 1
+                    end select
+                    if (jj > my) jj = 3
+                    rollVol = 0.0
+                    currentHist = hist(ii, jj, :)
+                    do while (rollVol < ejectVol)
+                        if (whichDiameterDist /= 1) then
+                            dRoll = valObeyCertainPDF(currentHist)
+                            iBin = floor((dRoll - binStart)/binWidth) + 1
+                            iBin = max(iBin, 1)
+                            iBin = min(iBin, npdf)
+                        else
+                            dRoll = dpa
+                            iBin = 1
+                        end if
+                        vch = (pi*dRoll**3)/6.0
+                        rollVol = rollVol + vch
+                        binChange(ii, jj, iBin) = binChange(ii, jj, iBin) - vch
+                        binChange(ipp, jpp, iBin) = binChange(ipp, jpp, iBin) + vch
+                    end do
+                end if
             end if
         else
             tempNum = tempNum + 1
@@ -2048,7 +2039,7 @@ subroutine updateSurfGrid
         do j = 2, my - 1
             do i = 2, mxNode - 1
                 vChange = sum(binChange(i, j, :))
-                !cycle ! ekalhxh: no bed deformation !!!
+                cycle ! ekalhxh: no bed deformation !!!
                 if (vChange == 0.0) cycle
                 zChange = vChange/(xDiff*yDiff)
                 zsfOld = zsf(i, j)

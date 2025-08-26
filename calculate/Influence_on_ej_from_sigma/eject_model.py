@@ -194,16 +194,19 @@ def calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params)
         #Ec = (C_Ec*np.exp(3.0*mu + 9.0*sigma**2/2.0) * (norm.cdf(z_max) - norm.cdf(z_min))) / P_Ec
         Ec = calculate_Ec(mu, sigma, d_min, d_max, C_Ec)
     Ee1 = 0.5*m1*v1**2
-    k_max = (1.0 - e**2)*Ee1/Ec
+    Ei = (1.0 - e**2)*Ee1
+    k_max = Ei/Ec
     lambda_ej = 2.0*np.log(k_max)
     mu_ej = np.log((1.0 - e**2)*Ee1) - lambda_ej*np.log(2.0)
     sigma_ej = np.sqrt(lambda_ej)*np.log(2.0)
     En_bar = np.exp(mu_ej + sigma_ej**2/2)
     Ec_ej = Ec
     Nej = gamma*(1.0 - e**2)*Ee1/En_bar/2.0*erfc((np.log(Ec_ej) - mu_ej)/(np.sqrt(2.0)*sigma_ej))
+    erfc2 = erfc((np.log(Ec_ej) - mu_ej)/(np.sqrt(2.0)*sigma_ej))
+    erfc3 = erfc((np.log(Ec_ej) - mu_ej - sigma_ej**2)/(np.sqrt(2.0)*sigma_ej))
+    E_mean = erfc3/erfc2 * np.exp(mu_ej + sigma_ej**2/2)
     if bed_type['monodisperse']:
         erfc1 = erfc((np.log(Ec_ej) - mu_ej - sigma_ej**2/2)/(np.sqrt(2.0)*sigma_ej))
-        erfc2 = erfc((np.log(Ec_ej) - mu_ej)/(np.sqrt(2.0)*sigma_ej))
         vn_mean = erfc1/erfc2 * np.sqrt(2.0/m2)*np.exp(mu_ej/2 + sigma_ej**2/8)
     else:
         #if Nej > 0:
@@ -221,7 +224,6 @@ def calculate_eject(th, v1, gamma, d_dict, physical_dict, bed_type, dist_params)
         #else:
         #    vn_mean = 0.0
         erfc1 = erfc((np.log(Ec_ej) - mu_ej - sigma_ej**2/2)/(np.sqrt(2.0)*sigma_ej))
-        erfc2 = erfc((np.log(Ec_ej) - mu_ej)/(np.sqrt(2.0)*sigma_ej))
         #vn_mean = erfc1/erfc2 * np.sqrt(2.0/mn)*np.exp(mu_ej/2 + sigma_ej**2/8)
         vn_mean = erfc1/erfc2 * np.sqrt(12.0/(rho*np.pi))*np.exp(mu_ej/2 - 3/2*mu + sigma_ej**2/8 + 9/8*sigma**2)
-    return Nej, vn_mean
+    return Nej, vn_mean, E_mean, Ei

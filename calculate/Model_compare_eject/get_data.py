@@ -199,7 +199,7 @@ def get_exp_data_array(coarse_d1, medium_d1, fine_d1):
     }
 
     a = 0.126
-    v1_list = np.linspace(1, 10, 10)
+    v1_list = np.linspace(1, 6, 10)
 
     Nej_list = []
     for i in range(len(v1_list)):
