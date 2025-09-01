@@ -203,10 +203,10 @@ rhof = 1.263
 rhop = 2650
 s = rhop / rhof
 g = 9.81 * (1.0 - 1.0 / s)
-y_axis = 0 # y轴类型：0为颗粒通量，1为空中颗粒承载量, 2为颗粒总能量
+y_axis = 1 # y轴类型：0为颗粒通量，1为空中颗粒承载量, 2为颗粒总能量
 direction = 0 # 统计量方向：0为x方向，1为z方向
 nondim = True # 是否无量纲化
-nondim_d = 3 # 无量纲化所使用的粒径: 0为dm, 1为d50, 2为d90, 3为平均空中粒径, 4为空中d50, 5为空中d90
+nondim_d = 5 # 无量纲化所使用的粒径: 0为dm, 1为d50, 2为d90, 3为平均空中粒径, 4为空中d50, 5为空中d90
 comparison = True # 是否与他人行比较, only Q*
 start = 60 # 统计量平均值的开始时间
 end = 240 # 统计量平均值的结束时间
@@ -223,6 +223,7 @@ sys_OS = "w" # "w" for Windows, "l" for Linux
 if sys_OS == "w":
 	# Windows
 	working_dir = "E:/Data/Q_on_flat_bed"
+	#working_dir = "E:/Data/mono_in_air"
 	#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll13"
 elif sys_OS == "l":
 	# Linux
@@ -358,22 +359,22 @@ case_dict16 = {
 }
 
 cases_dict = {
-	"d300stdd50": case_dict1,
-	"d300stdd100": case_dict2,
-	"d300stdd200": case_dict3,
-	"d300stdd300": case_dict4,
-	"d430stdd100": case_dict5,
-	"d167stdd100": case_dict6,
-	"d269stdd100": case_dict7,
-	"d321stdd100": case_dict8,
-	"d240stdd50": case_dict9,
-	"d400stdd50": case_dict10,
+	#"d300stdd50": case_dict1,
+	#"d300stdd100": case_dict2,
+	#"d300stdd200": case_dict3,
+	#"d300stdd300": case_dict4,
+	#"d430stdd100": case_dict5,
+	#"d167stdd100": case_dict6,
+	#"d269stdd100": case_dict7,
+	#"d321stdd100": case_dict8,
+	#"d240stdd50": case_dict9,
+	#"d400stdd50": case_dict10,
 	"d250stdd25": case_dict11,
 	"d271stdd121": case_dict12,
 	"d317stdd252": case_dict13,
 	"d347stdd537": case_dict14,
-	"d290stdd97": case_dict15,
-	"d197stdd65": case_dict16
+	#"d290stdd97": case_dict15,
+	#"d197stdd65": case_dict16
 }
 
 d_dict ={
@@ -565,103 +566,103 @@ if comparison and nondim and y_entry == "Q_star":
 				markeredgewidth=marker_width
 				)
 
-legend_str = "Narrow"
-dictkey = "d300stdd50"
-style = "ro"
-arrow = True
-fitline = True
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Narrow 240"
-dictkey = "d240stdd50"
-style = "rv"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Narrow 400"
-dictkey = "d400stdd50"
-style = "rv"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Narrow 0.1"
-dictkey = "d250stdd25"
-style = "rv"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Medium"
-dictkey = "d300stdd100"
-style = "g^"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Medium 0.4"
-dictkey = "d271stdd121"
-style = "g^"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Wide"
-dictkey = "d300stdd200"
-style = "bs"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Wide 0.7"
-dictkey = "d317stdd252"
-style = "bs"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Very wide"
-dictkey = "d300stdd300"
-style = "ch"
-arrow = True
-fitline = True
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Very wide 1.0"
-dictkey = "d347stdd537"
-style = "ch"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Right Truncation"
-dictkey = "d269stdd100"
-style = "y*"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Left Truncation"
-dictkey = "d321stdd100"
-style = "k*"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Large Mu"
-dictkey = "d430stdd100"
-style = "cx"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-
-legend_str = "Small Mu"
-dictkey = "d167stdd100"
-style = "kx"
-arrow = False
-fitline = False
-rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#legend_str = "Narrow"
+#dictkey = "d300stdd50"
+#style = "ro"
+#arrow = True
+#fitline = True
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Narrow 240"
+#dictkey = "d240stdd50"
+#style = "rv"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Narrow 400"
+#dictkey = "d400stdd50"
+#style = "rv"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Narrow 0.1"
+#dictkey = "d250stdd25"
+#style = "rv"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Medium"
+#dictkey = "d300stdd100"
+#style = "g^"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Medium 0.4"
+#dictkey = "d271stdd121"
+#style = "g^"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Wide"
+#dictkey = "d300stdd200"
+#style = "bs"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Wide 0.7"
+#dictkey = "d317stdd252"
+#style = "bs"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Very wide"
+#dictkey = "d300stdd300"
+#style = "ch"
+#arrow = True
+#fitline = True
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Very wide 1.0"
+#dictkey = "d347stdd537"
+#style = "ch"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Right Truncation"
+#dictkey = "d269stdd100"
+#style = "y*"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Left Truncation"
+#dictkey = "d321stdd100"
+#style = "k*"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Large Mu"
+#dictkey = "d430stdd100"
+#style = "cx"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+#
+#legend_str = "Small Mu"
+#dictkey = "d167stdd100"
+#style = "kx"
+#arrow = False
+#fitline = False
+#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
 
 
 if use_lims:

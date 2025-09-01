@@ -223,6 +223,14 @@ Q_wd2_out = np.load(f"Q_d317stdd252_{tailout}.npz")
 M_wd2_out = np.load(f"M_d317stdd252_{tailout}.npz")
 Q_vwd2_out = np.load(f"Q_d347stdd537_{tailout}.npz")
 M_vwd2_out = np.load(f"M_d347stdd537_{tailout}.npz")
+Q_nr3_in = np.load(f"Q_mono_d250stdd25_{tailin}.npz")
+M_nr3_in = np.load(f"M_mono_d250stdd25_{tailin}.npz")
+Q_md3_in = np.load(f"Q_mono_d271stdd121_{tailin}.npz")
+M_md3_in = np.load(f"M_mono_d271stdd121_{tailin}.npz")
+Q_wd3_in = np.load(f"Q_mono_d317stdd252_{tailin}.npz")
+M_wd3_in = np.load(f"M_mono_d317stdd252_{tailin}.npz")
+Q_vwd3_in = np.load(f"Q_mono_d347stdd537_{tailin}.npz")
+M_vwd3_in = np.load(f"M_mono_d347stdd537_{tailin}.npz")
 
 dir_list_nr = [
 	"uStar030_300log50_0_2650_300",
@@ -328,7 +336,11 @@ Q_rslt = {
 	f"d250stdd25_{tailout}": Q_nr2_out,
 	f"d271stdd121_{tailout}": Q_md2_out,
 	f"d317stdd252_{tailout}": Q_wd2_out,
-	f"d347stdd537_{tailout}": Q_vwd2_out
+	f"d347stdd537_{tailout}": Q_vwd2_out,
+	f"d250stdd25_m_{tailin}": Q_nr3_in,
+	f"d271stdd121_m_{tailin}": Q_md3_in,
+	f"d317stdd252_m_{tailin}": Q_wd3_in,
+	f"d347stdd537_m_{tailin}": Q_vwd3_in,
 }
 
 # 绘图
@@ -659,7 +671,11 @@ M_rslt = {
 	f"d430stdd100_{tailin}": M_lm,
 	f"d167stdd100_{tailin}": M_sm,
 	f"d269stdd100_{tailin}": M_rt,
-	f"d321stdd100_{tailin}": M_lt
+	f"d321stdd100_{tailin}": M_lt,
+	f"d250stdd25_m_{tailin}": M_nr3_in,
+	f"d271stdd121_m_{tailin}": M_md3_in,
+	f"d317stdd252_m_{tailin}": M_wd3_in,
+	f"d347stdd537_m_{tailin}": M_vwd3_in,
 }
 
 legend_str = "NR1"
@@ -716,6 +732,10 @@ k30 = -M_rslt[f"d430stdd100_{tailin}"]["fit"][1]/M_rslt[f"d430stdd100_{tailin}"]
 k31 = -M_rslt[f"d167stdd100_{tailin}"]["fit"][1]/M_rslt[f"d167stdd100_{tailin}"]["fit"][0]
 k40 = -M_rslt[f"d269stdd100_{tailin}"]["fit"][1]/M_rslt[f"d269stdd100_{tailin}"]["fit"][0]
 k41 = -M_rslt[f"d321stdd100_{tailin}"]["fit"][1]/M_rslt[f"d321stdd100_{tailin}"]["fit"][0]
+k51 = -M_rslt[f"d250stdd25_m_{tailin}"]["fit"][1]/M_rslt[f"d250stdd25_m_{tailin}"]["fit"][0]
+k52 = -M_rslt[f"d271stdd121_m_{tailin}"]["fit"][1]/M_rslt[f"d271stdd121_m_{tailin}"]["fit"][0]
+k53 = -M_rslt[f"d317stdd252_m_{tailin}"]["fit"][1]/M_rslt[f"d317stdd252_m_{tailin}"]["fit"][0]
+k54 = -M_rslt[f"d347stdd537_m_{tailin}"]["fit"][1]/M_rslt[f"d347stdd537_m_{tailin}"]["fit"][0]
 k_list = [k0, k1, k2, k3]
 ks_array = np.array([ks0, ks1, ks2, ks3])
 ks_array = ks_array
@@ -734,12 +754,15 @@ x3 = np.array([0.3246, 0.3246])
 k3_array = np.array([k30, k31])
 x4 = np.array([0.3246, 0.3246])
 k4_array = np.array([k40, k41])
+x5 = np.array([0.1, 0.4, 0.7, 1])
+k5_array = np.array([k51, k52, k53, k54])
 inset_ax.plot(x, k_array, 'kx-', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 1')
 #inset_ax.plot(x, ks_array, 'y*-', markersize=marker_size_in, markeredgewidth=marker_width, label='Relative $k_s$')
 inset_ax.plot(x1, k1_array, 'y*-', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 2')
 #inset_ax.plot(x2, k2_array, 'ko', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 3')
 #inset_ax.plot(x3, k3_array, 'k^', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 4')
 #inset_ax.plot(x4, k4_array, 'ks', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 5')
+inset_ax.plot(x5, k5_array, 'kD', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 6')
 
 inset_ax.xaxis.tick_top()
 inset_ax.xaxis.set_label_position("top")
