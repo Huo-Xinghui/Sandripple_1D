@@ -62,6 +62,23 @@ def read_profile_file(folder_path: str) -> list[np.ndarray]:
 		time_step_data.append(current_data)
 	return time_step_data
 
+def read_d_file(folder_path: str) -> list[np.ndarray]:
+	"""读取粒径文件"""
+	file_path = os.path.join(folder_path, "d_in_air.dat")
+	results = read_file(file_path)
+	index_with_variables = find_indices_with_keyword(results, "variables")
+	dm_list = []
+	d50_list = []
+	d90_list = []
+	index1 = index_with_variables[0] + 1
+	lines = results[index1:]
+	for line in lines:
+		values = [float(num) for num in line.split()]
+		dm_list.append(values[1])
+		d50_list.append(values[2])
+		d90_list.append(values[3])
+	return dm_list, d50_list, d90_list
+
 def define_file_path(OS_name: str) -> str:
 	"""定义文件路径"""
 	if OS_name == 'l':
@@ -160,9 +177,9 @@ if __name__ == '__main__':
 	interval = 60 # 源文件输出时间间隔
 	start = 120 # 起始时间
 	end = 300 # 终止时间
-	temporal = False # 是否输出时间序列数据
+	temporal = True # 是否输出时间序列数据
 	semi_log = True # 是否使用半对数坐标
-	output = 0 # 输出数据类型，0代表u, 1代表tau_p, 2代表tau_f, 3代表F_p, 4代表phi_p, 5代表Sh
+	output = 2 # 输出数据类型，0代表u, 1代表tau_p, 2代表tau_f, 3代表F_p, 4代表phi_p, 5代表Sh
 	location = 0 # 输出数据所在高度，0代表床面，-1代表顶面, valid when temporal is True
 	kapa = 0.42
 	rhof = 1.263
@@ -212,22 +229,22 @@ if __name__ == '__main__':
 		#21: "uStar045_300log100_0_2650_300",
 		#22: "uStar055_300log100_0_2650_300",
 		#23: "uStar065_300log100_0_2650_300",
-		8: "uStar030_300log200_0_2650_300",
-		9: "uStar040_300log200_0_2650_300",
-		10: "uStar050_300log200_0_2650_300",
-		11: "uStar060_300log200_0_2650_300",
-		24: "uStar035_300log200_0_2650_300",
-		25: "uStar045_300log200_0_2650_300",
-		26: "uStar055_300log200_0_2650_300",
-		27: "uStar065_300log200_0_2650_300",
-		#12: "uStar030_300log300_0_2650_300",
-		#13: "uStar040_300log300_0_2650_300",
-		#14: "uStar050_300log300_0_2650_300",
-		#15: "uStar060_300log300_0_2650_300",
-		#28: "uStar035_300log300_0_2650_300",
-		#29: "uStar045_300log300_0_2650_300",
-		#30: "uStar055_300log300_0_2650_300",
-		#31: "uStar065_300log300_0_2650_300",
+		#8: "uStar030_300log200_0_2650_300",
+		#9: "uStar040_300log200_0_2650_300",
+		#10: "uStar050_300log200_0_2650_300",
+		#11: "uStar060_300log200_0_2650_300",
+		#24: "uStar035_300log200_0_2650_300",
+		#25: "uStar045_300log200_0_2650_300",
+		#26: "uStar055_300log200_0_2650_300",
+		#27: "uStar065_300log200_0_2650_300",
+		12: "uStar030_300log300_0_2650_300",
+		13: "uStar040_300log300_0_2650_300",
+		14: "uStar050_300log300_0_2650_300",
+		15: "uStar060_300log300_0_2650_300",
+		28: "uStar035_300log300_0_2650_300",
+		29: "uStar045_300log300_0_2650_300",
+		30: "uStar055_300log300_0_2650_300",
+		31: "uStar065_300log300_0_2650_300",
 		#32: "uStar040_430log100_0_2650_300",
 		#33: "uStar050_430log100_0_2650_300",
 		#34: "uStar060_430log100_0_2650_300",
@@ -237,18 +254,37 @@ if __name__ == '__main__':
 		#38: "uStar030_269log100_0_2650_300",
 		#39: "uStar040_269log100_0_2650_300",
 		#40: "uStar050_269log100_0_2650_300",
-		#50: "uStar035_269log100_0_2650_300",
-		#51: "uStar045_269log100_0_2650_300",
-		#52: "uStar055_269log100_0_2650_300"
 		#41: "uStar030_321log100_0_2650_300",
 		#42: "uStar040_321log100_0_2650_300",
 		#43: "uStar050_321log100_0_2650_300",
 		#44: "uStar030_240log50_0_2650_300",
-	#	45: "uStar035_240log50_0_2650_300",
-	#	46: "uStar040_240log50_0_2650_300",
-	#	47: "uStar045_240log50_0_2650_300",
+		#45: "uStar035_240log50_0_2650_300",
+		#46: "uStar040_240log50_0_2650_300",
+		#47: "uStar045_240log50_0_2650_300",
 		#48: "uStar050_240log50_0_2650_300",
-	#	49: "uStar055_240log50_0_2650_300",
+		#49: "uStar055_240log50_0_2650_300",
+		#50: "uStar035_269log100_0_2650_300",
+		#51: "uStar045_269log100_0_2650_300",
+		#52: "uStar055_269log100_0_2650_300",
+		#53: "uStar040_400log50_0_2650_300",
+		#54: "uStar050_400log50_0_2650_300",
+		#55: "uStar060_400log50_0_2650_300",
+		#56: "uStar030_250log25_0_2650_300",
+		#57: "uStar040_250log25_0_2650_300",
+		#58: "uStar050_250log25_0_2650_300",
+		#59: "uStar060_250log25_0_2650_300",
+		#60: "uStar030_271log121_0_2650_300",
+		#61: "uStar040_271log121_0_2650_300",
+		#62: "uStar050_271log121_0_2650_300",
+		#63: "uStar060_271log121_0_2650_300",
+		#64: "uStar030_317log252_0_2650_300",
+		#65: "uStar040_317log252_0_2650_300",
+		#66: "uStar050_317log252_0_2650_300",
+		#67: "uStar060_317log252_0_2650_300",
+		#68: "uStar030_347log537_0_2650_300",
+		#69: "uStar040_347log537_0_2650_300",
+		#70: "uStar050_347log537_0_2650_300",
+		#71: "uStar060_347log537_0_2650_300"
 	}
 
 	# 定义文件路径
@@ -257,10 +293,14 @@ if __name__ == '__main__':
 	# 读取廓线数据
 	time_averaged_data = []
 	profile_list = []
+	dm_case_list = []
 	for case in tqdm(case_dict.values(), desc="Processing", unit="case"):
 		case_folder = f"{working_dir}/{case}/Field"
 		case_data = read_profile_file(case_folder)
 		case_parameters = extract_case_parameters(case, nu)
+		case_folder = f"{working_dir}/{case}"
+		dm_list, d50_list, d90_list = read_d_file(case_folder)
+		dm_case_list.append(np.mean(dm_list))
 		rho_p = case_parameters['rho_p']
 		g_hat = case_parameters['g_hat']
 		dia = case_parameters['dia']
@@ -277,11 +317,12 @@ if __name__ == '__main__':
 				time_step = t
 				time_index = (time_step - start) // interval
 				current_data = case_data[time_index]
+				current_dm = dm_list[time_index]
 				if output < 5:
 					point = current_data[location, output + 1]
 				elif output == 5:
 					tau_f = current_data[location, 3]
-					point = tau_f #/(rho_p*g_hat*dia)
+					point = tau_f/(rho_p*g_hat*current_dm)
 					#point = np.sqrt(tau_f/1.263)
 				else:
 					print("Invalid output type.")
@@ -334,19 +375,21 @@ if __name__ == '__main__':
 					cross_x.append(x_cross)
 					cross_y.append(y_cross)
 
-	# 计算平均交点坐标
-	z_f = np.mean(cross_x)
-	u_f = np.mean(cross_y)
-	print("平均交点横坐标：", z_f)
-	print("平均交点纵坐标：", u_f)
-	H = heights[-1]
-	z_0 = d/30
-	alpha1 = kapa/np.log(H/z_0)
-	alpha2 = kapa/np.log(H/z_f)
-	u_d = alpha1*alpha2*u_f/(alpha2 - alpha1)
-	S_d = rhof*u_d**2/(rho_p*g*d)
-	print("u_d =", u_d, "m/s")
-	print("S_d =", S_d)
+	if not temporal:
+		case_averaged_dm = np.mean(dm_case_list)
+		# 计算平均交点坐标
+		z_f = np.mean(cross_x)
+		u_f = np.mean(cross_y)
+		print("平均交点横坐标：", z_f)
+		print("平均交点纵坐标：", u_f)
+		H = heights[-1]
+		z_0 = d/30
+		alpha1 = kapa/np.log(H/z_0)
+		alpha2 = kapa/np.log(H/z_f)
+		u_d = alpha1*alpha2*u_f/(alpha2 - alpha1)
+		S_d = rhof*u_d**2/(rho_p*g*case_averaged_dm)
+		print("u_d =", u_d, "m/s")
+		print("S_d =", S_d)
 
 	x_str, y_str = xy_label(temporal, output)
 	plt.xlabel(x_str)

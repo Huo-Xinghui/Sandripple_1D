@@ -108,6 +108,8 @@ def get_entrys(y_axis, nondim) -> tuple:
 		(0, False): "Q",
 		(1, True): "M_star",
 		(1, False): "M",
+		(2, False): "E",
+		(2, True): "E",
 	}
 
 	# 获取x轴和y轴的条目
@@ -120,17 +122,14 @@ def get_entrys(y_axis, nondim) -> tuple:
 
 	return x_entry, y_entry
 
-def process_data(lines, y_axis, parameters) -> list:
+def process_data(lines, y_axis) -> list:
 	"""将数据存储到data列表中, data中的元素为dict, dict的key包含{t, tstar, Q或M..}"""
 	data = []
-	d = parameters["d"] # 用于无量纲化计算
-	g_hat = parameters["g_hat"] # 用于无量纲化计算
 
 	def creat_entry(values, keys):
 		"""创建条目并存储数据"""
 		entry = {
 			"t": float(values[0]),
-			"t_star": float(values[0]) / (d/g_hat)**0.5
 		}
 		entry.update({key: float(values[i+1]) for i, key in enumerate(keys)})
 		return entry
@@ -138,7 +137,9 @@ def process_data(lines, y_axis, parameters) -> list:
 	# 列表条目字典
 	y_axis_keys = {
 		0: ["Q", "Q_c", "Q_nc", "Q_star", "Q_c_star", "Q_nc_star"],
-		1: ["M", "M_c", "M_nc", "M_star", "M_c_star", "M_nc_star"]
+		1: ["M", "M_c", "M_nc", "M_star", "M_c_star", "M_nc_star"],
+		2: ["E", "E_c", "E_nc"],
+		3: ["d", "d50", "d90"]
 	}
 	# 获取当前y_axis条件下数据列表的各条目名称
 	keys = y_axis_keys.get(y_axis)
@@ -169,7 +170,7 @@ def rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, 
 	x = rslts_dict[dictkey]["x"]
 	y = rslts_dict[dictkey]["y"]
 	x_max = lims["x_max"]
-	ax.plot(x, y, style, markersize=sizes["marker"], label=legend_str)
+	ax.loglog(x, y, style, markersize=sizes["marker"], label=legend_str)
 	if fitline:
 		coeffs = rslts_dict[dictkey]["fit"]
 		fit_line = np.poly1d(coeffs)
@@ -202,25 +203,26 @@ rhof = 1.263
 rhop = 2650
 s = rhop / rhof
 g = 9.81 * (1.0 - 1.0 / s)
-y_axis = 1 # y轴类型：0为颗粒通量，1为空中颗粒承载量
+y_axis = 0 # y轴类型：0为颗粒通量，1为空中颗粒承载量, 2为颗粒总能量
 direction = 0 # 统计量方向：0为x方向，1为z方向
 nondim = True # 是否无量纲化
-nondim_d = 0 # 无量纲化所使用的粒径: 0为dm, 1为d50, 2为d90
+nondim_d = 3 # 无量纲化所使用的粒径: 0为dm, 1为d50, 2为d90, 3为平均空中粒径, 4为空中d50, 5为空中d90
 comparison = True # 是否与他人行比较, only Q*
 start = 60 # 统计量平均值的开始时间
 end = 240 # 统计量平均值的结束时间
+use_lims = False # 是否使用坐标轴限制
 lims = {
 	"x_min": 0,
-	"x_max": 0.06,
+	"x_max": 0.14,
 	"y_min": 0,
-	"y_max": 0.06,
+	"y_max": 0.1,
 }
 
 # 操作系统
 sys_OS = "w" # "w" for Windows, "l" for Linux
 if sys_OS == "w":
 	# Windows
-	working_dir = "E:/Data/Q_on_ero_bed"
+	working_dir = "E:/Data/Q_on_flat_bed"
 	#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll13"
 elif sys_OS == "l":
 	# Linux
@@ -237,8 +239,8 @@ case_dict1 = {
 	3: "uStar045_300log50_0_2650_300",
 	4: "uStar050_300log50_0_2650_300",
 	5: "uStar055_300log50_0_2650_300",
-	#6: "uStar060_300log50_0_2650_300",
-	#7: "uStar065_300log50_0_2650_300",
+	6: "uStar060_300log50_0_2650_300",
+	7: "uStar065_300log50_0_2650_300",
 }
 case_dict2 = {
 	0: "uStar030_300log100_0_2650_300",
@@ -247,8 +249,8 @@ case_dict2 = {
 	3: "uStar045_300log100_0_2650_300",
 	4: "uStar050_300log100_0_2650_300",
 	5: "uStar055_300log100_0_2650_300",
-	#6: "uStar060_300log100_0_2650_300",
-	#7: "uStar065_300log100_0_2650_300",
+	6: "uStar060_300log100_0_2650_300",
+	7: "uStar065_300log100_0_2650_300",
 }
 case_dict3 = {
 	0: "uStar030_300log200_0_2650_300",
@@ -257,8 +259,8 @@ case_dict3 = {
 	3: "uStar045_300log200_0_2650_300",
 	4: "uStar050_300log200_0_2650_300",
 	5: "uStar055_300log200_0_2650_300",
-	#6: "uStar060_300log200_0_2650_300",
-	#7: "uStar065_300log200_0_2650_300",
+	6: "uStar060_300log200_0_2650_300",
+	7: "uStar065_300log200_0_2650_300",
 }
 case_dict4 = {
 	0: "uStar030_300log300_0_2650_300",
@@ -267,8 +269,8 @@ case_dict4 = {
 	3: "uStar045_300log300_0_2650_300",
 	4: "uStar050_300log300_0_2650_300",
 	5: "uStar055_300log300_0_2650_300",
-	#6: "uStar060_300log300_0_2650_300",
-	#7: "uStar065_300log300_0_2650_300",
+	6: "uStar060_300log300_0_2650_300",
+	7: "uStar065_300log300_0_2650_300",
 }
 
 case_dict5 = {
@@ -307,16 +309,71 @@ case_dict9 = {
 	5: "uStar055_240log50_0_2650_300",
 }
 
+case_dict10 = {
+	1: "uStar040_400log50_0_2650_300",
+	2: "uStar050_400log50_0_2650_300",
+	3: "uStar060_400log50_0_2650_300"
+}
+
+case_dict11 = {
+	1: "uStar030_250log25_0_2650_300",
+	2: "uStar040_250log25_0_2650_300",
+	3: "uStar050_250log25_0_2650_300",
+	4: "uStar060_250log25_0_2650_300"
+}
+
+case_dict12 = {
+	1: "uStar030_271log121_0_2650_300",
+	2: "uStar040_271log121_0_2650_300",
+	3: "uStar050_271log121_0_2650_300",
+	4: "uStar060_271log121_0_2650_300"
+}
+
+case_dict13 = {
+	1: "uStar030_317log252_0_2650_300",
+	2: "uStar040_317log252_0_2650_300",
+	3: "uStar050_317log252_0_2650_300",
+	4: "uStar060_317log252_0_2650_300"
+}
+
+case_dict14 = {
+	1: "uStar030_347log537_0_2650_300",
+	2: "uStar040_347log537_0_2650_300",
+	3: "uStar050_347log537_0_2650_300",
+	4: "uStar060_347log537_0_2650_300"
+}
+
+case_dict15 = {
+	1: "uStar030_290log97_0_2650_300",
+	2: "uStar040_290log97_0_2650_300",
+	3: "uStar050_290log97_0_2650_300",
+	4: "uStar060_290log97_0_2650_300"
+}
+
+case_dict16 = {
+	1: "uStar030_197log65_0_2650_300",
+	2: "uStar040_197log65_0_2650_300",
+	3: "uStar050_197log65_0_2650_300",
+	4: "uStar060_197log65_0_2650_300"
+}
+
 cases_dict = {
 	"d300stdd50": case_dict1,
 	"d300stdd100": case_dict2,
 	"d300stdd200": case_dict3,
 	"d300stdd300": case_dict4,
-	#"d430stdd100": case_dict5,
-	#"d167stdd100": case_dict6,
-	#"d269stdd100": case_dict7,
-	#"d321stdd100": case_dict8,
-	#"d240stdd50": case_dict9,
+	"d430stdd100": case_dict5,
+	"d167stdd100": case_dict6,
+	"d269stdd100": case_dict7,
+	"d321stdd100": case_dict8,
+	"d240stdd50": case_dict9,
+	"d400stdd50": case_dict10,
+	"d250stdd25": case_dict11,
+	"d271stdd121": case_dict12,
+	"d317stdd252": case_dict13,
+	"d347stdd537": case_dict14,
+	"d290stdd97": case_dict15,
+	"d197stdd65": case_dict16
 }
 
 d_dict ={
@@ -329,6 +386,13 @@ d_dict ={
 	"d269stdd100": {"d50": 2.68e-4, "d90": 3.61e-4},
 	"d321stdd100": {"d50": 3.01e-4, "d90": 4.44e-4},
 	"d240stdd50": {"d50": 2.35e-4, "d90": 3.06e-4},
+	"d400stdd50": {"d50": 3.97e-4, "d90": 4.66e-4},
+	"d250stdd25": {"d50": 2.48e-4, "d90": 2.82e-4},
+	"d271stdd121": {"d50": 2.50e-4, "d90": 4.15e-4},
+	"d317stdd252": {"d50": 2.65e-4, "d90": 5.84e-4},
+	"d347stdd537": {"d50": 2.81e-4, "d90": 6.85e-4},
+	"d290stdd97": {"d50": 2.75e-4, "d90": 4.16e-4},
+	"d197stdd65": {"d50": 1.86e-4, "d90": 2.80e-4}
 }
 
 # Creyssels et al. (2009)的数据
@@ -379,8 +443,10 @@ output_file_dict = {
 	"Q_x": "mass_flux_x.dat",
 	"Q_z": "mass_flux_z.dat",
 	"M": "carrying_capacity.dat",
+	"E": "total_energy.dat",
+	"d": "d_in_air.dat"
 }
-output_list = ["Q_", "M"]
+output_list = ["Q_", "M", "E"]
 direction_list = ["x", "z"]
 output_file_key = output_list[y_axis]
 dir_file_key = direction_list[direction]
@@ -393,11 +459,13 @@ label_dict = {
 	"Q_star": r"$Q^\ast$",
 	"M": r"$M \, (\mathrm{kg/m^2})$",
 	"M_star": r"$M^\ast$",
+	"E": r"$E \, (\mathrm{J})$",
 }
 x_entry, y_entry = get_entrys(y_axis, nondim)
 x_label = label_dict[x_entry]
 y_label = label_dict[y_entry]
 
+tail_list = ["dm", "d50", "d90", "dair", "dair50", "dair90"]
 rslts_dict = {}
 for dictkey, case_dict in cases_dict.items():
 	x_points = []
@@ -407,11 +475,26 @@ for dictkey, case_dict in cases_dict.items():
 		tuple_val = read_par_file(read_file_path)
 		parameters = tuple_val[0]
 		lines = tuple_val[2]
-		data = process_data(lines, y_axis, parameters)
+		data = process_data(lines, y_axis)
 		x_point = parameters[x_entry]
 		y_list = [case[y_entry] for case in data if case["t"] >= start and case["t"] <= end]
 		y_array = np.array(y_list)
-		if nondim_d == 1:
+
+		if nondim_d >= 3:
+			if nondim_d == 3:
+				case_key = "d"
+			elif nondim_d == 4:
+				case_key = "d50"
+			elif nondim_d == 5:
+				case_key = "d90"
+			read_file_path = os.path.join(working_dir, case_name, output_file_dict["d"])
+			tuple_val = read_par_file(read_file_path)
+			lines = tuple_val[2]
+			data = process_data(lines, 3)
+			d_list = [case[case_key] for case in data if case["t"] >= start and case["t"] <= end]
+			d_array = np.array(d_list)
+
+		if nondim and nondim_d == 1:
 			d_old = parameters["d"]
 			d = d_dict[dictkey]["d50"]
 			x_point = x_point * d_old / d
@@ -422,7 +505,7 @@ for dictkey, case_dict in cases_dict.items():
 				nond_old = rhop * d_old
 				nond = rhop * d
 			y_array = y_array * nond_old / nond
-		elif nondim_d == 2:
+		elif nondim and nondim_d == 2:
 			d_old = parameters["d"]
 			d = d_dict[dictkey]["d90"]
 			x_point = x_point * d_old / d
@@ -433,12 +516,27 @@ for dictkey, case_dict in cases_dict.items():
 				nond_old = rhop * d_old
 				nond = rhop * d
 			y_array = y_array * nond_old / nond
+		elif nondim and nondim_d == 3:
+			d_old = parameters["d"]
+			d = d_array.mean() #+ 3.0e-5
+			x_point = x_point * d_old / d
+			if y_axis == 0:
+				nond_old = rhop * d_old * np.sqrt(s * g * d_old)
+				nond = rhop * d * np.sqrt(s * g * d)
+			else:
+				nond_old = rhop * d_old
 		y_point = np.mean(y_array)
 		x_points.append(x_point)
 		y_points.append(y_point)
 	# 计算拟合曲线
 	coeffs = np.polyfit(x_points, y_points, 1)
 	rslts_dict[dictkey] = {"x": np.array(x_points), "y": np.array(y_points), "fit": coeffs}
+	tail = tail_list[nondim_d]
+	if y_axis == 0:
+		file_name = f"Q_{dictkey}_{tail}.npz"
+	elif y_axis == 1:
+		file_name = f"M_{dictkey}_{tail}.npz"
+	np.savez(file_name, **rslts_dict[dictkey])
 
 # 绘图
 fig = plt.figure(1, figsize=(8, 6), constrained_layout=True)
@@ -474,25 +572,53 @@ arrow = True
 fitline = True
 rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
 
-#legend_str = "Narrow 240"
-#dictkey = "d240stdd50"
-#style = "rv"
-#arrow = True
-#fitline = True
-#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+legend_str = "Narrow 240"
+dictkey = "d240stdd50"
+style = "rv"
+arrow = False
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+
+legend_str = "Narrow 400"
+dictkey = "d400stdd50"
+style = "rv"
+arrow = False
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+
+legend_str = "Narrow 0.1"
+dictkey = "d250stdd25"
+style = "rv"
+arrow = False
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
 
 legend_str = "Medium"
 dictkey = "d300stdd100"
 style = "g^"
 arrow = False
-fitline = True
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+
+legend_str = "Medium 0.4"
+dictkey = "d271stdd121"
+style = "g^"
+arrow = False
+fitline = False
 rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
 
 legend_str = "Wide"
 dictkey = "d300stdd200"
 style = "bs"
-arrow = True
-fitline = True
+arrow = False
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+
+legend_str = "Wide 0.7"
+dictkey = "d317stdd252"
+style = "bs"
+arrow = False
+fitline = False
 rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
 
 legend_str = "Very wide"
@@ -502,37 +628,45 @@ arrow = True
 fitline = True
 rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
 
-#legend_str = "Right Truncation"
-#dictkey = "d269stdd100"
-#style = "y*"
-#arrow = True
-#fitline = True
-#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-#
-#legend_str = "Left Truncation"
-#dictkey = "d321stdd100"
-#style = "k*"
-#arrow = True
-#fitline = True
-#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-#
-#legend_str = "Large Mu"
-#dictkey = "d430stdd100"
-#style = "cx"
-#arrow = True
-#fitline = True
-#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
-#
-#legend_str = "Small Mu"
-#dictkey = "d167stdd100"
-#style = "kx"
-#arrow = True
-#fitline = True
-#rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+legend_str = "Very wide 1.0"
+dictkey = "d347stdd537"
+style = "ch"
+arrow = False
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+
+legend_str = "Right Truncation"
+dictkey = "d269stdd100"
+style = "y*"
+arrow = False
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+
+legend_str = "Left Truncation"
+dictkey = "d321stdd100"
+style = "k*"
+arrow = False
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+
+legend_str = "Large Mu"
+dictkey = "d430stdd100"
+style = "cx"
+arrow = False
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
+
+legend_str = "Small Mu"
+dictkey = "d167stdd100"
+style = "kx"
+arrow = False
+fitline = False
+rslt_plot(ax, rslts_dict, dictkey, legend_str, fitline, arrow, lims, sizes, style)
 
 
-ax.set_xlim(lims["x_min"], lims["x_max"])
-ax.set_ylim(lims["y_min"], lims["y_max"])
+if use_lims:
+    ax.set_xlim(lims["x_min"], lims["x_max"])
+    ax.set_ylim(lims["y_min"], lims["y_max"])
 ax.set_xlabel(x_label, fontsize=label_size)
 ax.set_ylabel(y_label, fontsize=label_size)
 ax.tick_params(axis='both', labelsize=ticks_size)

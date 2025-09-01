@@ -152,10 +152,10 @@ def rebound_ez_eq(x, alpha, beta, th):
 
 def rebound_ex_eq(x, alpha, beta, th):
     e_vx = -alpha*np.cos(th) + (alpha + beta)*x**2*np.sin(th)**2*np.cos(th) + (alpha + beta)*x*np.sin(th)**2*np.sqrt(1 - x**2*np.sin(th)**2)
-    e_vz = alpha*np.sin(th) - (alpha + beta)*x**2*np.sin(th)**3 + (alpha + beta)*x*np.sin(th)*np.cos(th)*np.sqrt(1 - x**2*np.sin(th)**2)
-    phi = np.arctan2(e_vz, e_vx)
-    e = np.sqrt(e_vx**2 + e_vz**2)
-    ex = e * np.cos(phi)/np.cos(th)
+    #e_vz = alpha*np.sin(th) - (alpha + beta)*x**2*np.sin(th)**3 + (alpha + beta)*x*np.sin(th)*np.cos(th)*np.sqrt(1 - x**2*np.sin(th)**2)
+    #phi = np.arctan2(e_vz, e_vx)
+    #e = np.sqrt(e_vx**2 + e_vz**2)
+    ex = e_vx/np.cos(th)
     return ex
 
 def calculate_rebound_2D(d1, d2, d3, th, epsilon, nu):
@@ -168,8 +168,19 @@ def calculate_rebound_2D(d1, d2, d3, th, epsilon, nu):
     mu = epsilon*d1**3/(d1**3 + epsilon*d2**3)
     alpha = (1 + epsilon)/(1 + mu) - 1
     beta = 1 - (2/7)*(1 - nu)/(1 + mu)
-    x_min = calculate_x_min(alpha, beta, d1, d2, d3, th)
-    x_max = calculate_x_max(alpha, beta, th)
+    #x_min = calculate_x_min(alpha, beta, d1, d2, d3, th)
+    x_min = (d1 + d3)/((d1 + d2)*np.sin(th)) - (d2 + d3)/(d1 + d2)
+    #x_max = calculate_x_max(alpha, beta, th)
+    x_max = 1.0/np.tan(th)
+    #A = alpha*(x_max - x_min)
+    #k = (alpha + beta)/3.0
+    #B = np.sin(th)**2*(x_max**3 - x_min**3)
+    #C = (1.0 - x_max**2*np.sin(th)**2)**(1.5)
+    #D = (1.0 - x_min**2*np.sin(th)**2)**(1.5)
+    #ex = -A + k*(B - 1.0/np.cos(th)*(C - D))
+    #ex = ex/(x_max - x_min)
+    #ez = A - k*(B + np.cos(th)/np.sin(th)**2*(C - D))
+    #ez = ez/(x_max - x_min)
     if x_min < x_max:
         phi, error = quad(rebound_angle_eq, x_min, x_max, args=(alpha, beta, th))
         phi /= (x_max - x_min)
@@ -214,6 +225,10 @@ def calculate_rebound_2D(d1, d2, d3, th, epsilon, nu):
             ez /= (x_max - x_min)
             ex, error = quad(rebound_ex_eq, x_min, x_max, args=(alpha, beta, th))
             ex /= (x_max - x_min)
+    phi = np.arctan2(ez, ex)
+    e = np.sqrt(ex**2 + ez**2)
+    ecx = ex * np.cos(th)
+    ecz = ez * np.sin(th)
     return phi, e, ecx, ecz, ez, ex
 
 def calculate_rebound_3D(d1, d2, d3, th, epsilon, nu):

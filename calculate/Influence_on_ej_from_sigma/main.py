@@ -237,9 +237,9 @@ ax.plot(sigma_skp, N_array_2, 'bs', markersize=marker_size)
 ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Nej0'], 'r--', linewidth=linewidth)
 ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Nej1'], 'g--', linewidth=linewidth)
 ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Nej2'], 'b--', linewidth=linewidth)
-## y = 1 等值线
+# y = 1 等值线
 #ax.axhline(1, color='k', linestyle='-', linewidth=linewidth)
-ax.set_xlim(0, 1)
+#ax.set_xlim(0, 1)
 #ax.set_ylim(0, 10)
 ax.set_xlabel('$\\sigma_d$', fontsize=label_size)
 ax.set_ylabel('$\\overline{N_{ej}}$', fontsize=label_size)

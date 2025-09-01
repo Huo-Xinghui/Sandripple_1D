@@ -18,7 +18,7 @@
 # ********************************************************************************************************
 
 # 导入必要的库
-import math # 导入数学库
+import numpy as np # 导入numpy库
 import os # 导入操作系统库
 import re # 导入正则表达式库
 from dataclasses import dataclass # 导入dataclass库
@@ -42,7 +42,7 @@ class ParticleData:
 
 	def calculate_mass(self) -> float:
 		"""计算质量"""
-		return math.pi*self.dia**3/6*self.rho
+		return np.pi*self.dia**3/6*self.rho
 
 	def calculate_momentum(self) -> List[float]:
 		"""计算动量"""
@@ -53,6 +53,12 @@ class ParticleData:
 		"""计算能量"""
 		mass = self.calculate_mass()
 		return 0.5*mass*self.vMag**2 + mass*9.8*self.h
+
+	def calculate_incident_ang(self) -> float:
+		"""计算与水平面的夹角"""
+		vxy = np.sqrt(self.vel[0]**2 + self.vel[1]**2)
+		ang = np.arctan2(self.vel[2], vxy)
+		return abs(ang*180/np.pi)
 
 @dataclass
 class TimeStepData:
@@ -82,24 +88,36 @@ class TimeStepData:
 
 	def calculate_dia_in_air(self) -> Dict[str, float]:
 		"""计算空中颗粒平均直径"""
-		dia_sum = 0.0
-		coll_dia_sum = 0.0
-		non_coll_dia_sum = 0.0
-		coll_count = 0
-		non_coll_count = 0
+		dia_list = []
+		coll_dia_list = []
+		non_coll_dia_list = []
 
 		for particle in self.particles:
-			dia_sum += particle.dia
+			dia_list.append(particle.dia)
 			if particle.collNum > 0:
-				coll_dia_sum += particle.dia
-				coll_count += 1
+				coll_dia_list.append(particle.dia)
 			else:
-				non_coll_dia_sum += particle.dia
-				non_coll_count += 1
+				non_coll_dia_list.append(particle.dia)
+		# 颗粒分布
+		# 找到颗粒直径的最大值和最小值
+		dia_min = np.min(dia_list) if len(dia_list) > 0 else 0.0
+		dia_max = np.max(dia_list) if len(dia_list) > 0 else 0.0
+		# 计算颗粒直径的直方图
+		hist, bin_edges = np.histogram(dia_list, bins=50, range=(dia_min, dia_max))
+		bin_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
+		# 归一化
+		hist = hist / np.sum(hist) if np.sum(hist) > 0 else hist
 		return {
-			"total": dia_sum / self.count,
-			"coll": coll_dia_sum / coll_count,
-			"non_coll": non_coll_dia_sum / non_coll_count
+			"total": np.mean(dia_list) if len(dia_list) > 0 else 0.0,
+			"coll": np.mean(coll_dia_list) if len(coll_dia_list) > 0 else 0.0,
+			"non_coll": np.mean(non_coll_dia_list) if len(non_coll_dia_list) > 0 else 0.0,
+			"d90": np.percentile(dia_list, 90) if len(dia_list) > 0 else 0.0,
+			"d50": np.percentile(dia_list, 50) if len(dia_list) > 0 else 0.0,
+			"hist": hist,
+			"bin_centers": bin_centers,
+			"bin_edges": bin_edges,
+			"dmin": dia_min,
+			"dmax": dia_max
 		}
 
 	def calculate_mass_flux(self) -> Dict[str, List[float]]:
@@ -140,6 +158,66 @@ class TimeStepData:
 			"total": total_mass_sum / area,
 			"coll": coll_mass_sum / area,
 			"non_coll": non_coll_mass_sum / area
+		}
+
+	def calculate_incident_angle(self) -> Dict[str, float]:
+		"""计算平均入射角度"""
+		ang_list = []
+		coll_ang_list = []
+		non_coll_ang_list = []
+
+		for particle in self.particles:
+			if particle.h <= particle.dia * 0.5 - 5e-5*particle.vel[2] and particle.vel[2] < 0:
+				ang = particle.calculate_incident_ang()
+				ang_list.append(ang)
+				if particle.collNum > 0:
+					coll_ang_list.append(ang)
+				else:
+					non_coll_ang_list.append(ang)
+		return {
+			"total": np.mean(ang_list) if len(ang_list) > 0 else 0.0,
+			"coll": np.mean(coll_ang_list) if len(coll_ang_list) > 0 else 0.0,
+			"non_coll": np.mean(non_coll_ang_list) if len(non_coll_ang_list) > 0 else 0.0
+		}
+
+	def calculate_incident_velocity(self) -> Dict[str, float]:
+		"""计算平均入射速度"""
+		vel_list = []
+		coll_vel_list = []
+		non_coll_vel_list = []
+
+		for particle in self.particles:
+			if particle.h <= particle.dia * 0.5 - 5e-5*particle.vel[2] and particle.vel[2] < 0:
+				vel = particle.vMag
+				vel_list.append(vel)
+				if particle.collNum > 0:
+					coll_vel_list.append(vel)
+				else:
+					non_coll_vel_list.append(vel)
+		return {
+			"total": np.mean(vel_list) if len(vel_list) > 0 else 0.0,
+			"coll": np.mean(coll_vel_list) if len(coll_vel_list) > 0 else 0.0,
+			"non_coll": np.mean(non_coll_vel_list) if len(non_coll_vel_list) > 0 else 0.0
+		}
+
+	def calculate_incident_diameter(self) -> Dict[str, float]:
+		"""计算平均入射直径"""
+		dia_list = []
+		coll_dia_list = []
+		non_coll_dia_list = []
+
+		for particle in self.particles:
+			if particle.h <= particle.dia * 0.5 - 5e-5*particle.vel[2] and particle.vel[2] < 0:
+				dia = particle.dia
+				dia_list.append(dia)
+				if particle.collNum > 0:
+					coll_dia_list.append(dia)
+				else:
+					non_coll_dia_list.append(dia)
+		return {
+			"total": np.mean(dia_list) if len(dia_list) > 0 else 0.0,
+			"coll": np.mean(coll_dia_list) if len(coll_dia_list) > 0 else 0.0,
+			"non_coll": np.mean(non_coll_dia_list) if len(non_coll_dia_list) > 0 else 0.0
 		}
 
 @dataclass
@@ -210,7 +288,7 @@ def parse_particle_data(lines: List[str]) -> List[ParticleData]:
 			z = 0.0
 		loc=[x, y, z]
 		try:
-			u = float(columns[3])
+			u = float(columns[3]) * 1.2 # ekalhxh
 		except ValueError:
 			u = 0.0
 		try:
@@ -329,63 +407,90 @@ if __name__ == "__main__":
 	if linux_flag:
 		working_dir = "/home/ekalhxh/ripple/coll13"
 	else:
-		working_dir = "E:/Data/Q_on_ero_bed"
+		working_dir = "E:/Data/Q_on_flat_bed"
 
 	# 定义文件名字典
 	case_dict = {
 		0: "uStar030_300log50_0_2650_300",
 		1: "uStar040_300log50_0_2650_300",
 		2: "uStar050_300log50_0_2650_300",
-		#3: "uStar060_300log50_0_2650_300",
-		#4: "uStar030_300log100_0_2650_300",
-		#5: "uStar040_300log100_0_2650_300",
-		#6: "uStar050_300log100_0_2650_300",
-		#7: "uStar060_300log100_0_2650_300",
-		#8: "uStar030_300log200_0_2650_300",
-		#9: "uStar040_300log200_0_2650_300",
-		#10: "uStar050_300log200_0_2650_300",
-		#11: "uStar060_300log200_0_2650_300",
+		3: "uStar060_300log50_0_2650_300",
+		4: "uStar030_300log100_0_2650_300",
+		5: "uStar040_300log100_0_2650_300",
+		6: "uStar050_300log100_0_2650_300",
+		7: "uStar060_300log100_0_2650_300",
+		8: "uStar030_300log200_0_2650_300",
+		9: "uStar040_300log200_0_2650_300",
+		10: "uStar050_300log200_0_2650_300",
+		11: "uStar060_300log200_0_2650_300",
 		12: "uStar030_300log300_0_2650_300",
 		13: "uStar040_300log300_0_2650_300",
 		14: "uStar050_300log300_0_2650_300",
-		#15: "uStar060_300log300_0_2650_300",
+		15: "uStar060_300log300_0_2650_300",
 		16: "uStar035_300log50_0_2650_300",
 		17: "uStar045_300log50_0_2650_300",
 		18: "uStar055_300log50_0_2650_300",
-		#19: "uStar065_300log50_0_2650_300",
-		#20: "uStar035_300log100_0_2650_300",
-		#21: "uStar045_300log100_0_2650_300",
-		#22: "uStar055_300log100_0_2650_300",
-		#23: "uStar065_300log100_0_2650_300",
-		#24: "uStar035_300log200_0_2650_300",
-		#25: "uStar045_300log200_0_2650_300",
-		#26: "uStar055_300log200_0_2650_300",
-		#27: "uStar065_300log200_0_2650_300",
+		19: "uStar065_300log50_0_2650_300",
+		20: "uStar035_300log100_0_2650_300",
+		21: "uStar045_300log100_0_2650_300",
+		22: "uStar055_300log100_0_2650_300",
+		23: "uStar065_300log100_0_2650_300",
+		24: "uStar035_300log200_0_2650_300",
+		25: "uStar045_300log200_0_2650_300",
+		26: "uStar055_300log200_0_2650_300",
+		27: "uStar065_300log200_0_2650_300",
 		28: "uStar035_300log300_0_2650_300",
 		29: "uStar045_300log300_0_2650_300",
 		30: "uStar055_300log300_0_2650_300",
-		#31: "uStar065_300log300_0_2650_300",
-		#32: "uStar040_430log100_0_2650_300",
-		#33: "uStar050_430log100_0_2650_300",
-		#34: "uStar060_430log100_0_2650_300",
-		#35: "uStar030_167log100_0_2650_300",
-		#36: "uStar040_167log100_0_2650_300",
-		#37: "uStar050_167log100_0_2650_300",
-		#38: "uStar030_269log100_0_2650_300",
-		#39: "uStar040_269log100_0_2650_300",
-		#40: "uStar050_269log100_0_2650_300",
-		#41: "uStar030_321log100_0_2650_300",
-		#42: "uStar040_321log100_0_2650_300",
-		#43: "uStar050_321log100_0_2650_300",
-		#44: "uStar030_240log50_0_2650_300",
-		#45: "uStar035_240log50_0_2650_300",
-		#46: "uStar040_240log50_0_2650_300",
-		#47: "uStar045_240log50_0_2650_300",
-		#48: "uStar050_240log50_0_2650_300",
-		#49: "uStar055_240log50_0_2650_300",
-		#50: "uStar035_269log100_0_2650_300",
-		#51: "uStar045_269log100_0_2650_300",
-		#52: "uStar055_269log100_0_2650_300"
+		31: "uStar065_300log300_0_2650_300",
+		32: "uStar040_430log100_0_2650_300",
+		33: "uStar050_430log100_0_2650_300",
+		34: "uStar060_430log100_0_2650_300",
+		35: "uStar030_167log100_0_2650_300",
+		36: "uStar040_167log100_0_2650_300",
+		37: "uStar050_167log100_0_2650_300",
+		38: "uStar030_269log100_0_2650_300",
+		39: "uStar040_269log100_0_2650_300",
+		40: "uStar050_269log100_0_2650_300",
+		41: "uStar030_321log100_0_2650_300",
+		42: "uStar040_321log100_0_2650_300",
+		43: "uStar050_321log100_0_2650_300",
+		44: "uStar030_240log50_0_2650_300",
+		45: "uStar035_240log50_0_2650_300",
+		46: "uStar040_240log50_0_2650_300",
+		47: "uStar045_240log50_0_2650_300",
+		48: "uStar050_240log50_0_2650_300",
+		49: "uStar055_240log50_0_2650_300",
+		50: "uStar035_269log100_0_2650_300",
+		51: "uStar045_269log100_0_2650_300",
+		52: "uStar055_269log100_0_2650_300",
+		53: "uStar040_400log50_0_2650_300",
+		54: "uStar050_400log50_0_2650_300",
+		55: "uStar060_400log50_0_2650_300",
+		56: "uStar030_250log25_0_2650_300",
+		57: "uStar040_250log25_0_2650_300",
+		58: "uStar050_250log25_0_2650_300",
+		59: "uStar060_250log25_0_2650_300",
+		60: "uStar030_271log121_0_2650_300",
+		61: "uStar040_271log121_0_2650_300",
+		62: "uStar050_271log121_0_2650_300",
+		63: "uStar060_271log121_0_2650_300",
+		64: "uStar030_317log252_0_2650_300",
+		65: "uStar040_317log252_0_2650_300",
+		66: "uStar050_317log252_0_2650_300",
+		67: "uStar060_317log252_0_2650_300",
+		68: "uStar030_347log537_0_2650_300",
+		69: "uStar040_347log537_0_2650_300",
+		70: "uStar050_347log537_0_2650_300",
+		71: "uStar060_347log537_0_2650_300",
+		72: "uStar030_290log97_0_2650_300",
+		73: "uStar040_290log97_0_2650_300",
+		74: "uStar050_290log97_0_2650_300",
+		75: "uStar060_290log97_0_2650_300",
+		76: "uStar030_197log65_0_2650_300",
+		77: "uStar040_197log65_0_2650_300",
+		78: "uStar050_197log65_0_2650_300",
+		79: "uStar060_197log65_0_2650_300",
 	}
 
 	for folder_name in tqdm(case_dict.values(), desc="Processing", unit="case"):
@@ -441,6 +546,9 @@ if __name__ == "__main__":
 
 		# 文件路径
 		d_in_air_file = os.path.join(working_dir, f"{folder_name}/d_in_air.dat")
+		incident_angle_file = os.path.join(working_dir, f"{folder_name}/incident_angle.dat")
+		incident_velocity_file = os.path.join(working_dir, f"{folder_name}/incident_velocity.dat")
+		incident_diameter_file = os.path.join(working_dir, f"{folder_name}/incident_diameter.dat")
 		mass_flux_x_file = os.path.join(working_dir, f"{folder_name}/mass_flux_x.dat")
 		mass_flux_y_file = os.path.join(working_dir, f"{folder_name}/mass_flux_y.dat")
 		mass_flux_z_file = os.path.join(working_dir, f"{folder_name}/mass_flux_z.dat")
@@ -455,7 +563,10 @@ if __name__ == "__main__":
 			4: mass_flux_z_file,
 			5: carrying_capacity_file,
 			6: total_energy_file,
-			7: particle_num_file
+			7: particle_num_file,
+			8: incident_angle_file,
+			9: incident_velocity_file,
+			10: incident_diameter_file
 		}
 
 		# 删除已有文件
@@ -464,23 +575,37 @@ if __name__ == "__main__":
 				os.remove(file_path)
 
 		# 写入文件头
-		write_file_head(d_in_air_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time d d_c d_nc")
+		write_file_head(d_in_air_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time d d50 d90")
 		write_file_head(mass_flux_x_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time Q Q_c Q_nc Q_star Q_star_c Q_star_nc")
 		write_file_head(mass_flux_y_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time Q Q_c Q_nc Q_star Q_star_c Q_star_nc")
 		write_file_head(mass_flux_z_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time Q Q_c Q_nc Q_star Q_star_c Q_star_nc")
 		write_file_head(carrying_capacity_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time M M_c M_nc M_star M_star_c M_star_nc")
 		write_file_head(total_energy_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time E E_c E_nc")
 		write_file_head(particle_num_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time Num iteration")
+		write_file_head(incident_angle_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time ang ang_c ang_nc")
+		write_file_head(incident_velocity_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time vin vin_c vin_nc")
+		write_file_head(incident_diameter_file, dia_name, uStar, dia1, dia2, rho, rhoP, s, g_hat, Sh, Ga, "time din din_c din_nc")
 
 		with open(particle_num_file, 'a') as file:
 			for i in range(len(particle_num_data.time)):
 				file.write(f"{particle_num_data.time[i]} {particle_num_data.particleNum[i]} {particle_num_data.iterNum[i]}\n")
 
+		# 初始化数组，元素个数为50，值为0
+		d_hist_tot = [0.0] * 50
+		d_hist_tot = np.array(d_hist_tot)
+		d_min = 100.0
+		d_max = 0.0
+		d50_list = []
+		d90_list = []
+		dm_list = []
 		for current_data in time_step_data:
 			d_in_air = current_data.calculate_dia_in_air()
 			mass_flux = current_data.calculate_mass_flux()
 			carrying_capacity = current_data.calculete_carrying_capacity()
 			total_energy = current_data.calculate_total_energy()
+			incident_angle = current_data.calculate_incident_angle()
+			incident_velocity = current_data.calculate_incident_velocity()
+			incident_diameter = current_data.calculate_incident_diameter()
 
 			mass_flux_star = {
 		        "total": [m / (rhoP * d_in_air['total'] * (s * g_hat * d_in_air['total']) ** 0.5) for m in mass_flux['total']],
@@ -494,7 +619,10 @@ if __name__ == "__main__":
 				"non_coll": carrying_capacity['non_coll'] / (rhoP * d_in_air['non_coll'])
 		    }
 
-			write_file_data(d_in_air_file, f"{current_data.time} {d_in_air['total']} {d_in_air['coll']} {d_in_air['non_coll']}\n")
+			write_file_data(d_in_air_file, f"{current_data.time} {d_in_air['total']} {d_in_air['d50']} {d_in_air['d90']}\n")
+			write_file_data(incident_angle_file, f"{current_data.time} {incident_angle['total']} {incident_angle['coll']} {incident_angle['non_coll']}\n")
+			write_file_data(incident_velocity_file, f"{current_data.time} {incident_velocity['total']} {incident_velocity['coll']} {incident_velocity['non_coll']}\n")
+			write_file_data(incident_diameter_file, f"{current_data.time} {incident_diameter['total']} {incident_diameter['coll']} {incident_diameter['non_coll']}\n")
 			write_file_data(mass_flux_x_file, f"{current_data.time} {mass_flux['total'][0]} {mass_flux['coll'][0]} {mass_flux['non_coll'][0]} "
             								  f"{mass_flux_star['total'][0]} {mass_flux_star['coll'][0]} {mass_flux_star['non_coll'][0]}\n")
 			write_file_data(mass_flux_y_file, f"{current_data.time} {mass_flux['total'][1]} {mass_flux['coll'][1]} {mass_flux['non_coll'][1]} "
@@ -504,3 +632,29 @@ if __name__ == "__main__":
 			write_file_data(carrying_capacity_file, f"{current_data.time} {carrying_capacity['total']} {carrying_capacity['coll']} {carrying_capacity['non_coll']} "
 												  	f"{carrying_capacity_star['total']} {carrying_capacity_star['coll']} {carrying_capacity_star['non_coll']}\n")
 			write_file_data(total_energy_file, f"{current_data.time} {total_energy['total']} {total_energy['coll']} {total_energy['non_coll']}\n")
+			d_hist = np.array(d_in_air['hist'])
+			d_hist_tot += d_hist
+			d_min = min(d_min, d_in_air['dmin'])
+			d_max = max(d_max, d_in_air['dmax'])
+			d50_list.append(d_in_air['d50'])
+			d90_list.append(d_in_air['d90'])
+			dm_list.append(d_in_air['total'])
+		d_hist_mean = d_hist_tot / len(time_step_data)
+		bin_centers = d_in_air['bin_centers']
+		bin_edges = d_in_air['bin_edges']
+		d50 = np.mean(d50_list) if len(d50_list) > 0 else 0.0
+		d90 = np.mean(d90_list) if len(d90_list) > 0 else 0.0
+		dm = np.mean(dm_list) if len(dm_list) > 0 else 0.0
+		# 归一化
+		d_hist_mean /= np.sum(d_hist_mean) if np.sum(d_hist_mean) > 0 else 1
+		d_hist_dict = {
+			"hist": d_hist_mean,
+			"bin_centers": bin_centers,
+			"bin_edges": bin_edges,
+			"dmin": d_min,
+			"dmax": d_max,
+			"d50": d50,
+			"d90": d90,
+			"d_mean": dm
+		}
+		np.savez_compressed(os.path.join(working_dir, f"{folder_name}/d_in_air_hist.npz"), **d_hist_dict)

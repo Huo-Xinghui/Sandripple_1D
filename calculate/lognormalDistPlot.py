@@ -30,17 +30,17 @@ def get_normal_params(log_mean, log_std):
     return mu, sigma
 
 
-log_mean = 2.4e-4
-log_std = 0.5e-4
-xmin = 1.0e-4
-xmax = 10.0e-4
+#log_mean = 2.4e-4
+#log_std = 0.5e-4
+xmin = 1e-4
+xmax = 10e-4
 xnum = 1000
 dx = xmax / xnum
 ddx = dx * 0.5
-mu, sigma = get_normal_params(log_mean, log_std)
-#mu = -8.8
-#sigma = 0.3246
-#log_std = np.sqrt((math.exp(sigma**2)-1)*math.exp(2*mu+sigma**2))
+#mu, sigma = get_normal_params(log_mean, log_std)
+mu = -8.5521
+sigma = 0.87
+log_std = np.sqrt((math.exp(sigma**2)-1)*math.exp(2*mu+sigma**2))
 # 生成数据点
 x_array = generate_truncated_lognormal(mu, sigma, xmin, xmax, 1000000)
 x_mean = np.mean(x_array)
@@ -54,6 +54,8 @@ y = y / y.sum()
 cum_y = np.cumsum(y)
 idx = np.argmax(cum_y > 0.5)
 x50 = x[idx] # 中位数
+# 计算对数正态分布原始x50
+x50_orig = np.exp(mu) * np.exp(0.5 * sigma**2)
 # 计算x90
 idx = np.argmax(cum_y > 0.9)
 x90 = x[idx] # 90%分位数
@@ -63,7 +65,7 @@ plt.plot(x, y, 'r-', label='lognormal')
 plt.axvline(x50, color='r', linestyle='--', label=f'x50 = {x50:.4e}')
 plt.axvline(x90, color='b', linestyle='--', label=f'x90 = {x90:.4e}')
 plt.axvline(x_mean, color='g', linestyle='--', label=f'xmean = {x_mean:.4e}')
-plt.text(xmax, 0, f'x_mean/x50 = {x_mean/x50:.4e}', ha='right', va='bottom')
+plt.text(xmax, 0, f'\\Delta = {(x50 - x50_orig)/x50_orig:.4e}', ha='right', va='bottom')
 plt.title(f'mu={mu:.4f}, sigma={sigma:.4f}, std={log_std:.4e}')
 plt.xlabel('Value')
 plt.ylabel('Probability Density')
