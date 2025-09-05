@@ -33,13 +33,13 @@ def get_normal_params(log_mean, log_std):
 #log_mean = 2.4e-4
 #log_std = 0.5e-4
 xmin = 1e-4
-xmax = 10e-4
+xmax = 4e-4
 xnum = 1000
 dx = xmax / xnum
 ddx = dx * 0.5
 #mu, sigma = get_normal_params(log_mean, log_std)
-mu = -8.5521
-sigma = 0.87
+mu = -8.2
+sigma = 0.3246
 log_std = np.sqrt((math.exp(sigma**2)-1)*math.exp(2*mu+sigma**2))
 # 生成数据点
 x_array = generate_truncated_lognormal(mu, sigma, xmin, xmax, 1000000)
@@ -59,13 +59,16 @@ x50_orig = np.exp(mu) * np.exp(0.5 * sigma**2)
 # 计算x90
 idx = np.argmax(cum_y > 0.9)
 x90 = x[idx] # 90%分位数
+idx = np.argmax(cum_y > 0.1)
+x10 = x[idx] # 10%分位数
 # 绘制曲线
 plt.figure(1, figsize=(10, 6))
 plt.plot(x, y, 'r-', label='lognormal')
 plt.axvline(x50, color='r', linestyle='--', label=f'x50 = {x50:.4e}')
 plt.axvline(x90, color='b', linestyle='--', label=f'x90 = {x90:.4e}')
+plt.axvline(x10, color='b', linestyle=':', label=f'x10 = {x10:.4e}')
 plt.axvline(x_mean, color='g', linestyle='--', label=f'xmean = {x_mean:.4e}')
-plt.text(xmax, 0, f'\\Delta = {(x50 - x50_orig)/x50_orig:.4e}', ha='right', va='bottom')
+plt.text(xmax, 0, f'$\\eta$ = {x90/x50:.4e}', ha='right', va='bottom')
 plt.title(f'mu={mu:.4f}, sigma={sigma:.4f}, std={log_std:.4e}')
 plt.xlabel('Value')
 plt.ylabel('Probability Density')

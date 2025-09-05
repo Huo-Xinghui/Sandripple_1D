@@ -30,11 +30,11 @@ module public_val
     integer, parameter :: maxNum = 100000 ! max particle num in one subdomain
     integer, parameter :: pNumInGridMax = maxNum/mxNode !/(my) ! max particle num in one x-y grid
     integer, parameter :: pNumExchMax = maxNum/10 ! max particle num for exchange between processors
-    real(kind=dbPc), parameter :: dpa = 2.90e-4 ! average particle diameter
+    real(kind=dbPc), parameter :: dpa = 3.47e-4 ! average particle diameter
     real(kind=dbPc), parameter :: rhoP = 2650.0 ! particle density
     real(kind=dbPc), parameter :: dpStddDev = 2.0e-4 ! particle diameter standard deviation
-    real(kind=dbPc), parameter :: logMu = -8.6 ! mu of lognormal distribution
-    real(kind=dbPc), parameter :: logSigma = 0.3246 ! sigma of lognormal distribution
+    real(kind=dbPc), parameter :: logMu = -8.3 ! mu of lognormal distribution
+    real(kind=dbPc), parameter :: logSigma = 1.0 ! sigma of lognormal distribution
     real(kind=dbPc), parameter :: prob1 = 0.5 ! probability one of Bernoulli distribution
     real(kind=dbPc), parameter :: binStart = 1.0e-4 ! start of the particle diameter distribution
     real(kind=dbPc), parameter :: binEnd = 10.0e-4 ! end of the particle diameter distribution
@@ -58,7 +58,7 @@ module public_val
     real(kind=dbPc), parameter :: blockHeight = dpa*3.0 ! height of the block, must>chunkHeight. block is a temporary grid on surface
     real(kind=dbPc), parameter :: blockVol = xDiff*yDiff*blockHeight ! volume of a block
     ! fluid
-    real(kind=dbPc), parameter :: uStar = 0.60 ! fractional velocity
+    real(kind=dbPc), parameter :: uStar = 0.65 ! fractional velocity
     real(kind=dbPc), parameter :: rho = 1.263 ! fluid density
     real(kind=dbPc), parameter :: nu = 1.51e-5 ! kinetic viscosity
     real(kind=dbPc), parameter :: kapa = 0.42 ! von Kaman's constant

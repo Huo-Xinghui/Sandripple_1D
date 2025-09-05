@@ -63,7 +63,7 @@ def read_profile_file(folder_path: str) -> list[np.ndarray]:
 	return time_step_data
 
 def read_d_file(folder_path: str) -> list[np.ndarray]:
-	"""读取粒径文件"""
+	"""读取空中粒径文件"""
 	file_path = os.path.join(folder_path, "d_in_air.dat")
 	results = read_file(file_path)
 	index_with_variables = find_indices_with_keyword(results, "variables")
@@ -86,6 +86,7 @@ def define_file_path(OS_name: str) -> str:
 	elif OS_name == 'w':
 		#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll15"
 		working_dir = "E:/Data/Q_on_flat_bed"
+		#working_dir = "E:/Data/mono_in_air"
 	else:
 		print("Invalid OS name.")
 		exit()
@@ -179,7 +180,7 @@ if __name__ == '__main__':
 	end = 300 # 终止时间
 	temporal = True # 是否输出时间序列数据
 	semi_log = True # 是否使用半对数坐标
-	output = 2 # 输出数据类型，0代表u, 1代表tau_p, 2代表tau_f, 3代表F_p, 4代表phi_p, 5代表Sh
+	output = 5 # 输出数据类型，0代表u, 1代表tau_p, 2代表tau_f, 3代表F_p, 4代表phi_p, 5代表Sh
 	location = 0 # 输出数据所在高度，0代表床面，-1代表顶面, valid when temporal is True
 	kapa = 0.42
 	rhof = 1.263
@@ -237,14 +238,14 @@ if __name__ == '__main__':
 		#25: "uStar045_300log200_0_2650_300",
 		#26: "uStar055_300log200_0_2650_300",
 		#27: "uStar065_300log200_0_2650_300",
-		12: "uStar030_300log300_0_2650_300",
-		13: "uStar040_300log300_0_2650_300",
-		14: "uStar050_300log300_0_2650_300",
-		15: "uStar060_300log300_0_2650_300",
-		28: "uStar035_300log300_0_2650_300",
-		29: "uStar045_300log300_0_2650_300",
-		30: "uStar055_300log300_0_2650_300",
-		31: "uStar065_300log300_0_2650_300",
+		#12: "uStar030_300log300_0_2650_300",
+		#13: "uStar040_300log300_0_2650_300",
+		#14: "uStar050_300log300_0_2650_300",
+		#15: "uStar060_300log300_0_2650_300",
+		#28: "uStar035_300log300_0_2650_300",
+		#29: "uStar045_300log300_0_2650_300",
+		#30: "uStar055_300log300_0_2650_300",
+		#31: "uStar065_300log300_0_2650_300",
 		#32: "uStar040_430log100_0_2650_300",
 		#33: "uStar050_430log100_0_2650_300",
 		#34: "uStar060_430log100_0_2650_300",
@@ -269,22 +270,22 @@ if __name__ == '__main__':
 		#53: "uStar040_400log50_0_2650_300",
 		#54: "uStar050_400log50_0_2650_300",
 		#55: "uStar060_400log50_0_2650_300",
-		#56: "uStar030_250log25_0_2650_300",
-		#57: "uStar040_250log25_0_2650_300",
-		#58: "uStar050_250log25_0_2650_300",
-		#59: "uStar060_250log25_0_2650_300",
-		#60: "uStar030_271log121_0_2650_300",
-		#61: "uStar040_271log121_0_2650_300",
-		#62: "uStar050_271log121_0_2650_300",
-		#63: "uStar060_271log121_0_2650_300",
-		#64: "uStar030_317log252_0_2650_300",
-		#65: "uStar040_317log252_0_2650_300",
-		#66: "uStar050_317log252_0_2650_300",
-		#67: "uStar060_317log252_0_2650_300",
-		#68: "uStar030_347log537_0_2650_300",
-		#69: "uStar040_347log537_0_2650_300",
-		#70: "uStar050_347log537_0_2650_300",
-		#71: "uStar060_347log537_0_2650_300"
+		56: "uStar030_250log25_0_2650_300",
+		57: "uStar040_250log25_0_2650_300",
+		58: "uStar050_250log25_0_2650_300",
+		59: "uStar060_250log25_0_2650_300",
+		60: "uStar030_271log121_0_2650_300",
+		61: "uStar040_271log121_0_2650_300",
+		62: "uStar050_271log121_0_2650_300",
+		63: "uStar060_271log121_0_2650_300",
+		64: "uStar030_317log252_0_2650_300",
+		65: "uStar040_317log252_0_2650_300",
+		66: "uStar050_317log252_0_2650_300",
+		67: "uStar060_317log252_0_2650_300",
+		68: "uStar030_347log537_0_2650_300",
+		69: "uStar040_347log537_0_2650_300",
+		70: "uStar050_347log537_0_2650_300",
+		71: "uStar060_347log537_0_2650_300"
 	}
 
 	# 定义文件路径

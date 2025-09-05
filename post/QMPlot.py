@@ -206,10 +206,10 @@ g = 9.81 * (1.0 - 1.0 / s)
 y_axis = 1 # y轴类型：0为颗粒通量，1为空中颗粒承载量, 2为颗粒总能量
 direction = 0 # 统计量方向：0为x方向，1为z方向
 nondim = True # 是否无量纲化
-nondim_d = 5 # 无量纲化所使用的粒径: 0为dm, 1为d50, 2为d90, 3为平均空中粒径, 4为空中d50, 5为空中d90
+nondim_d = 3 # 无量纲化所使用的粒径: 0为dm, 1为d50, 2为d90, 3为平均空中粒径, 4为空中d50, 5为空中d90
 comparison = True # 是否与他人行比较, only Q*
 start = 60 # 统计量平均值的开始时间
-end = 240 # 统计量平均值的结束时间
+end = 300 # 统计量平均值的结束时间
 use_lims = False # 是否使用坐标轴限制
 lims = {
 	"x_min": 0,
@@ -222,8 +222,9 @@ lims = {
 sys_OS = "w" # "w" for Windows, "l" for Linux
 if sys_OS == "w":
 	# Windows
-	working_dir = "E:/Data/Q_on_flat_bed"
-	#working_dir = "E:/Data/mono_in_air"
+	#working_dir = "E:/Data/Q_on_flat_bed"
+	#working_dir = "E:/Data/Q_on_flat_bed_Eeff"
+	working_dir = "E:/Data/mono_in_air"
 	#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll13"
 elif sys_OS == "l":
 	# Linux
@@ -320,28 +321,44 @@ case_dict11 = {
 	1: "uStar030_250log25_0_2650_300",
 	2: "uStar040_250log25_0_2650_300",
 	3: "uStar050_250log25_0_2650_300",
-	4: "uStar060_250log25_0_2650_300"
+	4: "uStar060_250log25_0_2650_300",
+	5: "uStar035_250log25_0_2650_300",
+	6: "uStar045_250log25_0_2650_300",
+	7: "uStar055_250log25_0_2650_300",
+	8: "uStar065_250log25_0_2650_300"
 }
 
 case_dict12 = {
 	1: "uStar030_271log121_0_2650_300",
 	2: "uStar040_271log121_0_2650_300",
 	3: "uStar050_271log121_0_2650_300",
-	4: "uStar060_271log121_0_2650_300"
+	4: "uStar060_271log121_0_2650_300",
+	5: "uStar035_271log121_0_2650_300",
+	6: "uStar045_271log121_0_2650_300",
+	7: "uStar055_271log121_0_2650_300",
+	8: "uStar065_271log121_0_2650_300"
 }
 
 case_dict13 = {
 	1: "uStar030_317log252_0_2650_300",
 	2: "uStar040_317log252_0_2650_300",
 	3: "uStar050_317log252_0_2650_300",
-	4: "uStar060_317log252_0_2650_300"
+	4: "uStar060_317log252_0_2650_300",
+	5: "uStar035_317log252_0_2650_300",
+	6: "uStar045_317log252_0_2650_300",
+	7: "uStar055_317log252_0_2650_300",
+	8: "uStar065_317log252_0_2650_300"
 }
 
 case_dict14 = {
 	1: "uStar030_347log537_0_2650_300",
 	2: "uStar040_347log537_0_2650_300",
 	3: "uStar050_347log537_0_2650_300",
-	4: "uStar060_347log537_0_2650_300"
+	4: "uStar060_347log537_0_2650_300",
+	5: "uStar035_347log537_0_2650_300",
+	6: "uStar045_347log537_0_2650_300",
+	7: "uStar055_347log537_0_2650_300",
+	8: "uStar065_347log537_0_2650_300",
 }
 
 case_dict15 = {
@@ -358,6 +375,31 @@ case_dict16 = {
 	4: "uStar060_197log65_0_2650_300"
 }
 
+case_dict17 = {
+	1: "uStar030_150log50_0_2650_300",
+	2: "uStar040_150log50_0_2650_300",
+	3: "uStar050_150log50_0_2650_300",
+	4: "uStar060_150log50_0_2650_300",
+}
+case_dict18 = {
+	1: "uStar030_150log100_0_2650_300",
+	2: "uStar040_150log100_0_2650_300",
+	3: "uStar050_150log100_0_2650_300",
+	4: "uStar060_150log100_0_2650_300",
+}
+case_dict19 = {
+	1: "uStar030_150log200_0_2650_300",
+	2: "uStar040_150log200_0_2650_300",
+	3: "uStar050_150log200_0_2650_300",
+	4: "uStar060_150log200_0_2650_300",
+}
+case_dict20 = {
+	1: "uStar030_150log300_0_2650_300",
+	2: "uStar040_150log300_0_2650_300",
+	3: "uStar050_150log300_0_2650_300",
+	4: "uStar060_150log300_0_2650_300",
+}
+
 cases_dict = {
 	#"d300stdd50": case_dict1,
 	#"d300stdd100": case_dict2,
@@ -369,12 +411,16 @@ cases_dict = {
 	#"d321stdd100": case_dict8,
 	#"d240stdd50": case_dict9,
 	#"d400stdd50": case_dict10,
-	"d250stdd25": case_dict11,
-	"d271stdd121": case_dict12,
-	"d317stdd252": case_dict13,
-	"d347stdd537": case_dict14,
+	#"d250stdd25": case_dict11,
+	#"d271stdd121": case_dict12,
+	#"d317stdd252": case_dict13,
+	#"d347stdd537": case_dict14,
 	#"d290stdd97": case_dict15,
-	#"d197stdd65": case_dict16
+	#"d197stdd65": case_dict16,
+	"d150stdd50": case_dict17,
+	"d150stdd100": case_dict18,
+	"d150stdd200": case_dict19,
+	"d150stdd300": case_dict20,
 }
 
 d_dict ={
@@ -393,7 +439,11 @@ d_dict ={
 	"d317stdd252": {"d50": 2.65e-4, "d90": 5.84e-4},
 	"d347stdd537": {"d50": 2.81e-4, "d90": 6.85e-4},
 	"d290stdd97": {"d50": 2.75e-4, "d90": 4.16e-4},
-	"d197stdd65": {"d50": 1.86e-4, "d90": 2.80e-4}
+	"d197stdd65": {"d50": 1.86e-4, "d90": 2.80e-4},
+	"d150stdd50": {"d50": 2.96e-4, "d90": 3.66e-4},
+	"d150stdd100": {"d50": 2.85e-4, "d90": 4.32e-4},
+	"d150stdd200": {"d50": 2.61e-4, "d90": 5.37e-4},
+	"d150stdd300": {"d50": 2.49e-4, "d90": 5.89e-4},
 }
 
 # Creyssels et al. (2009)的数据
@@ -517,15 +567,17 @@ for dictkey, case_dict in cases_dict.items():
 				nond_old = rhop * d_old
 				nond = rhop * d
 			y_array = y_array * nond_old / nond
-		elif nondim and nondim_d == 3:
+		elif nondim and nondim_d >= 3:
 			d_old = parameters["d"]
-			d = d_array.mean() #+ 3.0e-5
+			d = d_array.mean()
 			x_point = x_point * d_old / d
 			if y_axis == 0:
 				nond_old = rhop * d_old * np.sqrt(s * g * d_old)
 				nond = rhop * d * np.sqrt(s * g * d)
 			else:
 				nond_old = rhop * d_old
+				nond = rhop * d
+			y_array = y_array * nond_old / nond
 		y_point = np.mean(y_array)
 		x_points.append(x_point)
 		y_points.append(y_point)
@@ -534,9 +586,9 @@ for dictkey, case_dict in cases_dict.items():
 	rslts_dict[dictkey] = {"x": np.array(x_points), "y": np.array(y_points), "fit": coeffs}
 	tail = tail_list[nondim_d]
 	if y_axis == 0:
-		file_name = f"Q_{dictkey}_{tail}.npz"
+		file_name = f"Q_mono_{dictkey}_{tail}.npz"
 	elif y_axis == 1:
-		file_name = f"M_{dictkey}_{tail}.npz"
+		file_name = f"M_mono_{dictkey}_{tail}.npz"
 	np.savez(file_name, **rslts_dict[dictkey])
 
 # 绘图
