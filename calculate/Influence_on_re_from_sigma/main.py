@@ -3,6 +3,7 @@ import time
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+from matplotlib.legend_handler import HandlerTuple
 from scipy.ndimage import gaussian_filter1d
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from data_process import print_time, generate_truncated_lognormal
@@ -12,13 +13,13 @@ from get_data import get_model_data_array, get_d_data_array
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = r'\usepackage{amssymb}'
-A = 1/0.6 # amplification factor
-label_size = 15*A
+A = 1/0.5 # amplification factor
+label_size = 12.5*A
 ticks_size = 10*A
-marker_size = 10*A
+marker_size = 8*A
 marker_size_in = 6*A
-marker_width = 1
-marker_width_in = 1.0
+marker_width = 2
+marker_width_in = 2.0
 linewidth = 1.5
 
 # Mechanical properties
@@ -255,10 +256,10 @@ rslt_dict_d90 = np.load('rb_vs_sigma_mono_d90.npz')
 rslt_dict_dm = np.load('rb_vs_sigma_mono_dm.npz')
 #rslt_dict_monod2 = np.load('rb_vs_sigma_monod2.npz')
 rslt_dict_monod2 = np.load('rb_vs_sigma_monod2noiter.npz')
-rslt_dict_monod3 = np.load('rb_vs_sigma_monod3.npz')
-rslt_dict_smonod2 = np.load('rb_vs_sigma_simple_mono_d2.npz')
+#rslt_dict_monod3 = np.load('rb_vs_sigma_monod3.npz')
+#rslt_dict_smonod2 = np.load('rb_vs_sigma_simple_mono_d2.npz')
 #rslt_dict_smonod3 = np.load('rb_vs_sigma_simple_monod2test.npz')
-rslt_dict_smonod3 = np.load('rb_vs_sigma_simple_monod2noiter.npz')
+rslt_dict_smonod2 = np.load('rb_vs_sigma_simple_monod2noiter.npz')
 rslt_dict_smonod3_ex = np.load('rb_vs_sigma_monod2noiter_ex.npz')
 rslt_dict_smonod3_ex_sd1 = np.load('rb_vs_sigma_monod2noiter_ex_smalld1.npz')
 #rslt_dict_smonod3 = np.load('rb_vs_sigma_simple_mono_d3.npz')
@@ -278,9 +279,9 @@ ez_array_3D_45 = rslt_dict_3D['ez_45'][::skip]
 ez_array_d2_15 = rslt_dict_monod2['ez_15'][::skip]
 ez_array_d2_30 = rslt_dict_monod2['ez_30'][::skip]
 ez_array_d2_45 = rslt_dict_monod2['ez_45'][::skip]
-ez_array_d3_15 = rslt_dict_monod3['ez_15'][::skip]
-ez_array_d3_30 = rslt_dict_monod3['ez_30'][::skip]
-ez_array_d3_45 = rslt_dict_monod3['ez_45'][::skip]
+#ez_array_d3_15 = rslt_dict_monod3['ez_15'][::skip]
+#ez_array_d3_30 = rslt_dict_monod3['ez_30'][::skip]
+#ez_array_d3_45 = rslt_dict_monod3['ez_45'][::skip]
 ez_array_3D_ex_10 = rslt_dict_3D_ex['ez_10'][::skip]
 ez_array_3D_ex_20 = rslt_dict_3D_ex['ez_20'][::skip]
 ez_array_3D_ex_25 = rslt_dict_3D_ex['ez_25'][::skip]
@@ -294,9 +295,12 @@ ex_array_3D_45 = rslt_dict_3D['ex_45'][::skip]
 ex_array_d2_15 = rslt_dict_monod2['ex_15'][::skip]
 ex_array_d2_30 = rslt_dict_monod2['ex_30'][::skip]
 ex_array_d2_45 = rslt_dict_monod2['ex_45'][::skip]
-ex_array_d3_15 = rslt_dict_monod3['ex_15'][::skip]
-ex_array_d3_30 = rslt_dict_monod3['ex_30'][::skip]
-ex_array_d3_45 = rslt_dict_monod3['ex_45'][::skip]
+ex_array_sd2_15 = rslt_dict_smonod2['ex_15'][::skip]
+ex_array_sd2_30 = rslt_dict_smonod2['ex_30'][::skip]
+ex_array_sd2_45 = rslt_dict_smonod2['ex_45'][::skip]
+#ex_array_d3_15 = rslt_dict_monod3['ex_15'][::skip]
+#ex_array_d3_30 = rslt_dict_monod3['ex_30'][::skip]
+#ex_array_d3_45 = rslt_dict_monod3['ex_45'][::skip]
 ex_array_3D_ex_10 = rslt_dict_3D_ex['ex_10'][::skip]
 ex_array_3D_ex_20 = rslt_dict_3D_ex['ex_20'][::skip]
 ex_array_3D_ex_25 = rslt_dict_3D_ex['ex_25'][::skip]
@@ -317,13 +321,21 @@ sigma_array_d2 = rslt_dict_monod2['sigma'][::skip]
 fig = plt.figure(1, figsize=(8, 6), constrained_layout=True)
 ax = fig.gca()
 
-th = 10/180*np.pi
-mu_b_10 = (1.0 - ex_array_3D_ex_10)/(ez_array_3D_ex_10 - 1.0)/np.tan(th)
-mu_b_10_sp = (1.0 - rslt_dict_smonod3_ex["ex_10"])/(rslt_dict_smonod3_ex["ez_10"] - 1.0)/np.tan(th)
-mu_b_10_sp_sd1 = (1.0 - rslt_dict_smonod3_ex_sd1["ex_10"])/(rslt_dict_smonod3_ex_sd1["ez_10"] - 1.0)/np.tan(th)
-k = 1/mu_b_10
-k_sp = 1/mu_b_10_sp
-k_sp_sd1 = 1/mu_b_10_sp_sd1
+th = 15/180*np.pi
+mu_b_15 = (1.0 - ex_array_3D_15)/(2.0*ez_array_3D_15)/np.tan(th)
+mu_b_15_sp = (1.0 - rslt_dict_smonod2["ex_15"])/(2.0*rslt_dict_smonod2["ez_15"])/np.tan(th)
+th = 30/180*np.pi
+mu_b_30 = (1.0 - ex_array_3D_30)/(2.0*ez_array_3D_30)/np.tan(th)
+mu_b_30_sp = (1.0 - rslt_dict_smonod2["ex_30"])/(2.0*rslt_dict_smonod2["ez_30"])/np.tan(th)
+th = 45/180*np.pi
+mu_b_45 = (1.0 - ex_array_3D_45)/(2.0*ez_array_3D_45)/np.tan(th)
+mu_b_45_sp = (1.0 - rslt_dict_smonod2["ex_45"])/(2.0*rslt_dict_smonod2["ez_45"])/np.tan(th)
+k15 = 1/mu_b_15
+k30 = 1/mu_b_30
+k45 = 1/mu_b_45
+k_sp15 = 1/mu_b_15_sp
+k_sp30 = 1/mu_b_30_sp
+k_sp45 = 1/mu_b_45_sp
 
 th = 30/180*np.pi
 mu_b_30 = (1.0 - ex_array_3D_30)/(ez_array_3D_30 - 1.0)/np.tan(th)
@@ -331,11 +343,12 @@ mu_b_30 = (1.0 - ex_array_3D_30)/(ez_array_3D_30 - 1.0)/np.tan(th)
 th = 45/180*np.pi
 mu_b_45 = (1.0 - ex_array_3D_45)/(ez_array_3D_45 - 1.0)/np.tan(th)
 
-ax.plot(sigma_array_3D, k, 'r-')
-ax.plot(rslt_dict_smonod3_ex["sigma"], k_sp, 'r--')
-ax.plot(rslt_dict_smonod3_ex_sd1["sigma"], k_sp_sd1, 'r:')
-#ax.plot(sigma_array_3D, mu_b_30, 'g-')
-#ax.plot(sigma_array_3D, mu_b_45, 'b-')
+ax.plot(sigma_array_3D, k15, 'r-')
+ax.plot(sigma_array_3D, k30, 'g-')
+ax.plot(sigma_array_3D, k45, 'b-')
+ax.plot(rslt_dict_smonod3_ex["sigma"], k_sp15, 'r--')
+ax.plot(rslt_dict_smonod3_ex["sigma"], k_sp30, 'g--')
+ax.plot(rslt_dict_smonod3_ex["sigma"], k_sp45, 'b--')
 
 #ax.set_xlim(0, 85)
 #ax.set_ylim(0, 110)
@@ -351,9 +364,9 @@ ax.tick_params(axis='both', labelsize=ticks_size)
 fig = plt.figure(2, figsize=(8, 6), constrained_layout=True)
 ax = fig.gca()
 
-ax.plot(rslt_dict_2D['sigma'], rslt_dict_smonod3['e_15'], 'r--', linewidth=linewidth)
-ax.plot(rslt_dict_2D['sigma'], rslt_dict_smonod3['e_30'], 'g--', linewidth=linewidth)
-ax.plot(rslt_dict_2D['sigma'], rslt_dict_smonod3['e_45'], 'b--', linewidth=linewidth)
+ax.plot(rslt_dict_2D['sigma'], rslt_dict_smonod2['e_15'], 'r--', linewidth=linewidth)
+ax.plot(rslt_dict_2D['sigma'], rslt_dict_smonod2['e_30'], 'g--', linewidth=linewidth)
+ax.plot(rslt_dict_2D['sigma'], rslt_dict_smonod2['e_45'], 'b--', linewidth=linewidth)
 ax.plot(rslt_dict_3D['sigma'], rslt_dict_3D['e_15'], 'r-', linewidth=linewidth)
 ax.plot(rslt_dict_3D['sigma'], rslt_dict_3D['e_30'], 'g-', linewidth=linewidth)
 ax.plot(rslt_dict_3D['sigma'], rslt_dict_3D['e_45'], 'b-', linewidth=linewidth)
@@ -377,87 +390,145 @@ ax.legend([line_15, line_30, line_45], ['$\\theta = 15^{\\circ}$', '$\\theta = 3
 fig = plt.figure(3, figsize=(8, 6), constrained_layout=True)
 ax = fig.gca()
 
-ax.plot(sigma_array_2D, ez_array_2D_15, 'ro', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-#ax.plot(sigma_array_2D, ez_array_2D_30, 'g^', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(sigma_array_2D, ez_array_2D_45, 'bs', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(sigma_array_3D, ez_array_3D_15, 'ro', markersize=marker_size, markeredgewidth=marker_width)
-ax.plot(sigma_array_3D, ez_array_3D_ex_20, 'c^', markersize=marker_size, markeredgewidth=marker_width)
-ax.plot(sigma_array_3D, ez_array_3D_30, 'yh', markersize=marker_size, markeredgewidth=marker_width)
-ax.plot(sigma_array_3D, ez_array_3D_45, 'bs', markersize=marker_size, markeredgewidth=marker_width)
-ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ez_15'], 'r-', linewidth=linewidth)
+#ax.plot(sigma_array_2D, ez_array_2D_15, 'C0o', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+#ax.plot(sigma_array_2D, ez_array_2D_30, 'C1^', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+#ax.plot(sigma_array_2D, ez_array_2D_45, 'C2s', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(sigma_array_3D, ez_array_3D_15, 'C0o', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+#ax.plot(sigma_array_3D, ez_array_3D_ex_20, 'c^', markersize=marker_size, markeredgewidth=marker_width)
+ax.plot(sigma_array_3D, ez_array_3D_30, 'C1^', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(sigma_array_3D, ez_array_3D_45, 'C2s', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ez_15'], 'C0:', linewidth=linewidth)
 #ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ez_30'], 'g-', linewidth=linewidth)
-ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ez_45'], 'b-', linewidth=linewidth)
-ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ez_15'], 'r--', linewidth=linewidth)
+ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ez_45'], 'C2:', linewidth=linewidth)
+ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ez_15'], 'C0--', linewidth=linewidth)
 #ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ez_30'], 'g--', linewidth=linewidth)
-ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ez_45'], 'b--', linewidth=linewidth)
+ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ez_45'], 'C2--', linewidth=linewidth)
 ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ez_15'], 'k-', linewidth=linewidth*0.5)
-ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm_ex['ez_20'], 'k-', linewidth=linewidth*0.5)
+#ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm_ex['ez_20'], 'k-', linewidth=linewidth*0.5)
 ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ez_30'], 'k-', linewidth=linewidth*0.5)
 ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ez_45'], 'k-', linewidth=linewidth*0.5)
 #ax.plot(sigma_array_3D, ez_array_d2_15, 'r*', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
 #ax.plot(sigma_array_3D, ez_array_d2_45, 'b*', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
 #ax.plot(sigma_array_3D, ez_array_d3_15, 'r^', markersize=marker_size, markeredgewidth=marker_width)
 #ax.plot(sigma_array_3D, ez_array_d3_45, 'b^', markersize=marker_size, markeredgewidth=marker_width)
+#ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ez_15'], 'C3-', linewidth=linewidth)
+#ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ez_30'], 'C4-', linewidth=linewidth)
+#ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ez_45'], 'C5-', linewidth=linewidth)
+ax.plot(sigma_array_d2, ez_array_d2_15, 'C0x-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+ax.plot(sigma_array_d2, ez_array_d2_30, 'C1x-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+ax.plot(sigma_array_d2, ez_array_d2_45, 'C2x-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
 
 
 ax.set_xlim(0, 1)
-ax.set_ylim(0.1, 2)
+ax.set_ylim(0.1, 1.5)
 ax.set_xlabel('$\\sigma_d$', fontsize=label_size)
 ax.set_ylabel('$\\overline{e_z}$', fontsize=label_size)
 ax.tick_params(axis='x', labelsize=ticks_size)
 ax.tick_params(axis='y', labelsize=ticks_size)
+proxy_ro = plt.Line2D([0], [0],
+					 color='C0',
+					 marker='o',
+					 linestyle='',
+					 markersize=marker_size
+					)
+proxy_ro_h = plt.Line2D([0], [0],
+					 color='C0',
+					 marker='o',
+					 linestyle='',
+					 markerfacecolor='none',
+					 markersize=marker_size,
+					 markeredgewidth=marker_width
+					)
+proxy_gt = plt.Line2D([0], [0],
+					 color='C1',
+					 marker='^',
+					 linestyle='',
+					 markersize=marker_size
+					)
+proxy_gt_h = plt.Line2D([0], [0],
+					 color='C1',
+					 marker='^',
+					 linestyle='',
+					 markerfacecolor='none',
+					 markersize=marker_size,
+					 markeredgewidth=marker_width
+					)
+proxy_bs = plt.Line2D([0], [0],
+					 color='C2',
+					 marker='s',
+					 linestyle='',
+					 markersize=marker_size
+					)
+proxy_bs_h = plt.Line2D([0], [0],
+					 color='C2',
+					 marker='s',
+					 linestyle='',
+					 markerfacecolor='none',
+					 markersize=marker_size,
+					 markeredgewidth=marker_width
+					)
+ax.legend([proxy_ro_h, proxy_gt_h, proxy_bs_h],
+          ['3D, $\\theta = 15^{\\circ}$', '3D, $\\theta = 30^{\\circ}$', '3D, $\\theta = 45^{\\circ}$'],
+		  handler_map={tuple: HandlerTuple(ndivide=None)},
+          fontsize=ticks_size,
+          loc='upper left',
+          #bbox_to_anchor=(0.16, 1),
+          frameon=True,
+		  framealpha=1,
+		  ncol=1
+		  )
 
-inset_ax = inset_axes(ax, width='42%', height='42%', loc='upper left')
-inset_ax.plot(sigma_array_3D, ez_array_3D_15, 'ro', markersize=marker_size_in, markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_array_3D, ez_array_3D_45, 'bs', markersize=marker_size_in, markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_array_d2, ez_array_d2_15, 'mx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_array_d2, ez_array_d2_45, 'gx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
-#inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ez_15'], 'm--', linewidth=linewidth)
-#inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ez_45'], 'g--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ez_15'], 'm-', linewidth=linewidth)
-inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ez_45'], 'g-', linewidth=linewidth)
-inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ez_15'], 'k-', linewidth=linewidth*0.5)
-inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ez_45'], 'k-', linewidth=linewidth*0.5)
-inset_ax.set_xlim(0, 1)
-inset_ax.set_ylim(0.0, 1.2)
-inset_ax.tick_params(axis='x', labelsize=ticks_size)
-inset_ax.tick_params(axis='y', labelsize=ticks_size)
-## 把y的tick移到右边
-inset_ax.yaxis.tick_right()
-inset_ax.yaxis.set_label_position("right")
-#inset_ax.tick_params(axis='both', length=0)
-inset_ax.set_xticks([0, 1])
-inset_ax.set_yticks([0, 1])
-# 创建自定义图例句柄
-solid_line_m = inset_ax.plot([], [], 'm-', linewidth=linewidth)[0]
-x_line_m = inset_ax.plot([], [], 'mx-', linewidth=linewidth)[0]
-solid_line_g = inset_ax.plot([], [], 'g-', linewidth=linewidth)[0]
-x_line_g = inset_ax.plot([], [], 'gx-', linewidth=linewidth)[0]
-inset_ax.legend([solid_line_m, x_line_m, solid_line_g, x_line_g],
-                ['$\\theta = 15^{\\circ}$, Approx.', '$\\theta = 15^{\\circ}$, Approx. w/ $\\theta>\\theta_c$', '$\\theta = 45^{\\circ}$, Approx.', '$\\theta = 45^{\\circ}$, Approx. w/ $\\theta>\\theta_c$'],
-                fontsize=ticks_size,
-                loc='upper right',
-                bbox_to_anchor=(2.38, 1.06),
-                frameon=True)
+#inset_ax = inset_axes(ax, width='42%', height='42%', loc='upper left')
+#inset_ax.plot(sigma_array_3D, ez_array_3D_15, 'ro', markersize=marker_size_in, markeredgewidth=marker_width_in)
+#inset_ax.plot(sigma_array_3D, ez_array_3D_45, 'bs', markersize=marker_size_in, markeredgewidth=marker_width_in)
+#inset_ax.plot(sigma_array_d2, ez_array_d2_15, 'mx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+#inset_ax.plot(sigma_array_d2, ez_array_d2_45, 'gx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+##inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ez_15'], 'm--', linewidth=linewidth)
+##inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ez_45'], 'g--', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ez_15'], 'm-', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ez_45'], 'g-', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ez_15'], 'k-', linewidth=linewidth*0.5)
+#inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ez_45'], 'k-', linewidth=linewidth*0.5)
+#inset_ax.set_xlim(0, 1)
+#inset_ax.set_ylim(0.0, 1.2)
+#inset_ax.tick_params(axis='x', labelsize=ticks_size)
+#inset_ax.tick_params(axis='y', labelsize=ticks_size)
+### 把y的tick移到右边
+#inset_ax.yaxis.tick_right()
+#inset_ax.yaxis.set_label_position("right")
+##inset_ax.tick_params(axis='both', length=0)
+#inset_ax.set_xticks([0, 1])
+#inset_ax.set_yticks([0, 1])
+## 创建自定义图例句柄
+#solid_line_m = inset_ax.plot([], [], 'm-', linewidth=linewidth)[0]
+#x_line_m = inset_ax.plot([], [], 'mx-', linewidth=linewidth)[0]
+#solid_line_g = inset_ax.plot([], [], 'g-', linewidth=linewidth)[0]
+#x_line_g = inset_ax.plot([], [], 'gx-', linewidth=linewidth)[0]
+#inset_ax.legend([solid_line_m, x_line_m, solid_line_g, x_line_g],
+#                ['$\\theta = 15^{\\circ}$, Approx.', '$\\theta = 15^{\\circ}$, Approx. w/ $\\theta>\\theta_c$', '$\\theta = 45^{\\circ}$, Approx.', '$\\theta = 45^{\\circ}$, Approx. w/ $\\theta>\\theta_c$'],
+#                fontsize=ticks_size,
+#                loc='upper right',
+#                bbox_to_anchor=(2.38, 1.06),
+#                frameon=True)
 
 
 # Draw ex data
 fig = plt.figure(4, figsize=(8, 6), constrained_layout=True)
 ax = fig.gca()
 
-ax.plot(sigma_array_2D, ex_array_2D_15, 'ro', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(sigma_array_2D, ex_array_2D_30, 'yh', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(sigma_array_2D, ex_array_2D_45, 'bs', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(sigma_array_3D, ex_array_3D_15, 'ro', markersize=marker_size, markeredgewidth=marker_width)
-ax.plot(sigma_array_3D, ex_array_3D_30, 'yh', markersize=marker_size, markeredgewidth=marker_width)
-ax.plot(sigma_array_3D, ex_array_3D_45, 'bs', markersize=marker_size, markeredgewidth=marker_width)
-ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ex_15'], 'r-', linewidth=linewidth)
-ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ex_30'], 'y-', linewidth=linewidth)
-ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ex_45'], 'b-', linewidth=linewidth)
+#ax.plot(sigma_array_2D, ex_array_2D_15, 'C0o', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+#ax.plot(sigma_array_2D, ex_array_2D_30, 'C1^', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+#ax.plot(sigma_array_2D, ex_array_2D_45, 'C2s', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(sigma_array_3D, ex_array_3D_15, 'C0o', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(sigma_array_3D, ex_array_3D_30, 'C1^', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(sigma_array_3D, ex_array_3D_45, 'C2s', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ex_15'], 'C0:', linewidth=linewidth)
+#ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ex_30'], 'C1:', linewidth=linewidth)
+ax.plot(rslt_dict_d50['sigma'], rslt_dict_d50['ex_45'], 'C2:', linewidth=linewidth)
 #ax.plot(rslt_dict_d50['sigma'], rslt_dict_d90_ex['ex_10'], 'c--', linewidth=linewidth)
-ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ex_15'], 'r--', linewidth=linewidth)
-ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ex_30'], 'y--', linewidth=linewidth)
-ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ex_45'], 'b--', linewidth=linewidth)
+ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ex_15'], 'C0--', linewidth=linewidth)
+#ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ex_30'], 'C1--', linewidth=linewidth)
+ax.plot(rslt_dict_d90['sigma'], rslt_dict_d90['ex_45'], 'C2--', linewidth=linewidth)
 ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ex_15'], 'k-', linewidth=linewidth*0.5)
 ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ex_30'], 'k-', linewidth=linewidth*0.5)
 ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ex_45'], 'k-', linewidth=linewidth*0.5)
@@ -465,57 +536,81 @@ ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ex_45'], 'k-', linewidth=linewidth*
 #ax.plot(sigma_array_3D, ex_array_d2_45, 'b*', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
 #ax.plot(sigma_array_3D, ex_array_d3_15, 'r^', markersize=marker_size, markeredgewidth=marker_width)
 #ax.plot(sigma_array_3D, ex_array_d3_45, 'b^', markersize=marker_size, markeredgewidth=marker_width)
+ax.plot(sigma_array_d2, ex_array_d2_15, 'C0x-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+ax.plot(sigma_array_d2, ex_array_d2_30, 'C1x-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+ax.plot(sigma_array_d2, ex_array_d2_45, 'C2x-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+#ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ex_15'], 'C3-', linewidth=linewidth)
+#ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ex_30'], 'C4-', linewidth=linewidth)
+#ax.plot(sigma_array_d2, ex_array_sd2_45, 'C2*-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
 
 ax.set_xlim(0, 1)
-ax.set_ylim(0.0, 0.6)
+ax.set_ylim(0.15, 0.6)
 ax.set_xlabel('$\\sigma_d$', fontsize=label_size)
 ax.set_ylabel('$\\overline{e_x}$', fontsize=label_size)
 ax.tick_params(axis='x', labelsize=ticks_size)
 ax.tick_params(axis='y', labelsize=ticks_size)
 # 创建自定义图例句柄
 thin_line = mlines.Line2D([], [], color='k', linestyle='-', linewidth=linewidth*0.5)
-dashed_line = mlines.Line2D([], [], color='k', linestyle='-', linewidth=linewidth)
-dotted_line = mlines.Line2D([], [], color='k', linestyle='--', linewidth=linewidth)
-ax.legend([thin_line, dashed_line, dotted_line],
-          ['$d = \\mathbb{E}[d]$', '$d = d_{50}$', '$d = d_{90}$'],
+dashed_line = mlines.Line2D([], [], color='k', linestyle='--', linewidth=linewidth)
+dotted_line = mlines.Line2D([], [], color='k', linestyle=':', linewidth=linewidth)
+x_line = plt.Line2D([0], [0],
+                    color='k',
+                    marker='x',
+                    linestyle='-',
+                    markerfacecolor='none',
+                    markersize=marker_size_in,
+                    markeredgewidth=marker_width_in
+                    )
+star_line = plt.Line2D([0], [0],
+                    color='k',
+                    marker='*',
+                    linestyle='-',
+                    markerfacecolor='none',
+                    markersize=marker_size_in,
+                    markeredgewidth=marker_width_in
+                    )
+ax.legend([thin_line, dashed_line, dotted_line, x_line, star_line],
+          ['$d \\equiv \\mathbb{E}[d]$', '$d \\equiv d_{90}$', '$d \\equiv d_{50}$', 'SNSDP'],
           fontsize=ticks_size,
-          loc='lower right',
-          bbox_to_anchor=(1.01, 0.0),
-          frameon=True)
+          loc='lower left',
+          #bbox_to_anchor=(1.01, 0.0),
+          frameon=True,
+          framealpha=1,
+          ncol=1)
 
-inset_ax = inset_axes(ax, width='43%', height='43%', loc='lower left')
-inset_ax.plot(sigma_array_3D, ex_array_3D_15, 'ro', markersize=marker_size_in, markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_array_3D, ex_array_3D_45, 'bs', markersize=marker_size_in, markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_array_d2, ex_array_d2_15, 'mx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_array_d2, ex_array_d2_45, 'gx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
-#inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ex_15'], 'm--', linewidth=linewidth)
-#inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ex_45'], 'g--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ex_15'], 'm-', linewidth=linewidth)
-inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ex_45'], 'g-', linewidth=linewidth)
-inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ex_15'], 'k-', linewidth=linewidth*0.5)
-inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ex_45'], 'k-', linewidth=linewidth*0.5)
-inset_ax.set_xlim(0, 1)
-inset_ax.set_ylim(0.2, 0.6)
-inset_ax.tick_params(axis='x', labelsize=ticks_size)
-inset_ax.tick_params(axis='y', labelsize=ticks_size)
-## 把y的tick移到右边
-inset_ax.yaxis.tick_right()
-inset_ax.yaxis.set_label_position("right")
-inset_ax.xaxis.tick_top()
-inset_ax.xaxis.set_label_position("top")
-#inset_ax.tick_params(axis='both', length=0)
-inset_ax.set_xticks([0, 1])
-inset_ax.set_yticks([0.3, 0.5])
-# 创建自定义图例句柄
-symbol_15 = mlines.Line2D([], [], color='r', marker='o', markersize=marker_size, markeredgewidth=marker_width)
-symbol_20 = mlines.Line2D([], [], color='c', marker='^', markersize=marker_size, markeredgewidth=marker_width)
-symbol_30 = mlines.Line2D([], [], color='y', marker='h', markersize=marker_size, markeredgewidth=marker_width)
-symbol_45 = mlines.Line2D([], [], color='b', marker='s', markersize=marker_size, markeredgewidth=marker_width)
-inset_ax.legend([symbol_15, symbol_20, symbol_30, symbol_45],
-          ['$\\theta = 15^{\\circ}$', '$\\theta = 20^{\\circ}$', '$\\theta = 30^{\\circ}$', '$\\theta = 45^{\\circ}$'],
-          fontsize=ticks_size,
-          loc='upper right',
-          bbox_to_anchor=(1.7, 0.65),
-          frameon=True)
+#inset_ax = inset_axes(ax, width='43%', height='43%', loc='lower left')
+#inset_ax.plot(sigma_array_3D, ex_array_3D_15, 'ro', markersize=marker_size_in, markeredgewidth=marker_width_in)
+#inset_ax.plot(sigma_array_3D, ex_array_3D_45, 'bs', markersize=marker_size_in, markeredgewidth=marker_width_in)
+#inset_ax.plot(sigma_array_d2, ex_array_d2_15, 'mx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+#inset_ax.plot(sigma_array_d2, ex_array_d2_45, 'gx-', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+##inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ex_15'], 'm--', linewidth=linewidth)
+##inset_ax.plot(rslt_dict_smonod2['sigma'], rslt_dict_smonod2['ex_45'], 'g--', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ex_15'], 'm-', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_smonod3['sigma'], rslt_dict_smonod3['ex_45'], 'g-', linewidth=linewidth)
+#inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ex_15'], 'k-', linewidth=linewidth*0.5)
+#inset_ax.plot(rslt_dict_dm['sigma'], rslt_dict_dm['ex_45'], 'k-', linewidth=linewidth*0.5)
+#inset_ax.set_xlim(0, 1)
+#inset_ax.set_ylim(0.2, 0.6)
+#inset_ax.tick_params(axis='x', labelsize=ticks_size)
+#inset_ax.tick_params(axis='y', labelsize=ticks_size)
+### 把y的tick移到右边
+#inset_ax.yaxis.tick_right()
+#inset_ax.yaxis.set_label_position("right")
+#inset_ax.xaxis.tick_top()
+#inset_ax.xaxis.set_label_position("top")
+##inset_ax.tick_params(axis='both', length=0)
+#inset_ax.set_xticks([0, 1])
+#inset_ax.set_yticks([0.3, 0.5])
+## 创建自定义图例句柄
+#symbol_15 = mlines.Line2D([], [], color='r', marker='o', markersize=marker_size, markeredgewidth=marker_width)
+#symbol_20 = mlines.Line2D([], [], color='c', marker='^', markersize=marker_size, markeredgewidth=marker_width)
+#symbol_30 = mlines.Line2D([], [], color='y', marker='h', markersize=marker_size, markeredgewidth=marker_width)
+#symbol_45 = mlines.Line2D([], [], color='b', marker='s', markersize=marker_size, markeredgewidth=marker_width)
+#inset_ax.legend([symbol_15, symbol_20, symbol_30, symbol_45],
+#          ['$\\theta = 15^{\\circ}$', '$\\theta = 20^{\\circ}$', '$\\theta = 30^{\\circ}$', '$\\theta = 45^{\\circ}$'],
+#          fontsize=ticks_size,
+#          loc='upper right',
+#          bbox_to_anchor=(1.7, 0.65),
+#          frameon=True)
 
 plt.show()

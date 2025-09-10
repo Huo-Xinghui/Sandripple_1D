@@ -115,7 +115,7 @@ lims_in = {
 	"y_min": 3e-3,
 	"y_max": 0.2,
 }
-tailin = "dair"
+tailin = "d50"
 tailout = "d90"
 working_dir = "E:/Data/Q_on_flat_bed"
 dmin = 1.0e-4
@@ -389,6 +389,38 @@ Q_nr7_out = np.load(f"Q_d240stdd50_{tailout}.npz")
 M_nr7_out = np.load(f"M_d240stdd50_{tailout}.npz")
 Q_nr8_out = np.load(f"Q_d400stdd50_{tailout}.npz")
 M_nr8_out = np.load(f"M_d400stdd50_{tailout}.npz")
+Q_nr9_in = np.load(f"Q_monobed_d300stdd50_{tailin}.npz")
+M_nr9_in = np.load(f"M_monobed_d300stdd50_{tailin}.npz")
+Q_md9_in = np.load(f"Q_monobed_d300stdd100_{tailin}.npz")
+M_md9_in = np.load(f"M_monobed_d300stdd100_{tailin}.npz")
+Q_wd9_in = np.load(f"Q_monobed_d300stdd200_{tailin}.npz")
+M_wd9_in = np.load(f"M_monobed_d300stdd200_{tailin}.npz")
+Q_vwd9_in = np.load(f"Q_monobed_d300stdd300_{tailin}.npz")
+M_vwd9_in = np.load(f"M_monobed_d300stdd300_{tailin}.npz")
+Q_nr10_out = np.load(f"Q_monobed_d300stdd50_{tailout}.npz")
+M_nr10_out = np.load(f"M_monobed_d300stdd50_{tailout}.npz")
+Q_md10_out = np.load(f"Q_monobed_d300stdd100_{tailout}.npz")
+M_md10_out = np.load(f"M_monobed_d300stdd100_{tailout}.npz")
+Q_wd10_out = np.load(f"Q_monobed_d300stdd200_{tailout}.npz")
+M_wd10_out = np.load(f"M_monobed_d300stdd200_{tailout}.npz")
+Q_vwd10_out = np.load(f"Q_monobed_d300stdd300_{tailout}.npz")
+M_vwd10_out = np.load(f"M_monobed_d300stdd300_{tailout}.npz")
+Q_mu1_in = np.load(f"Q_d167stdd100_{tailin}.npz")
+M_mu1_in = np.load(f"M_d167stdd100_{tailin}.npz")
+Q_mu2_in = np.load(f"Q_d197stdd65_{tailin}.npz")
+M_mu2_in = np.load(f"M_d197stdd65_{tailin}.npz")
+Q_mu3_in = np.load(f"Q_d290stdd97_{tailin}.npz")
+M_mu3_in = np.load(f"M_d290stdd97_{tailin}.npz")
+Q_mu4_in = np.load(f"Q_d430stdd100_{tailin}.npz")
+M_mu4_in = np.load(f"M_d430stdd100_{tailin}.npz")
+Q_rt_in = np.load(f"Q_d269stdd100_{tailin}.npz")
+M_rt_in = np.load(f"M_d269stdd100_{tailin}.npz")
+Q_lt_in = np.load(f"Q_d321stdd100_{tailin}.npz")
+M_lt_in = np.load(f"M_d321stdd100_{tailin}.npz")
+Q_nr7_in = np.load(f"Q_d240stdd50_{tailin}.npz")
+M_nr7_in = np.load(f"M_d240stdd50_{tailin}.npz")
+Q_nr8_in = np.load(f"Q_d400stdd50_{tailin}.npz")
+M_nr8_in = np.load(f"M_d400stdd50_{tailin}.npz")
 
 dir_list_nr = [
 	"uStar030_300log50_0_2650_300",
@@ -644,30 +676,30 @@ for case_name, case_dir in cases_dict.items():
 	}
 
 Q_rslt = {
-	f"d300stdd50_{tailin}": Q_nr1_in,
-	f"d300stdd100_{tailin}": Q_md1_in,
-	f"d300stdd200_{tailin}": Q_wd1_in,
-	f"d300stdd300_{tailin}": Q_vwd1_in,
+	# 0
 	f"d300stdd50_{tailout}": Q_nr1,
 	f"d300stdd100_{tailout}": Q_md1,
 	f"d300stdd200_{tailout}": Q_wd1,
 	f"d300stdd300_{tailout}": Q_vwd1,
-	f"d250stdd25_{tailin}": Q_nr2,
-	f"d271stdd121_{tailin}": Q_md2,
-	f"d317stdd252_{tailin}": Q_wd2,
-	f"d347stdd537_{tailin}": Q_vwd2,
-	f"d250stdd25_{tailout}": Q_nr2_out,
-	f"d271stdd121_{tailout}": Q_md2_out,
-	f"d317stdd252_{tailout}": Q_wd2_out,
-	f"d347stdd537_{tailout}": Q_vwd2_out,
-	f"d250stdd25_m_{tailin}": Q_nr3_in,
-	f"d271stdd121_m_{tailin}": Q_md3_in,
-	f"d317stdd252_m_{tailin}": Q_wd3_in,
-	f"d347stdd537_m_{tailin}": Q_vwd3_in,
+	f"d300stdd50_{tailin}": Q_nr1_in,
+	f"d300stdd100_{tailin}": Q_md1_in,
+	f"d300stdd200_{tailin}": Q_wd1_in,
+	f"d300stdd300_{tailin}": Q_vwd1_in,
+
+	f"d300stdd50_mb_{tailin}": Q_nr9_in,
+	f"d300stdd100_mb_{tailin}": Q_md9_in,
+	f"d300stdd200_mb_{tailin}": Q_wd9_in,
+	f"d300stdd300_mb_{tailin}": Q_vwd9_in,
+	f"d300stdd50_mb_{tailout}": Q_nr10_out,
+	f"d300stdd100_mb_{tailout}": Q_md10_out,
+	f"d300stdd200_mb_{tailout}": Q_wd10_out,
+	f"d300stdd300_mb_{tailout}": Q_vwd10_out,
+
 	f"d300stdd50_m_{tailin}": Q_nr4_in,
 	f"d300stdd100_m_{tailin}": Q_md4_in,
 	f"d300stdd200_m_{tailin}": Q_wd4_in,
 	f"d300stdd300_m_{tailin}": Q_vwd4_in,
+
 	f"d300stdd50_e_{tailin}": Q_nr5_in,
 	f"d300stdd100_e_{tailin}": Q_md5_in,
 	f"d300stdd200_e_{tailin}": Q_wd5_in,
@@ -676,18 +708,117 @@ Q_rslt = {
 	f"d300stdd100_e_{tailout}": Q_md5_out,
 	f"d300stdd200_e_{tailout}": Q_wd5_out,
 	f"d300stdd300_e_{tailout}": Q_vwd5_out,
-	f"d150stdd50_m_{tailin}": Q_nr6_in,
-	f"d150stdd100_m_{tailin}": Q_md6_in,
-	f"d150stdd200_m_{tailin}": Q_wd6_in,
-	f"d150stdd300_m_{tailin}": Q_vwd6_in,
+	# 1
+	f"d250stdd25_{tailin}": Q_nr2,
+	f"d271stdd121_{tailin}": Q_md2,
+	f"d317stdd252_{tailin}": Q_wd2,
+	f"d347stdd537_{tailin}": Q_vwd2,
+	f"d250stdd25_{tailout}": Q_nr2_out,
+	f"d271stdd121_{tailout}": Q_md2_out,
+	f"d317stdd252_{tailout}": Q_wd2_out,
+	f"d347stdd537_{tailout}": Q_vwd2_out,
+
+	f"d250stdd25_m_{tailin}": Q_nr3_in,
+	f"d271stdd121_m_{tailin}": Q_md3_in,
+	f"d317stdd252_m_{tailin}": Q_wd3_in,
+	f"d347stdd537_m_{tailin}": Q_vwd3_in,
+	# 2
 	f"d167stdd100_{tailout}": Q_mu1_out,
 	f"d197stdd65_{tailout}": Q_mu2_out,
 	f"d290stdd97_{tailout}": Q_mu3_out,
 	f"d430stdd100_{tailout}": Q_mu4_out,
+	f"d167stdd100_{tailin}": Q_mu1_in,
+	f"d197stdd65_{tailin}": Q_mu2_in,
+	f"d290stdd97_{tailin}": Q_mu3_in,
+	f"d430stdd100_{tailin}": Q_mu4_in,
+	# 3
 	f"d269stdd100_{tailout}": Q_rt_out,
 	f"d321stdd100_{tailout}": Q_lt_out,
+	f"d269stdd100_{tailin}": Q_rt_in,
+	f"d321stdd100_{tailin}": Q_lt_in,
+	# 4
 	f"d240stdd50_{tailout}": Q_nr7_out,
 	f"d400stdd50_{tailout}": Q_nr8_out,
+	f"d240stdd50_{tailin}": Q_nr7_in,
+	f"d400stdd50_{tailin}": Q_nr8_in,
+
+	f"d150stdd50_m_{tailin}": Q_nr6_in,
+	f"d150stdd100_m_{tailin}": Q_md6_in,
+	f"d150stdd200_m_{tailin}": Q_wd6_in,
+	f"d150stdd300_m_{tailin}": Q_vwd6_in,
+}
+
+M_rslt = {
+	# 0
+	f"d300stdd50_{tailout}": M_nr1,
+	f"d300stdd100_{tailout}": M_md1,
+	f"d300stdd200_{tailout}": M_wd1,
+	f"d300stdd300_{tailout}": M_vwd1,
+	f"d300stdd50_{tailin}": M_nr1_in,
+	f"d300stdd100_{tailin}": M_md1_in,
+	f"d300stdd200_{tailin}": M_wd1_in,
+	f"d300stdd300_{tailin}": M_vwd1_in,
+
+	f"d300stdd50_mb_{tailin}": M_nr9_in,
+	f"d300stdd100_mb_{tailin}": M_md9_in,
+	f"d300stdd200_mb_{tailin}": M_wd9_in,
+	f"d300stdd300_mb_{tailin}": M_vwd9_in,
+	f"d300stdd50_mb_{tailout}": M_nr10_out,
+	f"d300stdd100_mb_{tailout}": M_md10_out,
+	f"d300stdd200_mb_{tailout}": M_wd10_out,
+	f"d300stdd300_mb_{tailout}": M_vwd10_out,
+
+	f"d300stdd50_m_{tailin}": M_nr4_in,
+	f"d300stdd100_m_{tailin}": M_md4_in,
+	f"d300stdd200_m_{tailin}": M_wd4_in,
+	f"d300stdd300_m_{tailin}": M_vwd4_in,
+
+	f"d300stdd50_e_{tailin}": M_nr5_in,
+	f"d300stdd100_e_{tailin}": M_md5_in,
+	f"d300stdd200_e_{tailin}": M_wd5_in,
+	f"d300stdd300_e_{tailin}": M_vwd5_in,
+	f"d300stdd50_e_{tailout}": M_nr5_out,
+	f"d300stdd100_e_{tailout}": M_md5_out,
+	f"d300stdd200_e_{tailout}": M_wd5_out,
+	f"d300stdd300_e_{tailout}": M_vwd5_out,
+	# 1
+	f"d250stdd25_{tailin}": M_nr2,
+	f"d271stdd121_{tailin}": M_md2,
+	f"d317stdd252_{tailin}": M_wd2,
+	f"d347stdd537_{tailin}": M_vwd2,
+	f"d250stdd25_{tailout}": M_nr2_out,
+	f"d271stdd121_{tailout}": M_md2_out,
+	f"d317stdd252_{tailout}": M_wd2_out,
+	f"d347stdd537_{tailout}": M_vwd2_out,
+
+	f"d250stdd25_m_{tailin}": M_nr3_in,
+	f"d271stdd121_m_{tailin}": M_md3_in,
+	f"d317stdd252_m_{tailin}": M_wd3_in,
+	f"d347stdd537_m_{tailin}": M_vwd3_in,
+	# 2
+	f"d167stdd100_{tailout}": M_mu1_out,
+	f"d197stdd65_{tailout}": M_mu2_out,
+	f"d290stdd97_{tailout}": M_mu3_out,
+	f"d430stdd100_{tailout}": M_mu4_out,
+	f"d167stdd100_{tailin}": M_mu1_in,
+	f"d197stdd65_{tailin}": M_mu2_in,
+	f"d290stdd97_{tailin}": M_mu3_in,
+	f"d430stdd100_{tailin}": M_mu4_in,
+	# 3
+	f"d269stdd100_{tailout}": M_rt_out,
+	f"d321stdd100_{tailout}": M_lt_out,
+	f"d269stdd100_{tailin}": M_rt_in,
+	f"d321stdd100_{tailin}": M_lt_in,
+	# 4
+	f"d240stdd50_{tailout}": M_nr7_out,
+	f"d400stdd50_{tailout}": M_nr8_out,
+	f"d240stdd50_{tailin}": M_nr3,
+	f"d400stdd50_{tailin}": M_nr4,
+
+	f"d150stdd50_m_{tailin}": M_nr6_in,
+	f"d150stdd100_m_{tailin}": M_md6_in,
+	f"d150stdd200_m_{tailin}": M_wd6_in,
+	f"d150stdd300_m_{tailin}": M_vwd6_in,
 }
 
 # 绘图
@@ -1518,223 +1649,264 @@ inset_ax.legend(fontsize=ticks_size,
 fig = plt.figure(3, figsize=(8, 6), constrained_layout=True)
 ax = fig.gca()
 
-M_rslt = {
-	f"d300stdd50_{tailin}": M_nr1_in,
-	f"d300stdd100_{tailin}": M_md1_in,
-	f"d300stdd200_{tailin}": M_wd1_in,
-	f"d300stdd300_{tailin}": M_vwd1_in,
-	f"d300stdd50_{tailout}": M_nr1,
-	f"d300stdd100_{tailout}": M_md1,
-	f"d300stdd200_{tailout}": M_wd1,
-	f"d300stdd300_{tailout}": M_vwd1,
-	f"d250stdd25_{tailin}": M_nr2,
-	f"d271stdd121_{tailin}": M_md2,
-	f"d317stdd252_{tailin}": M_wd2,
-	f"d347stdd537_{tailin}": M_vwd2,
-	f"d240stdd50_{tailin}": M_nr3,
-	f"d400stdd50_{tailin}": M_nr4,
-	f"d430stdd100_{tailin}": M_mu4_out,
-	f"d167stdd100_{tailin}": M_mu1_out,
-	f"d269stdd100_{tailin}": M_rt_out,
-	f"d321stdd100_{tailin}": M_lt_out,
-	f"d250stdd25_m_{tailin}": M_nr3_in,
-	f"d271stdd121_m_{tailin}": M_md3_in,
-	f"d317stdd252_m_{tailin}": M_wd3_in,
-	f"d347stdd537_m_{tailin}": M_vwd3_in,
-	f"d300stdd50_m_{tailin}": M_nr4_in,
-	f"d300stdd100_m_{tailin}": M_md4_in,
-	f"d300stdd200_m_{tailin}": M_wd4_in,
-	f"d300stdd300_m_{tailin}": M_vwd4_in,
-	f"d300stdd50_e_{tailin}": M_nr5_in,
-	f"d300stdd100_e_{tailin}": M_md5_in,
-	f"d300stdd200_e_{tailin}": M_wd5_in,
-	f"d300stdd300_e_{tailin}": M_vwd5_in,
-	f"d300stdd50_e_{tailout}": M_nr5_out,
-	f"d300stdd100_e_{tailout}": M_md5_out,
-	f"d300stdd200_e_{tailout}": M_wd5_out,
-	f"d300stdd300_e_{tailout}": M_vwd5_out,
-	f"d150stdd50_m_{tailin}": M_nr6_in,
-	f"d150stdd100_m_{tailin}": M_md6_in,
-	f"d150stdd200_m_{tailin}": M_wd6_in,
-	f"d150stdd300_m_{tailin}": M_vwd6_in,
-	f"d250stdd25_{tailout}": M_nr2_out,
-	f"d271stdd121_{tailout}": M_md2_out,
-	f"d317stdd252_{tailout}": M_wd2_out,
-	f"d347stdd537_{tailout}": M_vwd2_out,
-	f"d167stdd100_{tailout}": M_mu1_out,
-	f"d197stdd65_{tailout}": M_mu2_out,
-	f"d290stdd97_{tailout}": M_mu3_out,
-	f"d430stdd100_{tailout}": M_mu4_out,
-	f"d269stdd100_{tailout}": M_rt_out,
-	f"d321stdd100_{tailout}": M_lt_out,
-	f"d240stdd50_{tailout}": M_nr7_out,
-	f"d400stdd50_{tailout}": M_nr8_out,
-}
+vx0 = Q_rslt[f"d300stdd50_mb_{tailout}"]['y'] / M_rslt[f"d300stdd50_mb_{tailout}"]['y']
+vx1 = Q_rslt[f"d300stdd100_mb_{tailout}"]['y'] / M_rslt[f"d300stdd100_mb_{tailout}"]['y']
+vx2 = Q_rslt[f"d300stdd200_mb_{tailout}"]['y'] / M_rslt[f"d300stdd200_mb_{tailout}"]['y']
+vx3 = Q_rslt[f"d300stdd300_mb_{tailout}"]['y'] / M_rslt[f"d300stdd300_mb_{tailout}"]['y']
+vx00 = Q_rslt[f"d300stdd50_{tailout}"]['y'] / M_rslt[f"d300stdd50_{tailout}"]['y']
+vx01 = Q_rslt[f"d300stdd100_{tailout}"]['y'] / M_rslt[f"d300stdd100_{tailout}"]['y']
+vx02 = Q_rslt[f"d300stdd200_{tailout}"]['y'] / M_rslt[f"d300stdd200_{tailout}"]['y']
+vx03 = Q_rslt[f"d300stdd300_{tailout}"]['y'] / M_rslt[f"d300stdd300_{tailout}"]['y']
+vx10 = Q_rslt[f"d250stdd25_{tailout}"]['y'] / M_rslt[f"d250stdd25_{tailout}"]['y']
+vx11 = Q_rslt[f"d271stdd121_{tailout}"]['y'] / M_rslt[f"d271stdd121_{tailout}"]['y']
+vx12 = Q_rslt[f"d317stdd252_{tailout}"]['y'] / M_rslt[f"d317stdd252_{tailout}"]['y']
+vx13 = Q_rslt[f"d347stdd537_{tailout}"]['y'] / M_rslt[f"d347stdd537_{tailout}"]['y']
+vx20 = Q_rslt[f"d167stdd100_{tailout}"]['y'] / M_rslt[f"d167stdd100_{tailout}"]['y']
+vx21 = Q_rslt[f"d197stdd65_{tailout}"]['y'] / M_rslt[f"d197stdd65_{tailout}"]['y']
+vx22 = Q_rslt[f"d290stdd97_{tailout}"]['y'] / M_rslt[f"d290stdd97_{tailout}"]['y']
+vx23 = Q_rslt[f"d430stdd100_{tailout}"]['y'] / M_rslt[f"d430stdd100_{tailout}"]['y']
+vx30 = Q_rslt[f"d269stdd100_{tailout}"]['y'] / M_rslt[f"d269stdd100_{tailout}"]['y']
+vx31 = Q_rslt[f"d321stdd100_{tailout}"]['y'] / M_rslt[f"d321stdd100_{tailout}"]['y']
+vx40 = Q_rslt[f"d240stdd50_{tailout}"]['y'] / M_rslt[f"d240stdd50_{tailout}"]['y']
+vx41 = Q_rslt[f"d400stdd50_{tailout}"]['y'] / M_rslt[f"d400stdd50_{tailout}"]['y']
 
-legend_str = "NR300"
-dictkey = f"d300stdd50_m_{tailin}"
-style = {"color": "r", "marker": "o", "fill": "full"}
-arrow = False
-fitline = True
-lims["x_loc"] = 0.006
-lims["y_loc"] = 0.01
-rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
+vx00_50 = Q_rslt[f"d300stdd50_{tailin}"]['y'] / M_rslt[f"d300stdd50_{tailin}"]['y']
+vx01_50 = Q_rslt[f"d300stdd100_{tailin}"]['y'] / M_rslt[f"d300stdd100_{tailin}"]['y']
+vx02_50 = Q_rslt[f"d300stdd200_{tailin}"]['y'] / M_rslt[f"d300stdd200_{tailin}"]['y']
+vx03_50 = Q_rslt[f"d300stdd300_{tailin}"]['y'] / M_rslt[f"d300stdd300_{tailin}"]['y']
+vx10_50 = Q_rslt[f"d250stdd25_{tailin}"]['y'] / M_rslt[f"d250stdd25_{tailin}"]['y']
+vx11_50 = Q_rslt[f"d271stdd121_{tailin}"]['y'] / M_rslt[f"d271stdd121_{tailin}"]['y']
+vx12_50 = Q_rslt[f"d317stdd252_{tailin}"]['y'] / M_rslt[f"d317stdd252_{tailin}"]['y']
+vx13_50 = Q_rslt[f"d347stdd537_{tailin}"]['y'] / M_rslt[f"d347stdd537_{tailin}"]['y']
+vx20_50 = Q_rslt[f"d167stdd100_{tailin}"]['y'] / M_rslt[f"d167stdd100_{tailin}"]['y']
+vx21_50 = Q_rslt[f"d197stdd65_{tailin}"]['y'] / M_rslt[f"d197stdd65_{tailin}"]['y']
+vx22_50 = Q_rslt[f"d290stdd97_{tailin}"]['y'] / M_rslt[f"d290stdd97_{tailin}"]['y']
+vx23_50 = Q_rslt[f"d430stdd100_{tailin}"]['y'] / M_rslt[f"d430stdd100_{tailin}"]['y']
+vx30_50 = Q_rslt[f"d269stdd100_{tailin}"]['y'] / M_rslt[f"d269stdd100_{tailin}"]['y']
+vx31_50 = Q_rslt[f"d321stdd100_{tailin}"]['y'] / M_rslt[f"d321stdd100_{tailin}"]['y']
+vx40_50 = Q_rslt[f"d240stdd50_{tailin}"]['y'] / M_rslt[f"d240stdd50_{tailin}"]['y']
+vx41_50 = Q_rslt[f"d400stdd50_{tailin}"]['y'] / M_rslt[f"d400stdd50_{tailin}"]['y']
 
-legend_str = "MD300"
-dictkey = f"d300stdd100_m_{tailin}"
-style = {"color": "g", "marker": "^", "fill": "full"}
-arrow = False
-fitline = False
-rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
+vxm0 = np.mean(vx0)
+vxm1 = np.mean(vx1)
+vxm2 = np.mean(vx2)
+vxm3 = np.mean(vx3)
+vxm00 = np.mean(vx00)
+vxm01 = np.mean(vx01)
+vxm02 = np.mean(vx02)
+vxm03 = np.mean(vx03)
+vxm10 = np.mean(vx10)
+vxm11 = np.mean(vx11)
+vxm12 = np.mean(vx12)
+vxm13 = np.mean(vx13)
+vxm20 = np.mean(vx20)
+vxm21 = np.mean(vx21)
+vxm22 = np.mean(vx22)
+vxm23 = np.mean(vx23)
+vxm30 = np.mean(vx30)
+vxm31 = np.mean(vx31)
+vxm40 = np.mean(vx40)
+vxm41 = np.mean(vx41)
 
-legend_str = "WD300"
-dictkey = f"d300stdd200_m_{tailin}"
-style = {"color": "b", "marker": "s", "fill": "full"}
-arrow = False
-fitline = False
-rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
+vxm00_50 = np.mean(vx00_50)
+vxm01_50 = np.mean(vx01_50)
+vxm02_50 = np.mean(vx02_50)
+vxm03_50 = np.mean(vx03_50)
+vxm10_50 = np.mean(vx10_50)
+vxm11_50 = np.mean(vx11_50)
+vxm12_50 = np.mean(vx12_50)
+vxm13_50 = np.mean(vx13_50)
+vxm20_50 = np.mean(vx20_50)
+vxm21_50 = np.mean(vx21_50)
+vxm22_50 = np.mean(vx22_50)
+vxm23_50 = np.mean(vx23_50)
+vxm30_50 = np.mean(vx30_50)
+vxm31_50 = np.mean(vx31_50)
+vxm40_50 = np.mean(vx40_50)
+vxm41_50 = np.mean(vx41_50)
 
-legend_str = "VWD300"
-dictkey = f"d300stdd300_m_{tailin}"
-style = {"color": "c", "marker": "h", "fill": "full"}
-arrow = False
-fitline = True
-lims["x_loc"] = 0.012
-lims["y_loc"] = 0.04
-rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
+vxs0 = np.std(vx0)
+vxs1 = np.std(vx1)
+vxs2 = np.std(vx2)
+vxs3 = np.std(vx3)
+vxs00 = np.std(vx00)
+vxs01 = np.std(vx01)
+vxs02 = np.std(vx02)
+vxs03 = np.std(vx03)
+vxs10 = np.std(vx10)
+vxs11 = np.std(vx11)
+vxs12 = np.std(vx12)
+vxs13 = np.std(vx13)
+vxs20 = np.std(vx20)
+vxs21 = np.std(vx21)
+vxs22 = np.std(vx22)
+vxs23 = np.std(vx23)
+vxs30 = np.std(vx30)
+vxs31 = np.std(vx31)
+vxs40 = np.std(vx40)
+vxs41 = np.std(vx41)
 
-legend_str = "NR150"
-dictkey = f"d150stdd50_m_{tailin}"
-style = {"color": "r", "marker": "o", "fill": "full"}
-arrow = False
-fitline = True
-S = np.array(M_rslt[dictkey]["x"])*1.5/3
-M = np.array(M_rslt[dictkey]["y"])*1.5/3
-#rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
-ax.scatter(S, M, color=style["color"], marker=style["marker"], s=sizes["marker"]**2, label=legend_str, edgecolors='k', linewidths=marker_width)
+vxs00_50 = np.std(vx00_50)
+vxs01_50 = np.std(vx01_50)
+vxs02_50 = np.std(vx02_50)
+vxs03_50 = np.std(vx03_50)
+vxs10_50 = np.std(vx10_50)
+vxs11_50 = np.std(vx11_50)
+vxs12_50 = np.std(vx12_50)
+vxs13_50 = np.std(vx13_50)
+vxs20_50 = np.std(vx20_50)
+vxs21_50 = np.std(vx21_50)
+vxs22_50 = np.std(vx22_50)
+vxs23_50 = np.std(vx23_50)
+vxs30_50 = np.std(vx30_50)
+vxs31_50 = np.std(vx31_50)
+vxs40_50 = np.std(vx40_50)
+vxs41_50 = np.std(vx41_50)
 
-legend_str = "MD150"
-dictkey = f"d150stdd100_m_{tailin}"
-style = {"color": "g", "marker": "^", "fill": "full"}
-arrow = False
-fitline = False
-S = np.array(M_rslt[dictkey]["x"])*1.5/3
-M = np.array(M_rslt[dictkey]["y"])*1.5/3
-#rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
-ax.scatter(S, M, color=style["color"], marker=style["marker"], s=sizes["marker"]**2, label=legend_str, edgecolors='k', linewidths=marker_width)
+vxm_mb_array = np.array([vxm0, vxm1, vxm2, vxm3])
+vxs_mb_array = np.array([vxs0, vxs1, vxs2, vxs3])
 
-legend_str = "WD150"
-dictkey = f"d150stdd200_m_{tailin}"
-style = {"color": "b", "marker": "s", "fill": "full"}
-arrow = False
-fitline = False
-S = np.array(M_rslt[dictkey]["x"])*1.5/3
-M = np.array(M_rslt[dictkey]["y"])*1.5/3
-#rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
-ax.scatter(S, M, color=style["color"], marker=style["marker"], s=sizes["marker"]**2, label=legend_str, edgecolors='k', linewidths=marker_width)
+vxm_array = np.array([vxm00, vxm01, vxm02, vxm03, vxm10, vxm11, vxm12, vxm13,
+					 vxm20, vxm21, vxm22, vxm23, vxm30, vxm31, vxm40, vxm41])
+vxs_array = np.array([vxs00, vxs01, vxs02, vxs03, vxs10, vxs11, vxs12, vxs13,
+					 vxs20, vxs21, vxs22, vxs23, vxs30, vxs31, vxs40, vxs41])
+vxmm = np.mean(vxm_array)
+vxm_array_50 = np.array([vxm00_50, vxm01_50, vxm02_50, vxm03_50, vxm10_50, vxm11_50, vxm12_50, vxm13_50,
+						 vxm20_50, vxm21_50, vxm22_50, vxm23_50, vxm30_50, vxm31_50, vxm40_50, vxm41_50])
+vxs_array_50 = np.array([vxs00_50, vxs01_50, vxs02_50, vxs03_50, vxs10_50, vxs11_50, vxs12_50, vxs13_50,
+						 vxs20_50, vxs21_50, vxs22_50, vxs23_50, vxs30_50, vxs31_50, vxs40_50, vxs41_50])
+eta_mb_array = d90500
+eta_array = np.concatenate([d90500, d90501, d90502, d90503, d90504])
 
-legend_str = "VWD150"
-dictkey = f"d150stdd300_m_{tailin}"
-style = {"color": "c", "marker": "h", "fill": "full"}
-arrow = False
-fitline = True
-S = np.array(M_rslt[dictkey]["x"])*1.5/3
-M = np.array(M_rslt[dictkey]["y"])*1.5/3
-#rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
-ax.scatter(S, M, color=style["color"], marker=style["marker"], s=sizes["marker"]**2, label=legend_str, edgecolors='k', linewidths=marker_width)
+ax.errorbar(eta_array, vxm_array, yerr=vxs_array,
+			fmt='o',
+			color='C0',
+			markersize=marker_size,
+			markeredgewidth=marker_width,
+			capsize=marker_size*0.6,
+			label='Nondimensionlized by $d_{90}$')
+ax.errorbar(eta_array, vxm_array_50, yerr=vxs_array_50,
+			fmt='^',
+			color='C1',
+			markersize=marker_size,
+			markerfacecolor='none',
+			markeredgewidth=marker_width,
+			capsize=marker_size*0.6,
+			label='Nondimensionlized by $d_{50}$')
+ax.errorbar(eta_mb_array, vxm_mb_array, yerr=vxs_mb_array,
+			fmt='x-',
+			color='C2',
+			markersize=marker_size,
+			markerfacecolor='none',
+			markeredgewidth=marker_width,
+			capsize=marker_size*0.6,
+			label='Monodisperse Splash Model')
+ax.axhline(vxmm, color='k', linestyle='--', linewidth=line_width)
 
-ax.set_xlabel('$S$', fontsize=label_size)
-ax.set_ylabel('$M^*$', fontsize=label_size)
+ax.set_xlabel('$\\eta_d$', fontsize=label_size)
+ax.set_ylabel('$\\widetilde{\\overline{v_x}}$', fontsize=label_size)
 ax.tick_params(axis='both', labelsize=ticks_size)
-ax.set_xlim(0.004, 0.3)
-ax.set_ylim(0.005, 0.3)
+#ax.set_xlim(0.004, 0.3)
+#ax.set_ylim(0.005, 0.3)
 ax.legend(fontsize=ticks_size)
 
-inset_ax = inset_axes(ax, width='45%', height='45%', loc='lower right')
-
-ks0 = M_rslt[f"d300stdd50_m_{tailin}"]["fit"][0]
-ks1 = M_rslt[f"d300stdd100_m_{tailin}"]["fit"][0]
-ks2 = M_rslt[f"d300stdd200_m_{tailin}"]["fit"][0]
-ks3 = M_rslt[f"d300stdd300_m_{tailin}"]["fit"][0]
-k0 = -M_rslt[f"d300stdd50_m_{tailin}"]["fit"][1]/ks0
-k1 = -M_rslt[f"d300stdd100_m_{tailin}"]["fit"][1]/ks1
-k2 = -M_rslt[f"d300stdd200_m_{tailin}"]["fit"][1]/ks2
-k3 = -M_rslt[f"d300stdd300_m_{tailin}"]["fit"][1]/ks3
-ks10 = M_rslt[f"d250stdd25_m_{tailin}"]["fit"][0]
-ks11 = M_rslt[f"d271stdd121_m_{tailin}"]["fit"][0]
-ks12 = M_rslt[f"d317stdd252_m_{tailin}"]["fit"][0]
-ks13 = M_rslt[f"d347stdd537_m_{tailin}"]["fit"][0]
-k10 = -M_rslt[f"d250stdd25_m_{tailin}"]["fit"][1]/ks10
-k11 = -M_rslt[f"d271stdd121_m_{tailin}"]["fit"][1]/ks11
-k12 = -M_rslt[f"d317stdd252_m_{tailin}"]["fit"][1]/ks12
-k13 = -M_rslt[f"d347stdd537_m_{tailin}"]["fit"][1]/ks13
-ks21 = M_rslt[f"d150stdd50_m_{tailin}"]["fit"][0]
-ks22 = M_rslt[f"d150stdd100_m_{tailin}"]["fit"][0]
-ks23 = M_rslt[f"d150stdd200_m_{tailin}"]["fit"][0]
-ks24 = M_rslt[f"d150stdd300_m_{tailin}"]["fit"][0]
-k21 = -M_rslt[f"d150stdd50_m_{tailin}"]["fit"][1]/ks21
-k22 = -M_rslt[f"d150stdd100_m_{tailin}"]["fit"][1]/ks22
-k23 = -M_rslt[f"d150stdd200_m_{tailin}"]["fit"][1]/ks23
-k24 = -M_rslt[f"d150stdd300_m_{tailin}"]["fit"][1]/ks24
-
-ks0_array = np.array([ks0, ks1, ks2, ks3])
-ks1_array = np.array([ks10, ks11, ks12, ks13])
-ks2_array = np.array([ks21, ks22, ks23, ks24])
-k0_array = np.array([k0, k1, k2, k3])
-k1_array = np.array([k10, k11, k12, k13])
-k2_array = np.array([k21, k22, k23, k24])
-
-dm1 = np.array([250, 271, 317, 347])
-std0 = np.array([50, 100, 200, 300])
-std1 = np.array([25, 121, 252, 537])
-cv0 = std0 / 300
-cv1 = std1 / dm1
-#k_list = [k0, k1, k2, k3]
-#k_array = np.array(k_list)
-#k1_list = [k10, k11, k12, k13]
-#k1_array = np.array(k1_list)
-#sigma = np.array([0.1655, 0.3246, 0.6167, 0.87])
-#sd_from_tau = np.array([0.005245, 0.006080*1.2, 0.007008*1.4, 0.007238*1.6])
-#sd_from_tau = sd_from_tau
-#sigma1 = np.array([0.1, 0.4, 0.7, 1])
-#sd_from_tau1 = np.array([0.005152, 0.005030, 0.005092, 0.004603])
-#sd_from_tau1 = sd_from_tau1
-#sigma2 = np.array([0.1245, 0.2061])
-##k2_array = np.array([k20, k21])
-##sigma3 = np.array([0.3246, 0.3246])
-##k3_array = np.array([k30, k31])
-##sigma4 = np.array([0.3246, 0.3246])
-##k4_array = np.array([k40, k41])
-#k5_array = np.array([k51, k52, k53, k54])
-#k6_array = np.array([k61, k62, k63, k64])
-#k7_array = np.array([k71, k72, k73, k74])
-
-#x, x1, x2, x3, x4, x5, x6 = sigma, sigma1, sigma2, sigma3, sigma4, sigma5, sigma6
-x0, x1 = cv0, cv1
-
-inset_ax.plot(x0, ks0_array, 'r*-', markersize=marker_size_in, markeredgewidth=marker_width, label='Relative $k_s$')
-inset_ax.plot(x1, ks1_array, 'g*-', markersize=marker_size_in, markeredgewidth=marker_width, label='Relative $k_s$')
-inset_ax.plot(x0, ks2_array, 'k*', markersize=marker_size_in, markeredgewidth=marker_width, label='Relative $k_s$')
+#inset_ax = inset_axes(ax, width='45%', height='45%', loc='lower right')
+#
+#ks0 = M_rslt[f"d300stdd50_{tailin}"]["fit"][0]
+#ks1 = M_rslt[f"d300stdd100_{tailin}"]["fit"][0]
+#ks2 = M_rslt[f"d300stdd200_{tailin}"]["fit"][0]
+#ks3 = M_rslt[f"d300stdd300_{tailin}"]["fit"][0]
+#k0 = -M_rslt[f"d300stdd50_{tailin}"]["fit"][1]/ks0
+#k1 = -M_rslt[f"d300stdd100_{tailin}"]["fit"][1]/ks1
+#k2 = -M_rslt[f"d300stdd200_{tailin}"]["fit"][1]/ks2
+#k3 = -M_rslt[f"d300stdd300_{tailin}"]["fit"][1]/ks3
+#ks00 = M_rslt[f"d300stdd50_mb_{tailin}"]["fit"][0]
+#ks01 = M_rslt[f"d300stdd100_mb_{tailin}"]["fit"][0]
+#ks02 = M_rslt[f"d300stdd200_mb_{tailin}"]["fit"][0]
+#ks03 = M_rslt[f"d300stdd300_mb_{tailin}"]["fit"][0]
+#k00 = -M_rslt[f"d300stdd50_mb_{tailin}"]["fit"][1]/ks0
+#k01 = -M_rslt[f"d300stdd100_mb_{tailin}"]["fit"][1]/ks1
+#k02 = -M_rslt[f"d300stdd200_mb_{tailin}"]["fit"][1]/ks2
+#k03 = -M_rslt[f"d300stdd300_mb_{tailin}"]["fit"][1]/ks3
+##ks10 = M_rslt[f"d250stdd25_m_{tailin}"]["fit"][0]
+##ks11 = M_rslt[f"d271stdd121_m_{tailin}"]["fit"][0]
+##ks12 = M_rslt[f"d317stdd252_m_{tailin}"]["fit"][0]
+##ks13 = M_rslt[f"d347stdd537_m_{tailin}"]["fit"][0]
+##k10 = -M_rslt[f"d250stdd25_m_{tailin}"]["fit"][1]/ks10
+##k11 = -M_rslt[f"d271stdd121_m_{tailin}"]["fit"][1]/ks11
+##k12 = -M_rslt[f"d317stdd252_m_{tailin}"]["fit"][1]/ks12
+##k13 = -M_rslt[f"d347stdd537_m_{tailin}"]["fit"][1]/ks13
+##ks21 = M_rslt[f"d150stdd50_m_{tailin}"]["fit"][0]
+##ks22 = M_rslt[f"d150stdd100_m_{tailin}"]["fit"][0]
+##ks23 = M_rslt[f"d150stdd200_m_{tailin}"]["fit"][0]
+##ks24 = M_rslt[f"d150stdd300_m_{tailin}"]["fit"][0]
+##k21 = -M_rslt[f"d150stdd50_m_{tailin}"]["fit"][1]/ks21
+##k22 = -M_rslt[f"d150stdd100_m_{tailin}"]["fit"][1]/ks22
+##k23 = -M_rslt[f"d150stdd200_m_{tailin}"]["fit"][1]/ks23
+##k24 = -M_rslt[f"d150stdd300_m_{tailin}"]["fit"][1]/ks24
+#
+#ks_array = np.array([ks0, ks1, ks2, ks3])
+#ks0_array = np.array([ks00, ks01, ks02, ks03])
+##ks1_array = np.array([ks10, ks11, ks12, ks13])
+##ks2_array = np.array([ks21, ks22, ks23, ks24])
+#k_array = np.array([k0, k1, k2, k3])
+#k0_array = np.array([k00, k01, k02, k03])
+##k1_array = np.array([k10, k11, k12, k13])
+##k2_array = np.array([k21, k22, k23, k24])
+#
+#dm1 = np.array([250, 271, 317, 347])
+#std0 = np.array([50, 100, 200, 300])
+#std1 = np.array([25, 121, 252, 537])
+#cv0 = std0 / 300
+#cv1 = std1 / dm1
+##k_list = [k0, k1, k2, k3]
+##k_array = np.array(k_list)
+##k1_list = [k10, k11, k12, k13]
+##k1_array = np.array(k1_list)
+##sigma = np.array([0.1655, 0.3246, 0.6167, 0.87])
+##sd_from_tau = np.array([0.005245, 0.006080*1.2, 0.007008*1.4, 0.007238*1.6])
+##sd_from_tau = sd_from_tau
+##sigma1 = np.array([0.1, 0.4, 0.7, 1])
+##sd_from_tau1 = np.array([0.005152, 0.005030, 0.005092, 0.004603])
+##sd_from_tau1 = sd_from_tau1
+##sigma2 = np.array([0.1245, 0.2061])
+###k2_array = np.array([k20, k21])
+###sigma3 = np.array([0.3246, 0.3246])
+###k3_array = np.array([k30, k31])
+###sigma4 = np.array([0.3246, 0.3246])
+###k4_array = np.array([k40, k41])
+##k5_array = np.array([k51, k52, k53, k54])
+##k6_array = np.array([k61, k62, k63, k64])
+##k7_array = np.array([k71, k72, k73, k74])
+#
+##x, x1, x2, x3, x4, x5, x6 = sigma, sigma1, sigma2, sigma3, sigma4, sigma5, sigma6
+#x0, x1 = cv0, cv1
+#
+##inset_ax.plot(x0, ks_array, 'r-', markersize=marker_size_in, markeredgewidth=marker_width, label='Relative $k_s$')
+##inset_ax.plot(x0, ks0_array, 'r*-', markersize=marker_size_in, markeredgewidth=marker_width, label='Relative $k_s$')
+##inset_ax.plot(x1, ks1_array, 'g*-', markersize=marker_size_in, markeredgewidth=marker_width, label='Relative $k_s$')
+##inset_ax.plot(x0, ks2_array, 'k*', markersize=marker_size_in, markeredgewidth=marker_width, label='Relative $k_s$')
+#inset_ax.plot(x0, k_array, 'r-', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 1')
 #inset_ax.plot(x0, k0_array, 'rx-', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 1')
-#inset_ax.plot(x1, k1_array, 'gx-', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 2')
-#inset_ax.plot(x0, k2_array, 'kx', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 8')
-##inset_ax.plot(x2, k2_array, 'ko', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 3')
-##inset_ax.plot(x3, k3_array, 'k^', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 4')
-##inset_ax.plot(x4, k4_array, 'ks', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 5')
-#inset_ax.plot(x1, k5_array, 'kD', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 6')
-#inset_ax.plot(x, k6_array, 'kX', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 7')
-##inset_ax.plot(x, k7_array, 'rP', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 8')
-
-inset_ax.xaxis.tick_top()
-inset_ax.xaxis.set_label_position("top")
-inset_ax.set_xlabel('$\\sigma_d$', fontsize=label_size)
-inset_ax.set_ylabel('$S_d$', fontsize=label_size)
-inset_ax.tick_params(axis='both', labelsize=ticks_size)
-
-inset_ax.legend(fontsize=ticks_size,
-		  		loc='upper right',
-		  		bbox_to_anchor=(1.0, 2),
-		  		)
+##inset_ax.plot(x1, k1_array, 'gx-', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 2')
+##inset_ax.plot(x0, k2_array, 'kx', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 8')
+###inset_ax.plot(x2, k2_array, 'ko', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 3')
+###inset_ax.plot(x3, k3_array, 'k^', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 4')
+###inset_ax.plot(x4, k4_array, 'ks', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 5')
+##inset_ax.plot(x1, k5_array, 'kD', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 6')
+##inset_ax.plot(x, k6_array, 'kX', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 7')
+###inset_ax.plot(x, k7_array, 'rP', markersize=marker_size_in, markeredgewidth=marker_width, label='Group 8')
+#
+#inset_ax.xaxis.tick_top()
+#inset_ax.xaxis.set_label_position("top")
+#inset_ax.set_xlabel('$\\sigma_d$', fontsize=label_size)
+#inset_ax.set_ylabel('$S_d$', fontsize=label_size)
+#inset_ax.tick_params(axis='both', labelsize=ticks_size)
+#
+#inset_ax.legend(fontsize=ticks_size,
+#		  		loc='upper right',
+#		  		bbox_to_anchor=(1.0, 2),
+#		  		)
 
 fig = plt.figure(4, figsize=(8, 6), constrained_layout=True)
 ax = fig.gca()

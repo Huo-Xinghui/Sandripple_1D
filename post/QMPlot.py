@@ -206,7 +206,7 @@ g = 9.81 * (1.0 - 1.0 / s)
 y_axis = 1 # y轴类型：0为颗粒通量，1为空中颗粒承载量, 2为颗粒总能量
 direction = 0 # 统计量方向：0为x方向，1为z方向
 nondim = True # 是否无量纲化
-nondim_d = 3 # 无量纲化所使用的粒径: 0为dm, 1为d50, 2为d90, 3为平均空中粒径, 4为空中d50, 5为空中d90
+nondim_d = 0 # 无量纲化所使用的粒径: 0为dm, 1为d50, 2为d90, 3为平均空中粒径, 4为空中d50, 5为空中d90
 comparison = True # 是否与他人行比较, only Q*
 start = 60 # 统计量平均值的开始时间
 end = 300 # 统计量平均值的结束时间
@@ -224,7 +224,8 @@ if sys_OS == "w":
 	# Windows
 	#working_dir = "E:/Data/Q_on_flat_bed"
 	#working_dir = "E:/Data/Q_on_flat_bed_Eeff"
-	working_dir = "E:/Data/mono_in_air"
+	#working_dir = "E:/Data/mono_in_air"
+	working_dir = "E:/Data/mono_on_bed"
 	#working_dir = "E:/Data/Sandripples1DFluid/ripple/coll13"
 elif sys_OS == "l":
 	# Linux
@@ -236,43 +237,43 @@ else:
 # 定义文件名字典
 case_dict1 = {
 	0: "uStar030_300log50_0_2650_300",
-	1: "uStar035_300log50_0_2650_300",
 	2: "uStar040_300log50_0_2650_300",
-	3: "uStar045_300log50_0_2650_300",
 	4: "uStar050_300log50_0_2650_300",
-	5: "uStar055_300log50_0_2650_300",
 	6: "uStar060_300log50_0_2650_300",
-	7: "uStar065_300log50_0_2650_300",
+	#1: "uStar035_300log50_0_2650_300",
+	#3: "uStar045_300log50_0_2650_300",
+	#5: "uStar055_300log50_0_2650_300",
+	#7: "uStar065_300log50_0_2650_300",
 }
 case_dict2 = {
 	0: "uStar030_300log100_0_2650_300",
-	1: "uStar035_300log100_0_2650_300",
 	2: "uStar040_300log100_0_2650_300",
-	3: "uStar045_300log100_0_2650_300",
 	4: "uStar050_300log100_0_2650_300",
-	5: "uStar055_300log100_0_2650_300",
 	6: "uStar060_300log100_0_2650_300",
-	7: "uStar065_300log100_0_2650_300",
+	#1: "uStar035_300log100_0_2650_300",
+	#3: "uStar045_300log100_0_2650_300",
+	#5: "uStar055_300log100_0_2650_300",
+	#7: "uStar065_300log100_0_2650_300",
 }
 case_dict3 = {
 	0: "uStar030_300log200_0_2650_300",
-	1: "uStar035_300log200_0_2650_300",
 	2: "uStar040_300log200_0_2650_300",
-	3: "uStar045_300log200_0_2650_300",
 	4: "uStar050_300log200_0_2650_300",
-	5: "uStar055_300log200_0_2650_300",
 	6: "uStar060_300log200_0_2650_300",
-	7: "uStar065_300log200_0_2650_300",
+	#1: "uStar035_300log200_0_2650_300",
+	#3: "uStar045_300log200_0_2650_300",
+	#5: "uStar055_300log200_0_2650_300",
+	#7: "uStar065_300log200_0_2650_300",
 }
 case_dict4 = {
 	0: "uStar030_300log300_0_2650_300",
-	1: "uStar035_300log300_0_2650_300",
 	2: "uStar040_300log300_0_2650_300",
-	3: "uStar045_300log300_0_2650_300",
 	4: "uStar050_300log300_0_2650_300",
-	5: "uStar055_300log300_0_2650_300",
 	6: "uStar060_300log300_0_2650_300",
-	7: "uStar065_300log300_0_2650_300",
+	#1: "uStar035_300log300_0_2650_300",
+	#3: "uStar045_300log300_0_2650_300",
+	#5: "uStar055_300log300_0_2650_300",
+	#7: "uStar065_300log300_0_2650_300",
 }
 
 case_dict5 = {
@@ -401,10 +402,10 @@ case_dict20 = {
 }
 
 cases_dict = {
-	#"d300stdd50": case_dict1,
-	#"d300stdd100": case_dict2,
-	#"d300stdd200": case_dict3,
-	#"d300stdd300": case_dict4,
+	"d300stdd50": case_dict1,
+	"d300stdd100": case_dict2,
+	"d300stdd200": case_dict3,
+	"d300stdd300": case_dict4,
 	#"d430stdd100": case_dict5,
 	#"d167stdd100": case_dict6,
 	#"d269stdd100": case_dict7,
@@ -417,10 +418,10 @@ cases_dict = {
 	#"d347stdd537": case_dict14,
 	#"d290stdd97": case_dict15,
 	#"d197stdd65": case_dict16,
-	"d150stdd50": case_dict17,
-	"d150stdd100": case_dict18,
-	"d150stdd200": case_dict19,
-	"d150stdd300": case_dict20,
+	#"d150stdd50": case_dict17,
+	#"d150stdd100": case_dict18,
+	#"d150stdd200": case_dict19,
+	#"d150stdd300": case_dict20,
 }
 
 d_dict ={
@@ -586,9 +587,9 @@ for dictkey, case_dict in cases_dict.items():
 	rslts_dict[dictkey] = {"x": np.array(x_points), "y": np.array(y_points), "fit": coeffs}
 	tail = tail_list[nondim_d]
 	if y_axis == 0:
-		file_name = f"Q_mono_{dictkey}_{tail}.npz"
+		file_name = f"Q_monobed_{dictkey}_{tail}.npz"
 	elif y_axis == 1:
-		file_name = f"M_mono_{dictkey}_{tail}.npz"
+		file_name = f"M_monobed_{dictkey}_{tail}.npz"
 	np.savez(file_name, **rslts_dict[dictkey])
 
 # 绘图

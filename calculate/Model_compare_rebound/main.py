@@ -3,6 +3,7 @@ import time
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+from matplotlib.legend_handler import HandlerTuple
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from data_process import generate_truncated_lognormal
 from get_data import get_exp_data_array, get_model_data_array
@@ -10,14 +11,15 @@ from get_data import get_exp_data_array, get_model_data_array
 # Set up matplotlib parameters
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['text.usetex'] = True
-A = 1/0.6 # amplification factor
-label_size = 15*A
+A = 1/0.5 # amplification factor
+label_size = 12.5*A
 ticks_size = 10*A
-marker_size = 10*A
+marker_size = 8*A
 marker_size_in = 6*A
-marker_width = 1
-marker_width_in = 1.0
+marker_width = 2
+marker_width_in = 2
 linewidth = 1.5
+color = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
 # Bed PSD parameters
 dist_params = {
@@ -206,147 +208,149 @@ rslt_dict_mono_good = np.load('model_results_mono_good.npz')
 fig = plt.figure(1, figsize=(8, 6), constrained_layout=True)
 ax = fig.gca()
 
-ax.plot(
+ax.scatter(
     exp_dicts['Ri95_f']['thd'],
     exp_dicts['Ri95_f']['phid'],
-    'ro',
-    markerfacecolor='none',
-    label='Rice95 fine',
-    markersize=marker_size,
-    markeredgewidth=marker_width
+    marker='o',
+    edgecolor=color[0],
+    facecolor='none',
+    s=marker_size**2,
+    linewidth=marker_width
 )
-ax.plot(
+ax.scatter(
     exp_dicts['Ri95_m']['thd'],
     exp_dicts['Ri95_m']['phid'],
-    'g^',
-    markerfacecolor='none',
-    label='Rice95 medium',
-    markersize=marker_size,
-    markeredgewidth=marker_width
+    marker='^',
+    edgecolor=color[1],
+    facecolor='none',
+    s=marker_size**2,
+    linewidth=marker_width
 )
-ax.plot(
+ax.scatter(
     exp_dicts['Ri95_c']['thd'],
     exp_dicts['Ri95_c']['phid'],
-    'bs',
-    markerfacecolor='none',
-    label='Rice95 coarse',
-    markersize=marker_size,
-    markeredgewidth=marker_width
+    marker='s',
+    edgecolor=color[2],
+    facecolor='none',
+    s=marker_size**2,
+    linewidth=marker_width
 )
-ax.plot(
+ax.scatter(
     exp_dicts['Wi89_f']['thd'],
     exp_dicts['Wi89_f']['phid'],
-    'ro',
-    label='Willetts89 fine',
-    #markerfacecolor='none',
-    markersize=marker_size
+    marker='o',
+    color=color[0],
+    s=marker_size**2,
+    linewidth=marker_width
 )
-ax.plot(
+ax.scatter(
     exp_dicts['Wi89_m']['thd'],
     exp_dicts['Wi89_m']['phid'],
-    'g^',
-    label='Willetts89 medium',
-    #markerfacecolor='none',
-    markersize=marker_size
+    marker='^',
+    color=color[1],
+    s=marker_size**2,
+    linewidth=marker_width
 )
-ax.plot(
+ax.scatter(
     exp_dicts['Wi89_c']['thd'],
     exp_dicts['Wi89_c']['phid'],
-    'bs',
-    label='Willetts89 coarse',
-    #markerfacecolor='none',
-    markersize=marker_size
+    marker='s',
+    color=color[2],
+    s=marker_size**2,
+    linewidth=marker_width
 )
 
-ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['phid_f'], 'r:', linewidth=linewidth)
-ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['phid_m'], 'g:', linewidth=linewidth)
-ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['phid_c'], 'b:', linewidth=linewidth)
+ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['phid_f'], color[0], linestyle=':', linewidth=linewidth)
+ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['phid_m'], color[1], linestyle=':', linewidth=linewidth)
+ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['phid_c'], color[2], linestyle=':', linewidth=linewidth)
 #ax.plot(rslt_dict_2D['thd'], rslt_dict_2D['phid_f'], 'r--', linewidth=linewidth)
 #ax.plot(rslt_dict_2D['thd'], rslt_dict_2D['phid_m'], 'g--', linewidth=linewidth)
 #ax.plot(rslt_dict_2D['thd'], rslt_dict_2D['phid_c'], 'b--', linewidth=linewidth)
-ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['phid_f'], 'r-', linewidth=linewidth)
-ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['phid_m'], 'g-', linewidth=linewidth)
-ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['phid_c'], 'b-', linewidth=linewidth)
+ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['phid_f'], color[0], linestyle='-', linewidth=linewidth)
+ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['phid_m'], color[1], linestyle='-', linewidth=linewidth)
+ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['phid_c'], color[2], linestyle='-', linewidth=linewidth)
 #ax.plot(rslt_dict_mono_good['thd'], rslt_dict_mono_good['phid_f'], 'r-', linewidth=0.8)
 #ax.plot(rslt_dict_mono_good['thd'], rslt_dict_mono_good['phid_m'], 'g-', linewidth=0.8)
 #ax.plot(rslt_dict_mono_good['thd'], rslt_dict_mono_good['phid_c'], 'b-', linewidth=0.8)
 
 ax.set_xlim(0, 85)
 ax.set_ylim(0, 110)
-ax.set_xlabel('$\\theta$ (degree)', fontsize=label_size)
-ax.set_ylabel('$\\overline{\\theta \'}$(degree)', fontsize=label_size)
+ax.set_xlabel('$\\theta$ ($^{\\circ}$)', fontsize=label_size)
+ax.set_ylabel('$\\overline{\\theta \'}$($^{\\circ}$)', fontsize=label_size)
 ax.tick_params(axis='both', labelsize=ticks_size)
 # 创建自定义图例句柄
-line_2DP = mlines.Line2D([], [], color='k', linestyle=':', linewidth=linewidth, label='2D-P')
-line_2DM = mlines.Line2D([], [], color='k', linestyle='--',linewidth=linewidth, label='2D-M')
-line_3D2D = mlines.Line2D([], [], color='k', linestyle='-',linewidth=linewidth, label='3D-2D')
+line_mono = mlines.Line2D([], [], color='k', linestyle=':', linewidth=linewidth, label='2D-P')
+line_2D = mlines.Line2D([], [], color='k', linestyle='--',linewidth=linewidth, label='2D-M')
+line_3D = mlines.Line2D([], [], color='k', linestyle='-',linewidth=linewidth, label='3D-2D')
 #line_2DPM = mlines.Line2D([], [], color='k', linestyle='-',linewidth=0.8, label='2D-PM')
 #ax.legend([line_2DP, line_2DM, line_3D2D, line_2DPM], ['2D-P', '2D-M', '3D-2D', '2D-PM'], fontsize=ticks_size, loc='best', frameon=True)
-ax.legend([line_2DP, line_2DM, line_3D2D], ['2D-P', '2D-M', '3D-2D'], fontsize=ticks_size, loc='best', frameon=True)
+ax.legend([line_3D, line_2D, line_mono],
+          ['3D', '2D', 'Monodisperse'],
+          fontsize=ticks_size,
+          loc='upper right',
+          bbox_to_anchor=(0.9, 1),
+          frameon=True)
 
 inset_ax = inset_axes(ax, width='45%', height='45%', loc='upper left')
-inset_ax.plot(
+inset_ax.scatter(
     exp_dicts['Ri95_f']['thd'],
     exp_dicts['Ri95_f']['phid'],
-    'ro',
-    markerfacecolor='none',
-    label='Rice95 fine',
-    markersize=marker_size_in,
-    markeredgewidth=marker_width_in
+    marker='o',
+    edgecolor=color[0],
+    facecolor='none',
+    s=marker_size_in**2,
+    linewidth=marker_width_in
 )
-inset_ax.plot(
+inset_ax.scatter(
     exp_dicts['Ri95_m']['thd'],
     exp_dicts['Ri95_m']['phid'],
-    'g^',
-    markerfacecolor='none',
-    label='Rice95 medium',
-    markersize=marker_size_in,
-    markeredgewidth=marker_width_in
+    marker='^',
+    edgecolor=color[1],
+    facecolor='none',
+    s=marker_size_in**2,
+    linewidth=marker_width_in
 )
-inset_ax.plot(
+inset_ax.scatter(
     exp_dicts['Ri95_c']['thd'],
     exp_dicts['Ri95_c']['phid'],
-    'bs',
-    markerfacecolor='none',
-    label='Rice95 coarse',
-    markersize=marker_size_in,
-    markeredgewidth=marker_width_in
+    marker='s',
+    edgecolor=color[2],
+    facecolor='none',
+    s=marker_size_in**2,
+    linewidth=marker_width_in
 )
-inset_ax.plot(
+inset_ax.scatter(
     exp_dicts['Wi89_f']['thd'],
     exp_dicts['Wi89_f']['phid'],
-    'ro',
-    label='Willetts89 fine',
-    #markerfacecolor='none',
-    markersize=marker_size_in
+    marker='o',
+    color=color[0],
+    s=marker_size_in**2
 )
-inset_ax.plot(
+inset_ax.scatter(
     exp_dicts['Wi89_m']['thd'],
     exp_dicts['Wi89_m']['phid'],
-    'g^',
-    label='Willetts89 medium',
-    #markerfacecolor='none',
-    markersize=marker_size_in
+    marker='^',
+    color=color[1],
+    s=marker_size_in**2
 )
-inset_ax.plot(
+inset_ax.scatter(
     exp_dicts['Wi89_c']['thd'],
     exp_dicts['Wi89_c']['phid'],
-    'bs',
-    label='Willetts89 coarse',
-    #markerfacecolor='none',
-    markersize=marker_size_in
+    marker='s',
+    color=color[2],
+    s=marker_size_in**2
 )
-inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['phid_f'], 'r:', linewidth=linewidth)
-inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['phid_m'], 'g:', linewidth=linewidth)
-inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['phid_c'], 'b:', linewidth=linewidth)
-inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['phid_f'], 'r--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['phid_m'], 'g--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['phid_c'], 'b--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['phid_f'], 'r-', linewidth=linewidth)
-inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['phid_m'], 'g-', linewidth=linewidth)
-inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['phid_c'], 'b-', linewidth=linewidth)
-inset_ax.set_xlim(0, 40)
-inset_ax.set_ylim(0, 60)
+inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['phid_f'], color[0], linestyle=':', linewidth=linewidth)
+inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['phid_m'], color[1], linestyle=':', linewidth=linewidth)
+inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['phid_c'], color[2], linestyle=':', linewidth=linewidth)
+inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['phid_f'], color[0], linestyle='--', linewidth=linewidth)
+inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['phid_m'], color[1], linestyle='--', linewidth=linewidth)
+inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['phid_c'], color[2], linestyle='--', linewidth=linewidth)
+inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['phid_f'], color[0], linestyle='-', linewidth=linewidth)
+inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['phid_m'], color[1], linestyle='-', linewidth=linewidth)
+inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['phid_c'], color[2], linestyle='-', linewidth=linewidth)
+inset_ax.set_xlim(0, 42)
+inset_ax.set_ylim(0, 62)
 inset_ax.tick_params(axis='both', labelsize=ticks_size)
 # 把y的tick移到右边
 inset_ax.yaxis.tick_right()
@@ -362,7 +366,7 @@ ax = fig.gca()
 ax.plot(
     exp_dicts['Ri95_f']['thd'],
     exp_dicts['Ri95_f']['e'],
-    'ro',
+    'C0o',
     markerfacecolor='none',
     label='Rice95 fine',
     markersize=marker_size,
@@ -371,7 +375,7 @@ ax.plot(
 ax.plot(
     exp_dicts['Ri95_m']['thd'],
     exp_dicts['Ri95_m']['e'],
-    'g^',
+    'C1^',
     markerfacecolor='none',
     label='Rice95 medium',
     markersize=marker_size,
@@ -380,7 +384,7 @@ ax.plot(
 ax.plot(
     exp_dicts['Ri95_c']['thd'],
     exp_dicts['Ri95_c']['e'],
-    'bs',
+    'C2s',
     markerfacecolor='none',
     label='Rice95 coarse',
     markersize=marker_size,
@@ -389,7 +393,7 @@ ax.plot(
 wi89_f = ax.plot(
     exp_dicts['Wi89_f']['thd'],
     exp_dicts['Wi89_f']['e'],
-    'ro',
+    'C0o',
     label='Willetts89 fine',
     #markerfacecolor='none',
     markersize=marker_size
@@ -397,7 +401,7 @@ wi89_f = ax.plot(
 wi89_m = ax.plot(
     exp_dicts['Wi89_m']['thd'],
     exp_dicts['Wi89_m']['e'],
-    'g^',
+    'C1^',
     label='Willetts89 medium',
     #markerfacecolor='none',
     markersize=marker_size
@@ -405,43 +409,91 @@ wi89_m = ax.plot(
 wi89_c = ax.plot(
     exp_dicts['Wi89_c']['thd'],
     exp_dicts['Wi89_c']['e'],
-    'bs',
+    'C2s',
     label='Willetts89 coarse',
     #markerfacecolor='none',
     markersize=marker_size
 )
 
-ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['e_f'], 'r:', linewidth=linewidth)
-ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['e_m'], 'g:', linewidth=linewidth)
-ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['e_c'], 'b:', linewidth=linewidth)
+ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['e_f'], 'C0:', linewidth=linewidth)
+ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['e_m'], 'C1:', linewidth=linewidth)
+ax.plot(rslt_dict_mono['thd'], rslt_dict_mono['e_c'], 'C2:', linewidth=linewidth)
 #ax.plot(rslt_dict_2D['thd'], rslt_dict_2D['e_f'], 'r--', linewidth=linewidth)
 #ax.plot(rslt_dict_2D['thd'], rslt_dict_2D['e_m'], 'g--', linewidth=linewidth)
 #ax.plot(rslt_dict_2D['thd'], rslt_dict_2D['e_c'], 'b--', linewidth=linewidth)
-ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['e_f'], 'r-', linewidth=linewidth)
-ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['e_m'], 'g-', linewidth=linewidth)
-ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['e_c'], 'b-', linewidth=linewidth)
+ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['e_f'], 'C0-', linewidth=linewidth)
+ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['e_m'], 'C1-', linewidth=linewidth)
+ax.plot(rslt_dict_3D['thd'], rslt_dict_3D['e_c'], 'C2-', linewidth=linewidth)
 #ax.plot(rslt_dict_mono_good['thd'], rslt_dict_mono_good['e_f'], 'r-', linewidth=0.8)
 #ax.plot(rslt_dict_mono_good['thd'], rslt_dict_mono_good['e_m'], 'g-', linewidth=0.8)
 #ax.plot(rslt_dict_mono_good['thd'], rslt_dict_mono_good['e_c'], 'b-', linewidth=0.8)
 
 ax.set_xlim(0, 85)
 ax.set_ylim(0.15, 0.8)
-ax.set_xlabel('$\\theta$ (degree)', fontsize=label_size)
+ax.set_xlabel('$\\theta$ ($^{\\circ}$)', fontsize=label_size)
 ax.set_ylabel('$\\overline{e}$', fontsize=label_size)
 ax.tick_params(axis='x', labelsize=ticks_size)
 ax.tick_params(axis='y', labelsize=ticks_size)
-ax.legend([wi89_f[0], wi89_m[0], wi89_c[0]],
-           ['Fine', 'Medium', 'Coarse'],
-           fontsize=ticks_size,
-           loc='lower left',
-           #bbox_to_anchor=(-0.01, 1.05),
-           frameon=True)
+proxy_ro = plt.Line2D([0], [0],
+					 color='C0',
+					 marker='o',
+					 linestyle='',
+					 markersize=marker_size
+					)
+proxy_ro_h = plt.Line2D([0], [0],
+					 color='C0',
+					 marker='o',
+					 linestyle='',
+					 markerfacecolor='none',
+					 markersize=marker_size,
+					 markeredgewidth=marker_width
+					)
+proxy_gt = plt.Line2D([0], [0],
+					 color='C1',
+					 marker='^',
+					 linestyle='',
+					 markersize=marker_size
+					)
+proxy_gt_h = plt.Line2D([0], [0],
+					 color='C1',
+					 marker='^',
+					 linestyle='',
+					 markerfacecolor='none',
+					 markersize=marker_size,
+					 markeredgewidth=marker_width
+					)
+proxy_bs = plt.Line2D([0], [0],
+					 color='C2',
+					 marker='s',
+					 linestyle='',
+					 markersize=marker_size
+					)
+proxy_bs_h = plt.Line2D([0], [0],
+					 color='C2',
+					 marker='s',
+					 linestyle='',
+					 markerfacecolor='none',
+					 markersize=marker_size,
+					 markeredgewidth=marker_width
+					)
+ax.legend([(proxy_ro, proxy_ro_h),
+		   (proxy_gt, proxy_gt_h),
+		   (proxy_bs, proxy_bs_h)],
+          ['Fine', 'Medium', 'Coarse'],
+		  handler_map={tuple: HandlerTuple(ndivide=None)},
+          fontsize=ticks_size,
+          loc='upper left',
+          bbox_to_anchor=(0.16, 1),
+          frameon=True,
+		  framealpha=1,
+		  ncol=1
+		  )
 
 inset_ax = inset_axes(ax, width='45%', height='45%', loc='upper right')
 inset_ax.plot(
     exp_dicts['Ri95_f']['thd'],
     exp_dicts['Ri95_f']['e'],
-    'ro',
+    'C0o',
     markerfacecolor='none',
     label='Rice95 fine',
     markersize=marker_size_in,
@@ -450,7 +502,7 @@ inset_ax.plot(
 inset_ax.plot(
     exp_dicts['Ri95_m']['thd'],
     exp_dicts['Ri95_m']['e'],
-    'g^',
+    'C1^',
     markerfacecolor='none',
     label='Rice95 medium',
     markersize=marker_size_in,
@@ -459,7 +511,7 @@ inset_ax.plot(
 inset_ax.plot(
     exp_dicts['Ri95_c']['thd'],
     exp_dicts['Ri95_c']['e'],
-    'bs',
+    'C2s',
     markerfacecolor='none',
     label='Rice95 coarse',
     markersize=marker_size_in,
@@ -468,7 +520,7 @@ inset_ax.plot(
 wi89_f = inset_ax.plot(
     exp_dicts['Wi89_f']['thd'],
     exp_dicts['Wi89_f']['e'],
-    'ro',
+    'C0o',
     label='Willetts89 fine',
     #markerfacecolor='none',
     markersize=marker_size_in
@@ -476,7 +528,7 @@ wi89_f = inset_ax.plot(
 wi89_m = inset_ax.plot(
     exp_dicts['Wi89_m']['thd'],
     exp_dicts['Wi89_m']['e'],
-    'g^',
+    'C1^',
     label='Willetts89 medium',
     #markerfacecolor='none',
     markersize=marker_size_in
@@ -484,24 +536,24 @@ wi89_m = inset_ax.plot(
 wi89_c = inset_ax.plot(
     exp_dicts['Wi89_c']['thd'],
     exp_dicts['Wi89_c']['e'],
-    'bs',
+    'C2s',
     label='Willetts89 coarse',
     #markerfacecolor='none',
     markersize=marker_size_in
 )
 
-inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['e_f'], 'r:', linewidth=linewidth)
-inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['e_m'], 'g:', linewidth=linewidth)
-inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['e_c'], 'b:', linewidth=linewidth)
-inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['e_f'], 'r--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['e_m'], 'g--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['e_c'], 'b--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['e_f'], 'r-', linewidth=linewidth)
-inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['e_m'], 'g-', linewidth=linewidth)
-inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['e_c'], 'b-', linewidth=linewidth)
+inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['e_f'], 'C0:', linewidth=linewidth)
+inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['e_m'], 'C1:', linewidth=linewidth)
+inset_ax.plot(rslt_dict_mono_in['thd'], rslt_dict_mono_in['e_c'], 'C2:', linewidth=linewidth)
+inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['e_f'], 'C0--', linewidth=linewidth)
+inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['e_m'], 'C1--', linewidth=linewidth)
+inset_ax.plot(rslt_dict_2D_in['thd'], rslt_dict_2D_in['e_c'], 'C2--', linewidth=linewidth)
+inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['e_f'], 'C0-', linewidth=linewidth)
+inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['e_m'], 'C1-', linewidth=linewidth)
+inset_ax.plot(rslt_dict_3D_in['thd'], rslt_dict_3D_in['e_c'], 'C2-', linewidth=linewidth)
 
-inset_ax.set_xlim(0, 40)
-inset_ax.set_ylim(0.4, 0.65)
+inset_ax.set_xlim(0, 42)
+inset_ax.set_ylim(0.44, 0.64)
 inset_ax.tick_params(axis='x', labelsize=ticks_size)
 inset_ax.tick_params(axis='y', labelsize=ticks_size)
 ## 把y的tick移到右边
