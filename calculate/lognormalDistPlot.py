@@ -33,12 +33,12 @@ def get_normal_params(log_mean, log_std):
 #log_mean = 2.4e-4
 #log_std = 0.5e-4
 xmin = 1e-4
-xmax = 4e-4
+xmax = 10e-4
 xnum = 1000
 dx = xmax / xnum
 ddx = dx * 0.5
 #mu, sigma = get_normal_params(log_mean, log_std)
-mu = -8.2
+mu = -7.5
 sigma = 0.3246
 log_std = np.sqrt((math.exp(sigma**2)-1)*math.exp(2*mu+sigma**2))
 # 生成数据点

@@ -4,6 +4,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 from matplotlib.ticker import ScalarFormatter
+from matplotlib.legend_handler import HandlerTuple
 from data_process import generate_truncated_lognormal, print_time
 from get_data import get_exp_data_array, get_model_data_array_v1, get_model_data_array_th
 
@@ -11,10 +12,10 @@ from get_data import get_exp_data_array, get_model_data_array_v1, get_model_data
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = r'\usepackage{amssymb}'
-A = 1/0.6 # amplification factor
-label_size = 20*A
-ticks_size = 15*A
-marker_size = 10*A
+A = 1/0.5 # amplification factor
+label_size = 12.5*A
+ticks_size = 10*A
+marker_size = 8*A
 marker_width = 2
 mpl.rcParams['lines.markersize'] = marker_size
 mpl.rcParams['xtick.labelsize'] = ticks_size
@@ -419,17 +420,17 @@ rslt_d50_vs_v1 = np.load('eject_3D_d50_vs_v1_old.npz')
 
 # Draw Nej vs thd
 plt.figure(1, figsize=(8, 6))
-p1=plt.plot(
+plt.plot(
     exp_dicts['Ri95_f']['thd'],
     exp_dicts['Ri95_f']['Nej'],
-    'ro',
+    'C0o',
     label='Rice95 fine',
     markersize=marker_size
 )
-p2=plt.plot(
+plt.plot(
     exp_dicts['Ri95_m']['thd'],
     exp_dicts['Ri95_m']['Nej'],
-    'g^',
+    'C1^',
     label='Rice95 medium',
     markersize=marker_size
 )
@@ -437,7 +438,7 @@ p2=plt.plot(
 p3=plt.plot(
     exp_dicts['Ri95_c']['thd'],
     exp_dicts['Ri95_c']['Nej'],
-    'bs',
+    'C2s',
     label='Rice95 coarse',
     markersize=marker_size
 )
@@ -445,7 +446,7 @@ p3=plt.plot(
 plt.plot(
     exp_dicts['Yi21_f_N_t']['thd'],
     exp_dicts['Yi21_f_N_t']['Nej'],
-    'ro',
+    'C0o',
     label='Yin21 fine',
     markerfacecolor='none',
     markeredgewidth=marker_width,
@@ -455,7 +456,7 @@ plt.plot(
 plt.plot(
     exp_dicts['Yi21_m_N_t']['thd'],
     exp_dicts['Yi21_m_N_t']['Nej'],
-    'g^',
+    'C1^',
     label='Yin21 medium',
     markerfacecolor='none',
     markeredgewidth=marker_width,
@@ -465,22 +466,22 @@ plt.plot(
 plt.plot(
     exp_dicts['Yi21_c_N_t']['thd'],
     exp_dicts['Yi21_c_N_t']['Nej'],
-    'bs',
+    'C2s',
     label='Yin21 coarse',
     markerfacecolor='none',
     markeredgewidth=marker_width,
     markersize=marker_size
 )
 
-plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['Nej_f'], 'r:')
-plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['Nej_m'], 'g:')
-plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['Nej_c'], 'b:')
-plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['Nej_f'], 'r--')
-plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['Nej_m'], 'g--')
-plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['Nej_c'], 'b--')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_f'], 'r-')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_m'], 'g-')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_c'], 'b-')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['Nej_f'], 'C0:')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['Nej_m'], 'C1:')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['Nej_c'], 'C2:')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['Nej_f'], 'C0--')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['Nej_m'], 'C1--')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['Nej_c'], 'C2--')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_f'], 'C0-')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_m'], 'C1-')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['Nej_c'], 'C2-')
 
 plt.xlim(0, 80)
 plt.ylim(0, 12)
@@ -488,16 +489,60 @@ plt.xlabel('$\\theta$ (degree)', fontsize=label_size)
 plt.ylabel('$\\overline{N_{ej}}$', fontsize=label_size)
 plt.xticks(fontsize=ticks_size)
 plt.yticks(fontsize=ticks_size)
-# 创建自定义图例句柄
-symbol_f = mlines.Line2D([], [], color='r', marker='o', markersize=marker_size, markeredgewidth=marker_width)
-symbol_m = mlines.Line2D([], [], color='g', marker='^', markersize=marker_size, markeredgewidth=marker_width)
-symbol_c = mlines.Line2D([], [], color='b', marker='s', markersize=marker_size, markeredgewidth=marker_width)
-plt.legend([symbol_f, symbol_m, symbol_c],
-           ['Fine', 'Medium', 'Coarse'],
+proxy_ro = plt.Line2D([0], [0],
+					 color='C0',
+					 marker='o',
+					 linestyle='',
+					 markersize=marker_size
+					)
+proxy_ro_h = plt.Line2D([0], [0],
+					 color='C0',
+					 marker='o',
+					 linestyle='',
+					 markerfacecolor='none',
+					 markersize=marker_size,
+					 markeredgewidth=marker_width
+					)
+proxy_gt = plt.Line2D([0], [0],
+					 color='C1',
+					 marker='^',
+					 linestyle='',
+					 markersize=marker_size
+					)
+proxy_gt_h = plt.Line2D([0], [0],
+					 color='C1',
+					 marker='^',
+					 linestyle='',
+					 markerfacecolor='none',
+					 markersize=marker_size,
+					 markeredgewidth=marker_width
+					)
+proxy_bs = plt.Line2D([0], [0],
+					 color='C2',
+					 marker='s',
+					 linestyle='',
+					 markersize=marker_size
+					)
+proxy_bs_h = plt.Line2D([0], [0],
+					 color='C2',
+					 marker='s',
+					 linestyle='',
+					 markerfacecolor='none',
+					 markersize=marker_size,
+					 markeredgewidth=marker_width
+					)
+plt.legend([(proxy_ro, proxy_ro_h),
+		   (proxy_gt, proxy_gt_h),
+		   (proxy_bs, proxy_bs_h)],
+          ['Fine', 'Medium', 'Coarse'],
+		  handler_map={tuple: HandlerTuple(ndivide=None)},
           fontsize=ticks_size,
           loc='upper right',
-          #bbox_to_anchor=(1.66, 0.65),
-          frameon=True)
+          #bbox_to_anchor=(0.16, 1),
+          frameon=True,
+		  framealpha=1,
+		  ncol=1
+		  )
 plt.tight_layout()
 
 # Draw Nej vs v1
@@ -515,14 +560,14 @@ Yc = np.array(exp_dicts['Yi21_c_N_v']['v1'])
 plt.loglog(
     Rf/sgdf,
     np.array(exp_dicts['Ri95_f']['Nej']),
-    'ro',
+    'C0o',
     label='Rice95 fine',
     markersize=marker_size
 )
 plt.loglog(
     Rm/sgdm,
     np.array(exp_dicts['Ri95_m']['Nej']),
-    'g^',
+    'C1^',
     label='Rice95 medium',
     markersize=marker_size
 )
@@ -530,7 +575,7 @@ plt.loglog(
 plt.loglog(
     Rc/sgdc,
     np.array(exp_dicts['Ri95_c']['Nej']),
-    'bs',
+    'C2s',
     label='Rice95 coarse',
     markersize=marker_size
 )
@@ -538,7 +583,7 @@ plt.loglog(
 plt.loglog(
     Yf/sgdf,
     np.array(exp_dicts['Yi21_f_N_v']['Nej']),
-    'ro',
+    'C0o',
     label='Yin21 fine',
     markerfacecolor='none',
     markeredgewidth=marker_width,
@@ -548,7 +593,7 @@ plt.loglog(
 plt.loglog(
     Ym/sgdm,
     np.array(exp_dicts['Yi21_m_N_v']['Nej']),
-    'g^',
+    'C1^',
     label='Yin21 medium',
     markerfacecolor='none',
     markeredgewidth=marker_width,
@@ -558,7 +603,7 @@ plt.loglog(
 plt.loglog(
     Yc/sgdc,
     np.array(exp_dicts['Yi21_c_N_v']['Nej']),
-    'bs',
+    'C2s',
     label='Yin21 coarse',
     markerfacecolor='none',
     markeredgewidth=marker_width,
@@ -568,15 +613,15 @@ plt.loglog(
 rslt_mo = rslt_mono_vs_v1['v1']
 rslt_50 = rslt_d50_vs_v1['v1']
 rslt_3D = rslt_3D_vs_v1['v1']
-plt.loglog(rslt_mo/sgdf, rslt_mono_vs_v1['Nej_f'], 'r:')
-plt.loglog(rslt_mo/sgdm, rslt_mono_vs_v1['Nej_m'], 'g:')
-plt.loglog(rslt_mo/sgdc, rslt_mono_vs_v1['Nej_c'], 'b:')
-plt.loglog(rslt_50/sgdf, rslt_d50_vs_v1['Nej_f'], 'r--')
-plt.loglog(rslt_50/sgdm, rslt_d50_vs_v1['Nej_m'], 'g--')
-plt.loglog(rslt_50/sgdc, rslt_d50_vs_v1['Nej_c'], 'b--')
-plt.loglog(rslt_3D/sgdf, rslt_3D_vs_v1['Nej_f'], 'r-')
-plt.loglog(rslt_3D/sgdm, rslt_3D_vs_v1['Nej_m'], 'g-')
-plt.loglog(rslt_3D/sgdc, rslt_3D_vs_v1['Nej_c'], 'b-')
+plt.loglog(rslt_mo/sgdf, rslt_mono_vs_v1['Nej_f'], 'C0:')
+plt.loglog(rslt_mo/sgdm, rslt_mono_vs_v1['Nej_m'], 'C1:')
+plt.loglog(rslt_mo/sgdc, rslt_mono_vs_v1['Nej_c'], 'C2:')
+plt.loglog(rslt_50/sgdf, rslt_d50_vs_v1['Nej_f'], 'C0--')
+plt.loglog(rslt_50/sgdm, rslt_d50_vs_v1['Nej_m'], 'C1--')
+plt.loglog(rslt_50/sgdc, rslt_d50_vs_v1['Nej_c'], 'C2--')
+plt.loglog(rslt_3D/sgdf, rslt_3D_vs_v1['Nej_f'], 'C0-')
+plt.loglog(rslt_3D/sgdm, rslt_3D_vs_v1['Nej_m'], 'C1-')
+plt.loglog(rslt_3D/sgdc, rslt_3D_vs_v1['Nej_c'], 'C2-')
 
 plt.xlim(30, 130)
 plt.ylim(0.3, 40)
@@ -609,14 +654,14 @@ sgd = np.sqrt(g*d2_mean)
 plt.plot(
  exp_dicts['Ri95_f']['thd'],
  np.array(exp_dicts['Ri95_f']['vn'])/np.array(exp_dicts['Ri95_f']['v1']),
- 'ro',
+ 'C0o',
  label='Rice95 fine',
  markersize=marker_size)
 
 plt.plot(
   exp_dicts['Ri95_m']['thd'],
   np.array(exp_dicts['Ri95_m']['vn'])/np.array(exp_dicts['Ri95_m']['v1']),
-  'g^',
+  'C1^',
   label='Rice95 medium',
   markersize=marker_size)
 
@@ -624,7 +669,7 @@ plt.plot(
 plt.plot(
  exp_dicts['Ri95_c']['thd'],
  np.array(exp_dicts['Ri95_c']['vn'])/np.array(exp_dicts['Ri95_c']['v1']),
- 'bs',
+ 'C2s',
  label='Rice95 coarse',
  markersize=marker_size)
 
@@ -659,15 +704,15 @@ v1f = np.mean(exp_dicts['Ri95_f']['v1'])
 v1m = np.mean(exp_dicts['Ri95_m']['v1'])
 v1c = np.mean(exp_dicts['Ri95_c']['v1'])
 
-plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['vn_f']/v1f, 'r:')
-plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['vn_m']/v1m, 'g:')
-plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['vn_c']/v1c, 'b:')
-plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['vn_f']/v1f, 'r--')
-plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['vn_m']/v1m, 'g--')
-plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['vn_c']/v1c, 'b--')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_f']/v1f, 'r-')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_m']/v1m, 'g-')
-plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_c']/v1c, 'b-')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['vn_f']/v1f, 'C0:')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['vn_m']/v1m, 'C1:')
+plt.plot(rslt_mono_vs_th['thd'], rslt_mono_vs_th['vn_c']/v1c, 'C2:')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['vn_f']/v1f, 'C0--')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['vn_m']/v1m, 'C1--')
+plt.plot(rslt_d50_vs_th['thd'], rslt_d50_vs_th['vn_c']/v1c, 'C2--')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_f']/v1f, 'C0-')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_m']/v1m, 'C1-')
+plt.plot(rslt_3D_vs_th['thd'], rslt_3D_vs_th['vn_c']/v1c, 'C2-')
 
 plt.xlim(0, 80)
 plt.ylim(0.04, 0.1)
@@ -686,14 +731,14 @@ sgd1 = np.sqrt(g*3.2e-4)
 plt.loglog(
     np.array(exp_dicts['Ri95_f']['v1'])/sgdf,
     np.array(exp_dicts['Ri95_f']['vn'])/np.array(exp_dicts['Ri95_f']['v1']),
-    'ro',
+    'C0o',
     label='Rice95 fine',
     markersize=marker_size
 )
 plt.loglog(
     np.array(exp_dicts['Ri95_m']['v1'])/sgdm,
     np.array(exp_dicts['Ri95_m']['vn'])/np.array(exp_dicts['Ri95_m']['v1']),
-    'g^',
+    'C1^',
     label='Rice95 medium',
     markersize=marker_size
 )
@@ -701,7 +746,7 @@ plt.loglog(
 plt.loglog(
     np.array(exp_dicts['Ri95_c']['v1'])/sgdc,
     np.array(exp_dicts['Ri95_c']['vn'])/np.array(exp_dicts['Ri95_c']['v1']),
-    'bs',
+    'C2s',
     label='Rice95 coarse',
     markersize=marker_size
 )
@@ -709,7 +754,7 @@ plt.loglog(
 plt.loglog(
     np.array(exp_dicts['Yi21_vn_v1']['v1'])/sgd1,
     np.array(exp_dicts['Yi21_vn_v1']['vn'])/np.array(exp_dicts['Yi21_vn_v1']['v1']),
-    'go',
+    'C1^',
     label='Yin21',
     markerfacecolor='none',
     markeredgewidth=marker_width,
@@ -743,15 +788,15 @@ plt.loglog(
 #    markersize=marker_size
 #)
 
-plt.loglog(rslt_mono_vs_v1['v1']/sgdf, rslt_mono_vs_v1['vn_f']/rslt_mono_vs_v1['v1'], 'r:')
-plt.loglog(rslt_mono_vs_v1['v1']/sgdm, rslt_mono_vs_v1['vn_m']/rslt_mono_vs_v1['v1'], 'g:')
-plt.loglog(rslt_mono_vs_v1['v1']/sgdc, rslt_mono_vs_v1['vn_c']/rslt_mono_vs_v1['v1'], 'b:')
-plt.loglog(rslt_d50_vs_v1['v1']/sgdf, rslt_d50_vs_v1['vn_f']/rslt_d50_vs_v1['v1'], 'r--')
-plt.loglog(rslt_d50_vs_v1['v1']/sgdm, rslt_d50_vs_v1['vn_m']/rslt_d50_vs_v1['v1'], 'g--')
-plt.loglog(rslt_d50_vs_v1['v1']/sgdc, rslt_d50_vs_v1['vn_c']/rslt_d50_vs_v1['v1'], 'b--')
-plt.loglog(rslt_3D_vs_v1['v1']/sgdf, rslt_3D_vs_v1['vn_f']/rslt_3D_vs_v1['v1'], 'r-')
-plt.loglog(rslt_3D_vs_v1['v1']/sgdm, rslt_3D_vs_v1['vn_m']/rslt_3D_vs_v1['v1'], 'g-')
-plt.loglog(rslt_3D_vs_v1['v1']/sgdc, rslt_3D_vs_v1['vn_c']/rslt_3D_vs_v1['v1'], 'b-')
+plt.loglog(rslt_mono_vs_v1['v1']/sgdf, rslt_mono_vs_v1['vn_f']/rslt_mono_vs_v1['v1'], 'C0:')
+plt.loglog(rslt_mono_vs_v1['v1']/sgdm, rslt_mono_vs_v1['vn_m']/rslt_mono_vs_v1['v1'], 'C1:')
+plt.loglog(rslt_mono_vs_v1['v1']/sgdc, rslt_mono_vs_v1['vn_c']/rslt_mono_vs_v1['v1'], 'C2:')
+plt.loglog(rslt_d50_vs_v1['v1']/sgdf, rslt_d50_vs_v1['vn_f']/rslt_d50_vs_v1['v1'], 'C0--')
+plt.loglog(rslt_d50_vs_v1['v1']/sgdm, rslt_d50_vs_v1['vn_m']/rslt_d50_vs_v1['v1'], 'C1--')
+plt.loglog(rslt_d50_vs_v1['v1']/sgdc, rslt_d50_vs_v1['vn_c']/rslt_d50_vs_v1['v1'], 'C2--')
+plt.loglog(rslt_3D_vs_v1['v1']/sgdf, rslt_3D_vs_v1['vn_f']/rslt_3D_vs_v1['v1'], 'C0-')
+plt.loglog(rslt_3D_vs_v1['v1']/sgdm, rslt_3D_vs_v1['vn_m']/rslt_3D_vs_v1['v1'], 'C1-')
+plt.loglog(rslt_3D_vs_v1['v1']/sgdc, rslt_3D_vs_v1['vn_c']/rslt_3D_vs_v1['v1'], 'C2-')
 
 ax = plt.gca()
 #ax.xaxis.set_minor_locator(plt.NullLocator())
@@ -772,10 +817,10 @@ line_mono = mlines.Line2D([], [], color='k', linestyle=':')
 line_3D = mlines.Line2D([], [], color='k', linestyle='--')
 line_d50 = mlines.Line2D([], [], color='k', linestyle='-')
 plt.legend([line_mono, line_3D, line_d50],
-           ['Monodisperse', 'Polydisperse $z_c=d_{50}$', 'Polydisperse $z_c=d_{90}$'],
+           ['Monodisperse', 'NSDP $z_c=d_{50}$', 'NSDP $z_c=d_{90}$'],
            fontsize=ticks_size,
            loc='lower left',
-           bbox_to_anchor=(-0.02, -0.02),
+           #bbox_to_anchor=(-0.02, -0.02),
            frameon=True)
 plt.tight_layout()
 plt.tight_layout()
