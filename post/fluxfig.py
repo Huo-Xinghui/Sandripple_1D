@@ -82,7 +82,7 @@ def Pahtz_Q_func(x, Sd, cM, mub):
 
 # 控制参数
 ampf = 1/0.6 # amplification factor
-label_size = 15*ampf
+label_size = 12.5*ampf
 ticks_size = 10*ampf
 ticks_size_in = 6*ampf
 marker_size = 8*ampf
@@ -397,14 +397,14 @@ Q_wd9_in = np.load(f"Q_monobed_d300stdd200_{tailin}.npz")
 M_wd9_in = np.load(f"M_monobed_d300stdd200_{tailin}.npz")
 Q_vwd9_in = np.load(f"Q_monobed_d300stdd300_{tailin}.npz")
 M_vwd9_in = np.load(f"M_monobed_d300stdd300_{tailin}.npz")
-Q_nr10_out = np.load(f"Q_monobed_d300stdd50_{tailout}.npz")
-M_nr10_out = np.load(f"M_monobed_d300stdd50_{tailout}.npz")
-Q_md10_out = np.load(f"Q_monobed_d300stdd100_{tailout}.npz")
-M_md10_out = np.load(f"M_monobed_d300stdd100_{tailout}.npz")
-Q_wd10_out = np.load(f"Q_monobed_d300stdd200_{tailout}.npz")
-M_wd10_out = np.load(f"M_monobed_d300stdd200_{tailout}.npz")
-Q_vwd10_out = np.load(f"Q_monobed_d300stdd300_{tailout}.npz")
-M_vwd10_out = np.load(f"M_monobed_d300stdd300_{tailout}.npz")
+Q_nr9_out = np.load(f"Q_monobed_d300stdd50_{tailout}.npz")
+M_nr9_out = np.load(f"M_monobed_d300stdd50_{tailout}.npz")
+Q_md9_out = np.load(f"Q_monobed_d300stdd100_{tailout}.npz")
+M_md9_out = np.load(f"M_monobed_d300stdd100_{tailout}.npz")
+Q_wd9_out = np.load(f"Q_monobed_d300stdd200_{tailout}.npz")
+M_wd9_out = np.load(f"M_monobed_d300stdd200_{tailout}.npz")
+Q_vwd9_out = np.load(f"Q_monobed_d300stdd300_{tailout}.npz")
+M_vwd9_out = np.load(f"M_monobed_d300stdd300_{tailout}.npz")
 Q_mu1_in = np.load(f"Q_d167stdd100_{tailin}.npz")
 M_mu1_in = np.load(f"M_d167stdd100_{tailin}.npz")
 Q_mu2_in = np.load(f"Q_d197stdd65_{tailin}.npz")
@@ -421,6 +421,22 @@ Q_nr7_in = np.load(f"Q_d240stdd50_{tailin}.npz")
 M_nr7_in = np.load(f"M_d240stdd50_{tailin}.npz")
 Q_nr8_in = np.load(f"Q_d400stdd50_{tailin}.npz")
 M_nr8_in = np.load(f"M_d400stdd50_{tailin}.npz")
+Q_nr10_in = np.load(f"Q_monobed_d250stdd25_{tailin}.npz")
+M_nr10_in = np.load(f"M_monobed_d250stdd25_{tailin}.npz")
+Q_md10_in = np.load(f"Q_monobed_d271stdd121_{tailin}.npz")
+M_md10_in = np.load(f"M_monobed_d271stdd121_{tailin}.npz")
+Q_wd10_in = np.load(f"Q_monobed_d317stdd252_{tailin}.npz")
+M_wd10_in = np.load(f"M_monobed_d317stdd252_{tailin}.npz")
+Q_vwd10_in = np.load(f"Q_monobed_d347stdd537_{tailin}.npz")
+M_vwd10_in = np.load(f"M_monobed_d347stdd537_{tailin}.npz")
+Q_nr10_out = np.load(f"Q_monobed_d250stdd25_{tailout}.npz")
+M_nr10_out = np.load(f"M_monobed_d250stdd25_{tailout}.npz")
+Q_md10_out = np.load(f"Q_monobed_d271stdd121_{tailout}.npz")
+M_md10_out = np.load(f"M_monobed_d271stdd121_{tailout}.npz")
+Q_wd10_out = np.load(f"Q_monobed_d317stdd252_{tailout}.npz")
+M_wd10_out = np.load(f"M_monobed_d317stdd252_{tailout}.npz")
+Q_vwd10_out = np.load(f"Q_monobed_d347stdd537_{tailout}.npz")
+M_vwd10_out = np.load(f"M_monobed_d347stdd537_{tailout}.npz")
 
 dir_list_nr = [
 	"uStar030_300log50_0_2650_300",
@@ -690,10 +706,10 @@ Q_rslt = {
 	f"d300stdd100_mb_{tailin}": Q_md9_in,
 	f"d300stdd200_mb_{tailin}": Q_wd9_in,
 	f"d300stdd300_mb_{tailin}": Q_vwd9_in,
-	f"d300stdd50_mb_{tailout}": Q_nr10_out,
-	f"d300stdd100_mb_{tailout}": Q_md10_out,
-	f"d300stdd200_mb_{tailout}": Q_wd10_out,
-	f"d300stdd300_mb_{tailout}": Q_vwd10_out,
+	f"d300stdd50_mb_{tailout}": Q_nr9_out,
+	f"d300stdd100_mb_{tailout}": Q_md9_out,
+	f"d300stdd200_mb_{tailout}": Q_wd9_out,
+	f"d300stdd300_mb_{tailout}": Q_vwd9_out,
 
 	f"d300stdd50_m_{tailin}": Q_nr4_in,
 	f"d300stdd100_m_{tailin}": Q_md4_in,
@@ -722,6 +738,15 @@ Q_rslt = {
 	f"d271stdd121_m_{tailin}": Q_md3_in,
 	f"d317stdd252_m_{tailin}": Q_wd3_in,
 	f"d347stdd537_m_{tailin}": Q_vwd3_in,
+
+	f"d250stdd25_mb_{tailin}": Q_nr10_in,
+	f"d271stdd121_mb_{tailin}": Q_md10_in,
+	f"d317stdd252_mb_{tailin}": Q_wd10_in,
+	f"d347stdd537_mb_{tailin}": Q_vwd10_in,
+	f"d250stdd25_mb_{tailout}": Q_nr10_out,
+	f"d271stdd121_mb_{tailout}": Q_md10_out,
+	f"d317stdd252_mb_{tailout}": Q_wd10_out,
+	f"d347stdd537_mb_{tailout}": Q_vwd10_out,
 	# 2
 	f"d167stdd100_{tailout}": Q_mu1_out,
 	f"d197stdd65_{tailout}": Q_mu2_out,
@@ -763,10 +788,10 @@ M_rslt = {
 	f"d300stdd100_mb_{tailin}": M_md9_in,
 	f"d300stdd200_mb_{tailin}": M_wd9_in,
 	f"d300stdd300_mb_{tailin}": M_vwd9_in,
-	f"d300stdd50_mb_{tailout}": M_nr10_out,
-	f"d300stdd100_mb_{tailout}": M_md10_out,
-	f"d300stdd200_mb_{tailout}": M_wd10_out,
-	f"d300stdd300_mb_{tailout}": M_vwd10_out,
+	f"d300stdd50_mb_{tailout}": M_nr9_out,
+	f"d300stdd100_mb_{tailout}": M_md9_out,
+	f"d300stdd200_mb_{tailout}": M_wd9_out,
+	f"d300stdd300_mb_{tailout}": M_vwd9_out,
 
 	f"d300stdd50_m_{tailin}": M_nr4_in,
 	f"d300stdd100_m_{tailin}": M_md4_in,
@@ -795,6 +820,15 @@ M_rslt = {
 	f"d271stdd121_m_{tailin}": M_md3_in,
 	f"d317stdd252_m_{tailin}": M_wd3_in,
 	f"d347stdd537_m_{tailin}": M_vwd3_in,
+
+	f"d250stdd25_mb_{tailin}": M_nr10_in,
+	f"d271stdd121_mb_{tailin}": M_md10_in,
+	f"d317stdd252_mb_{tailin}": M_wd10_in,
+	f"d347stdd537_mb_{tailin}": M_vwd10_in,
+	f"d250stdd25_mb_{tailout}": M_nr10_out,
+	f"d271stdd121_mb_{tailout}": M_md10_out,
+	f"d317stdd252_mb_{tailout}": M_wd10_out,
+	f"d347stdd537_mb_{tailout}": M_vwd10_out,
 	# 2
 	f"d167stdd100_{tailout}": M_mu1_out,
 	f"d197stdd65_{tailout}": M_mu2_out,
@@ -828,7 +862,7 @@ ax = fig.gca()
 ax.plot(others_case_dict["Cr09"]["Sh"],
 		others_case_dict["Cr09"]["Q_star"],
 		'*',
-		color='orange',
+		color='C4',
 		label='Cr09',
 		markersize=marker_size,
 		markerfacecolor='none',
@@ -837,7 +871,7 @@ ax.plot(others_case_dict["Cr09"]["Sh"],
 ax.plot(others_case_dict["Ho2012"]["Sh"],
 		others_case_dict["Ho2012"]["Q_star"],
 		'x',
-		color='purple',
+		color='C5',
 		label='Ho12 Fine',
 		markersize=marker_size,
 		markerfacecolor='none',
@@ -854,7 +888,7 @@ ksho12 = fit[0]
 ax.plot(others_case_dict["Ho2012_c"]["Sh"],
 		others_case_dict["Ho2012_c"]["Q_star"],
 		'+',
-		color='brown',
+		color='C6',
 		label='Ho12 Coarse',
 		markersize=marker_size,
 		markerfacecolor='none',
@@ -872,56 +906,56 @@ axis_type = "loglog"
 
 legend_str = "NR1"
 dictkey = f"d300stdd50_{tailout}"
-style = {"color": "r", "marker": "o", "fill": "full"}
+style = {"color": "C0", "marker": "o", "fill": "full"}
 arrow = False
 fitline = False
 rslt_plot(ax, Q_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 
 legend_str = "MD1"
 dictkey = f"d300stdd100_{tailout}"
-style = {"color": "g", "marker": "^", "fill": "full"}
+style = {"color": "C1", "marker": "^", "fill": "full"}
 arrow = False
 fitline = False
 rslt_plot(ax, Q_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 
 legend_str = "WD1"
 dictkey = f"d300stdd200_{tailout}"
-style = {"color": "b", "marker": "s", "fill": "full"}
+style = {"color": "C2", "marker": "s", "fill": "full"}
 arrow = False
 fitline = False
 rslt_plot(ax, Q_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 
 legend_str = "VWD1"
 dictkey = f"d300stdd300_{tailout}"
-style = {"color": "c", "marker": "h", "fill": "full"}
+style = {"color": "C3", "marker": "h", "fill": "full"}
 arrow = False
 fitline = False
 rslt_plot(ax, Q_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 
 legend_str = "NR2"
 dictkey = f"d250stdd25_{tailout}"
-style = {"color": "r", "marker": "o", "fill": "none"}
+style = {"color": "C0", "marker": "o", "fill": "none"}
 arrow = False
 fitline = True
 rslt_plot(ax, Q_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 
 legend_str = "MD2"
 dictkey = f"d271stdd121_{tailout}"
-style = {"color": "g", "marker": "^", "fill": "none"}
+style = {"color": "C1", "marker": "^", "fill": "none"}
 arrow = False
 fitline = False
 rslt_plot(ax, Q_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 
 legend_str = "WD2"
 dictkey = f"d317stdd252_{tailout}"
-style = {"color": "b", "marker": "s", "fill": "none"}
+style = {"color": "C2", "marker": "s", "fill": "none"}
 arrow = False
 fitline = False
 rslt_plot(ax, Q_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 
 legend_str = "VWD2"
 dictkey = f"d347stdd537_{tailout}"
-style = {"color": "c", "marker": "h", "fill": "none"}
+style = {"color": "C3", "marker": "h", "fill": "none"}
 arrow = False
 fitline = True
 rslt_plot(ax, Q_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
@@ -996,19 +1030,19 @@ x_array = np.linspace(0, 4, 100)
 inset_ax.plot(x_array, fit[0] * x_array + fit[1], color='grey', linestyle='--', linewidth=line_width)
 
 
-c_list0 = ['r', 'g', 'b', 'c']
-c_list1 = ['r', 'g', 'b', 'c']
+c_list0 = ['C0', 'C1', 'C2', 'C3']
+c_list1 = ['C0', 'C1', 'C2', 'C3']
 s_list0 = ['o', '^', 's', 'h']
 s_list1 = ['o', '^', 's', 'h']
 for x, y, s, c in zip(x0, y0, s_list0, c_list0):
     inset_ax.plot(x, y, s, color=c, markersize=marker_size)
 for x, y, s, c in zip(x1, y1, s_list1, c_list1):
     inset_ax.plot(x, y, s, color=c, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-inset_ax.plot(x2, y2, 'd', color='grey', markersize=marker_size, label='Other Groups')
+inset_ax.plot(x2, y2, 'd', color='grey', markersize=marker_size, label='Other Beds')
 inset_ax.plot(x3, y3, 'd', color='grey', markersize=marker_size)
 inset_ax.plot(x4, y4, 'd', color='grey', markersize=marker_size)
-inset_ax.plot(1.63, ksho12, 'x', color='purple', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-inset_ax.plot(2.01, ksho12c, '+', color='brown', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+inset_ax.plot(1.63, ksho12, 'x', color='C5', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+inset_ax.plot(2.01, ksho12c, '+', color='C6', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
 
 ax.xaxis.set_major_formatter(ScalarFormatter())
 ax.yaxis.set_major_formatter(ScalarFormatter())
@@ -1032,22 +1066,22 @@ inset_ax.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
 inset_ax.xaxis.tick_top()
 inset_ax.xaxis.set_label_position("top")
 inset_ax.set_xlabel('$\\eta_d$', fontsize=label_size)
-inset_ax.set_ylabel('$k_s$', fontsize=label_size)
+inset_ax.set_ylabel('$C_Q$', fontsize=label_size)
 inset_ax.set_xlim(0.9, 2.6)
 inset_ax.set_ylim(0.2, 1.1)
 inset_ax.tick_params(axis='both', labelsize=ticks_size)
 
-Cr_09 = ax.scatter([], [], marker='*', color='orange', s=marker_size**2, facecolors='none', linewidths=marker_width)
-Ho_12 = ax.scatter([], [], marker='x', color='purple', s=marker_size**2, linewidths=marker_width)
-Ho_12_c = ax.scatter([], [], marker='+', color='brown', s=marker_size**2, linewidths=marker_width)
+Cr_09 = ax.scatter([], [], marker='*', color='C4', s=marker_size**2, facecolors='none', linewidths=marker_width)
+Ho_12 = ax.scatter([], [], marker='x', color='C5', s=marker_size**2, linewidths=marker_width)
+Ho_12_c = ax.scatter([], [], marker='+', color='C6', s=marker_size**2, linewidths=marker_width)
 proxy_ro = plt.Line2D([0], [0],
-					 color='r',
+					 color='C0',
 					 marker='o',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_ro_h = plt.Line2D([0], [0],
-					 color='r',
+					 color='C0',
 					 marker='o',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -1055,13 +1089,13 @@ proxy_ro_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_gt = plt.Line2D([0], [0],
-					 color='g',
+					 color='C1',
 					 marker='^',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_gt_h = plt.Line2D([0], [0],
-					 color='g',
+					 color='C1',
 					 marker='^',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -1069,13 +1103,13 @@ proxy_gt_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_bs = plt.Line2D([0], [0],
-					 color='b',
+					 color='C2',
 					 marker='s',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_bs_h = plt.Line2D([0], [0],
-					 color='b',
+					 color='C2',
 					 marker='s',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -1083,13 +1117,13 @@ proxy_bs_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_ch = plt.Line2D([0], [0],
-					 color='c',
+					 color='C3',
 					 marker='h',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_ch_h = plt.Line2D([0], [0],
-					 color='c',
+					 color='C3',
 					 marker='h',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -1128,14 +1162,14 @@ d_cdf_nr_air = np.cumsum(d_hist_nr) / np.sum(d_hist_nr)
 d_cdf_md_air = np.cumsum(d_hist_md) / np.sum(d_hist_md)
 d_cdf_wd_air = np.cumsum(d_hist_wd) / np.sum(d_hist_wd)
 d_cdf_vwd_air = np.cumsum(d_hist_vwd) / np.sum(d_hist_vwd)
-ax.plot(center_list0[0]*1e6, d_cdf_nr_bed, '-', color='r', label='NR1 Bed CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(center_list0[1]*1e6, d_cdf_md_bed, '-', color='g', label='MD1 Bed CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(center_list0[2]*1e6, d_cdf_wd_bed, '-', color='b', label='WD1 Bed CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(center_list0[3]*1e6, d_cdf_vwd_bed, '-', color='c', label='VWD1 Bed CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(d_bin_centers_nr*1e6, d_cdf_nr_air, 'o', color='r', label='NR1 Airborn CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(d_bin_centers_md*1e6, d_cdf_md_air, '^', color='g', label='MD1 Airborn CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
-ax.plot(d_bin_centers_wd*1e6, d_cdf_wd_air, 's', color='b', label='WD1 Airborn CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
-ax.semilogx(d_bin_centers_vwd*1e6, d_cdf_vwd_air, 'h', color='c', label='VWD1 Airborn CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(center_list0[0]*1e6, d_cdf_nr_bed, '-', color='C0', label='NR1 Bed CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(center_list0[1]*1e6, d_cdf_md_bed, '-', color='C1', label='MD1 Bed CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(center_list0[2]*1e6, d_cdf_wd_bed, '-', color='C2', label='WD1 Bed CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(center_list0[3]*1e6, d_cdf_vwd_bed, '-', color='C3', label='VWD1 Bed CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(d_bin_centers_nr*1e6, d_cdf_nr_air, 'o', color='C0', label='NR1 Airborn CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(d_bin_centers_md*1e6, d_cdf_md_air, '^', color='C1', label='MD1 Airborn CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(d_bin_centers_wd*1e6, d_cdf_wd_air, 's', color='C2', label='WD1 Airborn CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
+ax.semilogx(d_bin_centers_vwd*1e6, d_cdf_vwd_air, 'h', color='C3', label='VWD1 Airborn CDF', markersize=marker_size*0.8, markerfacecolor='none', markeredgewidth=marker_width)
 #ax.plot([], [], 'k-', label='Bed $\\mathbb{E}[d]$')
 #ax.plot([], [], 'k--', label='Airborn $\\mathbb{E}[d]$')
 #ax.axvline(dm_nr*1e6, color='r', linestyle='--')
@@ -1238,12 +1272,13 @@ d90503 = d903 / d503
 d504 = np.array([235, 397])
 d904 = np.array([306, 466])
 d90504 = d904 / d504
-eta_b0 = d90500
-eta_b1 = d90501
-eta_b3 = d90503
+lmeta_b0 = np.log(d90500)**2
+lmeta_b1 = np.log(d90501)**2
+lmeta_b3 = np.log(d90503)**2
 meta_b_others = np.concatenate([d90502, d90504])
+lmeta_b_others = np.log(meta_b_others)**2
 
-c_list = ['r', 'g', 'b', 'c']
+c_list = ['C0', 'C1', 'C2', 'C3']
 s_list = ['o', '^', 's', 'h']
 for i in range(len(meta_a_others)):
 	ax.errorbar(meta_b_others[i], meta_a_others[i], yerr=std_a_others[i],
@@ -1252,7 +1287,7 @@ for i in range(len(meta_a_others)):
 				markersize=marker_size,
 				markeredgewidth=marker_width,
 				capsize=marker_size*0.6,
-				label='Other Groups' if i == 0 else "")
+				label='Other Beds' if i == 0 else "")
 l_list0 = ['NR1', 'MD1', 'WD1', 'VWD1']
 for xi, yi, ei, si, ci, li in zip(d90500, meta_a_array0, std_a_array0, s_list, c_list, l_list0):
 	ax.errorbar(xi, yi, yerr=ei,
@@ -1274,14 +1309,14 @@ for xi, yi, ei, si, ci, li in zip(d90501, meta_a_array1, std_a_array1, s_list, c
 				capsize=marker_size*0.6)
 ax.errorbar(d90503[0], meta_a_array3[0], yerr=std_a_array3[0],
 			fmt='P',
-			color='y',
+			color='C4',
 			label='RT',
 			markersize=marker_size,
 			markeredgewidth=marker_width,
 			capsize=marker_size*0.6)
 ax.errorbar(d90503[1], meta_a_array3[1], yerr=std_a_array3[1],
 			fmt='P',
-			color='y',
+			color='C4',
 			label='LT',
 			markersize=marker_size,
 			markerfacecolor='none',
@@ -1295,20 +1330,20 @@ ax.annotate('1:1 Line', xy=(1.4, 1.4), xytext=(1.4, 1.2),
 			arrowprops=dict(arrowstyle='->', lw=1.5),
 			fontsize=ticks_size
 			)
-ax.set_xlabel('$\\eta_d^{\\mathrm{bed}}$', fontsize=label_size)
+ax.set_xlabel('$\\eta_d$', fontsize=label_size)
 ax.set_ylabel('$\\eta_d^{\\mathrm{air}}$', fontsize=label_size)
 ax.tick_params(axis='both', labelsize=ticks_size)
 ax.set_xlim(1.0, 2.5)
 ax.set_ylim(1.0, 1.8)
 others = ax.scatter([], [], marker='d', color='gray', s=marker_size**2, linewidths=marker_width)
 proxy_ro = plt.Line2D([0], [0],
-					 color='r',
+					 color='C0',
 					 marker='o',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_ro_h = plt.Line2D([0], [0],
-					 color='r',
+					 color='C0',
 					 marker='o',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -1316,13 +1351,13 @@ proxy_ro_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_gt = plt.Line2D([0], [0],
-					 color='g',
+					 color='C1',
 					 marker='^',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_gt_h = plt.Line2D([0], [0],
-					 color='g',
+					 color='C1',
 					 marker='^',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -1330,13 +1365,13 @@ proxy_gt_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_bs = plt.Line2D([0], [0],
-					 color='b',
+					 color='C2',
 					 marker='s',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_bs_h = plt.Line2D([0], [0],
-					 color='b',
+					 color='C2',
 					 marker='s',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -1344,13 +1379,13 @@ proxy_bs_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_ch = plt.Line2D([0], [0],
-					 color='c',
+					 color='C3',
 					 marker='h',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_ch_h = plt.Line2D([0], [0],
-					 color='c',
+					 color='C3',
 					 marker='h',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -1358,13 +1393,13 @@ proxy_ch_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_yD = plt.Line2D([0], [0],
-					 color='y',
+					 color='C4',
 					 marker='P',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_yD_h = plt.Line2D([0], [0],
-					 color='y',
+					 color='C4',
 					 marker='P',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -1377,7 +1412,7 @@ ax.legend([(proxy_ro, proxy_ro_h),
 		   (proxy_ch, proxy_ch_h),
 		   (proxy_yD, proxy_yD_h),
 		   others],
-          ['NR1, NR2', 'MD1, MD2', 'WD1, WD2', 'VWD1, VWD2', 'RT, LT', 'Other Groups'],
+          ['NR1, NR2', 'MD1, MD2', 'WD1, WD2', 'VWD1, VWD2', 'RT, LT', 'Other Beds'],
 		  handler_map={tuple: HandlerTuple(ndivide=None)},
           fontsize=ticks_size,
           loc='upper left',
@@ -1405,6 +1440,22 @@ d90_a30 = np.array(d_in_air_dict["RT"]["d90"])
 d90_a31 = np.array(d_in_air_dict["LT"]["d90"])
 d90_a40 = np.array(d_in_air_dict["NR3"]["d90"])
 d90_a41 = np.array(d_in_air_dict["NR4"]["d90"])
+d50_a0 = np.array(d_in_air_dict["NR1"]["d50"])
+d50_a1 = np.array(d_in_air_dict["MD1"]["d50"])
+d50_a2 = np.array(d_in_air_dict["WD1"]["d50"])
+d50_a3 = np.array(d_in_air_dict["VWD1"]["d50"])
+d50_a10 = np.array(d_in_air_dict["NR2"]["d50"])
+d50_a11 = np.array(d_in_air_dict["MD2"]["d50"])
+d50_a12 = np.array(d_in_air_dict["WD2"]["d50"])
+d50_a13 = np.array(d_in_air_dict["VWD2"]["d50"])
+d50_a20 = np.array(d_in_air_dict["MU1"]["d50"])
+d50_a21 = np.array(d_in_air_dict["MU2"]["d50"])
+d50_a22 = np.array(d_in_air_dict["MU3"]["d50"])
+d50_a23 = np.array(d_in_air_dict["MU4"]["d50"])
+d50_a30 = np.array(d_in_air_dict["RT"]["d50"])
+d50_a31 = np.array(d_in_air_dict["LT"]["d50"])
+d50_a40 = np.array(d_in_air_dict["NR3"]["d50"])
+d50_a41 = np.array(d_in_air_dict["NR4"]["d50"])
 dm_a0 = np.array(d_in_air_dict["NR1"]["dm"])
 dm_a1 = np.array(d_in_air_dict["MD1"]["dm"])
 dm_a2 = np.array(d_in_air_dict["WD1"]["dm"])
@@ -1437,6 +1488,22 @@ md90_a30 = np.mean(d90_a30)
 md90_a31 = np.mean(d90_a31)
 md90_a40 = np.mean(d90_a40)
 md90_a41 = np.mean(d90_a41)
+md50_a0 = np.mean(d50_a0)
+md50_a1 = np.mean(d50_a1)
+md50_a2 = np.mean(d50_a2)
+md50_a3 = np.mean(d50_a3)
+md50_a10 = np.mean(d50_a10)
+md50_a11 = np.mean(d50_a11)
+md50_a12 = np.mean(d50_a12)
+md50_a13 = np.mean(d50_a13)
+md50_a20 = np.mean(d50_a20)
+md50_a21 = np.mean(d50_a21)
+md50_a22 = np.mean(d50_a22)
+md50_a23 = np.mean(d50_a23)
+md50_a30 = np.mean(d50_a30)
+md50_a31 = np.mean(d50_a31)
+md50_a40 = np.mean(d50_a40)
+md50_a41 = np.mean(d50_a41)
 mdm_a0 = np.mean(dm_a0)
 mdm_a1 = np.mean(dm_a1)
 mdm_a2 = np.mean(dm_a2)
@@ -1457,6 +1524,10 @@ md90_a_array0 = np.array([md90_a0, md90_a1, md90_a2, md90_a3])*1e6
 md90_a_array1 = np.array([md90_a10, md90_a11, md90_a12, md90_a13])*1e6
 md90_a_others = np.array([md90_a20, md90_a21, md90_a22, md90_a23, md90_a40, md90_a41])*1e6
 md90_a_array3 = np.array([md90_a30, md90_a31])*1e6
+md50_a_array0 = np.array([md50_a0, md50_a1, md50_a2, md50_a3])*1e6
+md50_a_array1 = np.array([md50_a10, md50_a11, md50_a12, md50_a13])*1e6
+md50_a_others = np.array([md50_a20, md50_a21, md50_a22, md50_a23, md50_a40, md50_a41])*1e6
+md50_a_array3 = np.array([md50_a30, md50_a31])*1e6
 mdm_a_array0 = np.array([mdm_a0, mdm_a1, mdm_a2, mdm_a3])*1e6
 mdm_a_array1 = np.array([mdm_a10, mdm_a11, mdm_a12, mdm_a13])*1e6
 mdm_a_others = np.array([mdm_a20, mdm_a21, mdm_a22, mdm_a23, mdm_a40, mdm_a41])*1e6
@@ -1477,6 +1548,22 @@ std90_a30 = np.std(d90_a30)
 std90_a31 = np.std(d90_a31)
 std90_a40 = np.std(d90_a40)
 std90_a41 = np.std(d90_a41)
+std50_a0 = np.std(d50_a0)
+std50_a1 = np.std(d50_a1)
+std50_a2 = np.std(d50_a2)
+std50_a3 = np.std(d50_a3)
+std50_a10 = np.std(d50_a10)
+std50_a11 = np.std(d50_a11)
+std50_a12 = np.std(d50_a12)
+std50_a13 = np.std(d50_a13)
+std50_a20 = np.std(d50_a20)
+std50_a21 = np.std(d50_a21)
+std50_a22 = np.std(d50_a22)
+std50_a23 = np.std(d50_a23)
+std50_a30 = np.std(d50_a30)
+std50_a31 = np.std(d50_a31)
+std50_a40 = np.std(d50_a40)
+std50_a41 = np.std(d50_a41)
 stdm_a0 = np.std(dm_a0)
 stdm_a1 = np.std(dm_a1)
 stdm_a2 = np.std(dm_a2)
@@ -1497,6 +1584,10 @@ std90_a_array0 = np.array([std90_a0, std90_a1, std90_a2, std90_a3])*1e6
 std90_a_array1 = np.array([std90_a10, std90_a11, std90_a12, std90_a13])*1e6
 std90_a_others = np.array([std90_a20, std90_a21, std90_a22, std90_a23, std90_a40, std90_a41])*1e6
 std90_a_array3 = np.array([std90_a30, std90_a31])*1e6
+std50_a_array0 = np.array([std50_a0, std50_a1, std50_a2, std50_a3])*1e6
+std50_a_array1 = np.array([std50_a10, std50_a11, std50_a12, std50_a13])*1e6
+std50_a_others = np.array([std50_a20, std50_a21, std50_a22, std50_a23, std50_a40, std50_a41])*1e6
+std50_a_array3 = np.array([std50_a30, std50_a31])*1e6
 stdm_a_array0 = np.array([stdm_a0, stdm_a1, stdm_a2, stdm_a3])*1e6
 stdm_a_array1 = np.array([stdm_a10, stdm_a11, stdm_a12, stdm_a13])*1e6
 stdm_a_others = np.array([stdm_a20, stdm_a21, stdm_a22, stdm_a23, stdm_a40, stdm_a41])*1e6
@@ -1509,141 +1600,264 @@ dm3 = np.array([269, 313])
 dm4 = np.array([240, 400])
 d90_others = np.concatenate([d902, d904])
 dm_others = np.concatenate([dm2, dm4])
+d50_others = np.concatenate([d502, d504])
 
 d90900 = md90_a_array0/d900
 d90901 = md90_a_array1/d901
 d90903 = md90_a_array3/d903
 d9090_others = md90_a_others/d90_others
-d90900 = 1.0/d90900
-d90901 = 1.0/d90901
-d90903 = 1.0/d90903
-d9090_others = 1.0/d9090_others
+d90900 = np.log(d90900)
+d90901 = np.log(d90901)
+d90903 = np.log(d90903)
+d9090_others = np.log(d9090_others)
 dmm0 = mdm_a_array0/dm0
 dmm1 = mdm_a_array1/dm1
 dmm3 = mdm_a_array3/dm3
 dmm_others = mdm_a_others/dm_others
-dmm0 = 1.0/dmm0
-dmm1 = 1.0/dmm1
-dmm3 = 1.0/dmm3
-dmm_others = 1.0/dmm_others
-st90900 = d900*std90_a_array0/md90_a_array0**2
-st90901 = d901*std90_a_array1/md90_a_array1**2
-st90903 = d903*std90_a_array3/md90_a_array3**2
-st9090_others = d90_others*std90_a_others/md90_a_others**2
-stmm0 = dm0*stdm_a_array0/mdm_a_array0**2
-stmm1 = dm1*stdm_a_array1/mdm_a_array1**2
-stmm3 = dm3*stdm_a_array3/mdm_a_array3**2
-stmm_others = dm_others*stdm_a_others/mdm_a_others**2
-c_list = ['m', 'm', 'm', 'm']
-s_list = ['o', 'o', 'o', 'o']
-scale = 1.0
-for i in range(len(d9090_others)):
-	inset_ax.errorbar(meta_b_others[i], d9090_others[i], yerr=st9090_others[i],
-				fmt='o',
-				color='m',
-				markersize=marker_size_in*scale,
-				markerfacecolor='none',
-				markeredgewidth=marker_width,
-				capsize=marker_size_in*0.6*scale)
+dmm0 = np.log(dmm0)
+dmm1 = np.log(dmm1)
+dmm3 = np.log(dmm3)
+dmm_others = np.log(dmm_others)
+d50500 = md50_a_array0/d500
+d50501 = md50_a_array1/d501
+d50503 = md50_a_array3/d503
+d5050_others = md50_a_others/d50_others
+d50500 = np.log(d50500)
+d50501 = np.log(d50501)
+d50503 = np.log(d50503)
+d5050_others = np.log(d5050_others)
+#st90900 = d900*std90_a_array0/md90_a_array0**2
+#st90901 = d901*std90_a_array1/md90_a_array1**2
+#st90903 = d903*std90_a_array3/md90_a_array3**2
+#st9090_others = d90_others*std90_a_others/md90_a_others**2
+#st50500 = d500*std50_a_array0/md50_a_array0**2
+#st50501 = d501*std50_a_array1/md50_a_array1**2
+#st50503 = d503*std50_a_array3/md50_a_array3**2
+#st5050_others = d50_others*std50_a_others/md50_a_others**2
+#stmm0 = dm0*stdm_a_array0/mdm_a_array0**2
+#stmm1 = dm1*stdm_a_array1/mdm_a_array1**2
+#stmm3 = dm3*stdm_a_array3/mdm_a_array3**2
+#stmm_others = dm_others*stdm_a_others/mdm_a_others**2
+#st90900 = std90_a_array0/d900
+#st90901 = std90_a_array1/d901
+#st90903 = std90_a_array3/d903
+#st9090_others = std90_a_others/d90_others
+#st50500 = std50_a_array0/d500
+#st50501 = std50_a_array1/d501
+#st50503 = std50_a_array3/d503
+#st5050_others = std50_a_others/d50_others
+#stmm0 = stdm_a_array0/dm0
+#stmm1 = stdm_a_array1/dm1
+#stmm3 = stdm_a_array3/dm3
+#stmm_others = stdm_a_others/dm_others
+
+inset_ax.scatter(lmeta_b_others, d9090_others,
+				marker='d',
+				color='grey',
+				s=marker_size_in**2,
+				label='Other Beds',
+				edgecolors='grey',
+				linewidths=marker_width)
 l_list0 = ['NR1', 'MD1', 'WD1', 'VWD1']
-for xi, yi, ei, si, ci, li in zip(d90500, d90900, st90900, s_list, c_list, l_list0):
-	inset_ax.errorbar(xi, yi, yerr=ei,
-				fmt=si,
-				color=ci,
-				markersize=marker_size_in*scale,
-				markerfacecolor='none',
-				markeredgewidth=marker_width,
-				capsize=marker_size_in*0.6*scale)
+c_list = ['C0', 'C1', 'C2', 'C3']
+s_list = ['o', '^', 's', 'h']
+for xi, yi, si, ci, li in zip(lmeta_b0, d90900, s_list, c_list, l_list0):
+	inset_ax.scatter(xi, yi,
+					marker=si,
+					color=ci,
+					label=li,
+					s=marker_size_in**2,
+					edgecolors=ci,
+					linewidths=marker_width)
 l_list1 = ['NR2', 'MD2', 'WD2', 'VWD2']
-for xi, yi, ei, si, ci, li in zip(d90501, d90901, st90901, s_list, c_list, l_list1):
-	inset_ax.errorbar(xi, yi, yerr=ei,
-				fmt=si,
-				color=ci,
-				markersize=marker_size_in*scale,
-				markerfacecolor='none',
-				markeredgewidth=marker_width,
-				capsize=marker_size_in*0.6*scale)
-inset_ax.errorbar(d90503[0], d90903[0], yerr=st90903[0],
-			fmt='o',
-			color='m',
-			label='Ratios of $d_{90}$',
-			markersize=marker_size_in*scale,
-			markerfacecolor='none',
-			markeredgewidth=marker_width,
-			capsize=marker_size_in*0.6*scale)
-inset_ax.errorbar(d90503[1], d90903[1], yerr=st90903[1],
-			fmt='o',
-			color='m',
-			markersize=marker_size_in*scale,
-			markerfacecolor='none',
-			markeredgewidth=marker_width,
-			capsize=marker_size_in*0.6*scale)
+for xi, yi, si, ci, li in zip(lmeta_b1, d90901, s_list, c_list, l_list1):
+	inset_ax.scatter(xi, yi,
+					marker=si,
+					color=ci,
+					label=li,
+					s=marker_size_in**2,
+					edgecolors=ci,
+					facecolor='none',
+					linewidths=marker_width)
+inset_ax.scatter(lmeta_b3[0], d90903[0],
+				marker='P',
+				color='C4',
+				label='RT',
+				s=marker_size_in**2,
+				edgecolors='C4',
+				linewidths=marker_width)
+inset_ax.scatter(lmeta_b3[1], d90903[1],
+				marker='P',
+				color='C4',
+				label='LT',
+				s=marker_size_in**2,
+				edgecolors='C4',
+				facecolor='none',
+				linewidths=marker_width)
 
-c_list = ['k', 'k', 'k', 'k']
-s_list = ['s', 's', 's', 's']
-for i in range(len(dmm_others)):
-	inset_ax.errorbar(meta_b_others[i], dmm_others[i], yerr=stmm_others[i],
-				fmt='s',
-				color='k',
-				markersize=marker_size_in*scale,
-				markerfacecolor='none',
-				markeredgewidth=marker_width,
-				capsize=marker_size_in*0.6*scale)
-l_list0 = ['NR1', 'MD1', 'WD1', 'VWD1']
-for xi, yi, ei, si, ci, li in zip(d90500, dmm0, stmm0, s_list, c_list, l_list0):
-	inset_ax.errorbar(xi, yi, yerr=ei,
-				fmt=si,
-				color=ci,
-				markersize=marker_size_in*scale,
-				markerfacecolor='none',
-				markeredgewidth=marker_width,
-				capsize=marker_size_in*0.6*scale)
-l_list1 = ['NR2', 'MD2', 'WD2', 'VWD2']
-for xi, yi, ei, si, ci, li in zip(d90501, dmm1, stmm1, s_list, c_list, l_list1):
-	inset_ax.errorbar(xi, yi, yerr=ei,
-				fmt=si,
-				color=ci,
-				markersize=marker_size_in*scale,
-				markerfacecolor='none',
-				markeredgewidth=marker_width,
-				capsize=marker_size_in*0.6*scale)
-inset_ax.errorbar(d90503[0], dmm3[0], yerr=stmm3[0],
-			fmt='s',
-			color='k',
-			label='Ratios of $\\mathbb{E}[d]$',
-			markersize=marker_size_in*scale,
-			markerfacecolor='none',
-			markeredgewidth=marker_width,
-			capsize=marker_size_in*0.6*scale)
-inset_ax.errorbar(d90503[1], dmm3[1], yerr=stmm3[1],
-			fmt='s',
-			color='k',
-			markersize=marker_size_in*scale,
-			markerfacecolor='none',
-			markeredgewidth=marker_width,
-			capsize=marker_size_in*0.6*scale)
+#c_list = ['C5', 'C5', 'C5', 'C5']
+#c1_list = ['C6', 'C6', 'C6', 'C6']
+#s_list = ['*', '*', '*', '*']
+#s1_list = ['x', 'x', 'x', 'x']
+#scale = 1.0
+#for i in range(len(d9090_others)):
+#	inset_ax.errorbar(meta_b_others[i], d9090_others[i], yerr=st9090_others[i],
+#				fmt='*',
+#				color='C5',
+#				markersize=marker_size_in*scale,
+#				markerfacecolor='none',
+#				markeredgewidth=marker_width,
+#				capsize=marker_size_in*0.6*scale)
+#	inset_ax.errorbar(meta_b_others[i], d5050_others[i], yerr=st5050_others[i],
+#				fmt='x',
+#				color='C6',
+#				markersize=marker_size_in*scale,
+#				markerfacecolor='none',
+#				markeredgewidth=marker_width,
+#				capsize=marker_size_in*0.6*scale)
+#l_list0 = ['NR1', 'MD1', 'WD1', 'VWD1']
+#for xi, yi, ei, si, ci, li in zip(d90500, d90900, st90900, s_list, c_list, l_list0):
+#	inset_ax.errorbar(xi, yi, yerr=ei,
+#				fmt=si,
+#				color=ci,
+#				markersize=marker_size_in*scale,
+#				markerfacecolor='none',
+#				markeredgewidth=marker_width,
+#				capsize=marker_size_in*0.6*scale)
+#for xi, yi, ei, si, ci, li in zip(d90500, d50500, st50500, s1_list, c1_list, l_list0):
+#	inset_ax.errorbar(xi, yi, yerr=ei,
+#				fmt=si,
+#				color=ci,
+#				markersize=marker_size_in*scale,
+#				markerfacecolor='none',
+#				markeredgewidth=marker_width,
+#				capsize=marker_size_in*0.6*scale)
+#l_list1 = ['NR2', 'MD2', 'WD2', 'VWD2']
+#for xi, yi, ei, si, ci, li in zip(d90501, d90901, st90901, s_list, c_list, l_list1):
+#	inset_ax.errorbar(xi, yi, yerr=ei,
+#				fmt=si,
+#				color=ci,
+#				markersize=marker_size_in*scale,
+#				markerfacecolor='none',
+#				markeredgewidth=marker_width,
+#				capsize=marker_size_in*0.6*scale)
+#for xi, yi, ei, si, ci, li in zip(d90501, d50501, st50501, s1_list, c1_list, l_list1):
+#	inset_ax.errorbar(xi, yi, yerr=ei,
+#				fmt=si,
+#				color=ci,
+#				markersize=marker_size_in*scale,
+#				markerfacecolor='none',
+#				markeredgewidth=marker_width,
+#				capsize=marker_size_in*0.6*scale)
+#inset_ax.errorbar(d90503[0], d90903[0], yerr=st90903[0],
+#			fmt='*',
+#			color='C5',
+#			label='$d^{\\ast}=d_{90}$',
+#			markersize=marker_size_in*scale,
+#			markerfacecolor='none',
+#			markeredgewidth=marker_width,
+#			capsize=marker_size_in*0.6*scale)
+#inset_ax.errorbar(d90503[1], d90903[1], yerr=st90903[1],
+#			fmt='*',
+#			color='C5',
+#			markersize=marker_size_in*scale,
+#			markerfacecolor='none',
+#			markeredgewidth=marker_width,
+#			capsize=marker_size_in*0.6*scale)
+#inset_ax.errorbar(d90503[0], d50503[0], yerr=st50503[0],
+#			fmt='x',
+#			color='C6',
+#			label='$d^{\\ast}=d_{50}$',
+#			markersize=marker_size_in*scale,
+#			markerfacecolor='none',
+#			markeredgewidth=marker_width,
+#			capsize=marker_size_in*0.6*scale)
+#inset_ax.errorbar(d90503[1], d50503[1], yerr=st50503[1],
+#			fmt='x',
+#			color='C6',
+#			markersize=marker_size_in*scale,
+#			markerfacecolor='none',
+#			markeredgewidth=marker_width,
+#			capsize=marker_size_in*0.6*scale)
+#
+#c_list = ['C7', 'C7', 'C7', 'C7']
+#s_list = ['.', '.', '.', '.']
+#for i in range(len(dmm_others)):
+#	inset_ax.errorbar(meta_b_others[i], dmm_others[i], yerr=stmm_others[i],
+#				fmt='.',
+#				color='C7',
+#				markersize=marker_size_in*scale,
+#				markerfacecolor='none',
+#				markeredgewidth=marker_width,
+#				capsize=marker_size_in*0.6*scale)
+#l_list0 = ['NR1', 'MD1', 'WD1', 'VWD1']
+#for xi, yi, ei, si, ci, li in zip(d90500, dmm0, stmm0, s_list, c_list, l_list0):
+#	inset_ax.errorbar(xi, yi, yerr=ei,
+#				fmt=si,
+#				color=ci,
+#				markersize=marker_size_in*scale,
+#				markerfacecolor='none',
+#				markeredgewidth=marker_width,
+#				capsize=marker_size_in*0.6*scale)
+#l_list1 = ['NR2', 'MD2', 'WD2', 'VWD2']
+#for xi, yi, ei, si, ci, li in zip(d90501, dmm1, stmm1, s_list, c_list, l_list1):
+#	inset_ax.errorbar(xi, yi, yerr=ei,
+#				fmt=si,
+#				color=ci,
+#				markersize=marker_size_in*scale,
+#				markerfacecolor='none',
+#				markeredgewidth=marker_width,
+#				capsize=marker_size_in*0.6*scale)
+#inset_ax.errorbar(d90503[0], dmm3[0], yerr=stmm3[0],
+#			fmt='.',
+#			color='C7',
+#			label='$d^{\\ast}=\\mathbb{E}[d]$',
+#			markersize=marker_size_in*scale,
+#			markerfacecolor='none',
+#			markeredgewidth=marker_width,
+#			capsize=marker_size_in*0.6*scale)
+#inset_ax.errorbar(d90503[1], dmm3[1], yerr=stmm3[1],
+#			fmt='.',
+#			color='C7',
+#			markersize=marker_size_in*scale,
+#			markerfacecolor='none',
+#			markeredgewidth=marker_width,
+#			capsize=marker_size_in*0.6*scale)
+#
+#x_array = np.concatenate([d90500, d90501, d90502, d90504, d90503, d90500, d90501, d90502, d90504, d90503])
+##x_array = np.concatenate([d90500, d90501, d90502, d90504, d90503])
+#y_array = np.concatenate([dmm0, dmm1, dmm_others, dmm3, d50500, d50501, d5050_others, d50503])
+##y_array = np.concatenate([d90900, d90901, d9090_others, d90903])
+## 限制x=1时y=1
+#k, _, _, _ = np.linalg.lstsq((x_array-1).reshape(-1, 1), (y_array-1), rcond=None)
+#x_array = np.linspace(0, 4, 100)
+#y_array = k * (x_array - 1) + 1
+#inset_ax.plot(x_array, y_array, color='C5', linestyle='--', linewidth=line_width)
 
-x_array = np.concatenate([d90501, d90501, d90502, d90504, d90503])
-y_array = np.concatenate([dmm0, dmm1, dmm_others, dmm3])
-# 限制x=1时y=1
-k, _, _, _ = np.linalg.lstsq((x_array-1).reshape(-1, 1), (y_array-1), rcond=None)
-x_array = np.linspace(0, 4, 100)
-y_array = k * (x_array - 1) + 1
-inset_ax.plot(x_array, y_array, color='grey', linestyle='--', linewidth=line_width)
+lmeta = np.concatenate([lmeta_b0[0:1], lmeta_b1[0:1], lmeta_b3, lmeta_b_others])
+ldmm = np.concatenate([d90900[0:1], d90901[0:1], d90903, d9090_others])
+# 过原点线性拟合
+k, _, _, _ = np.linalg.lstsq(lmeta.reshape(-1, 1), ldmm, rcond=None)
+x_array = np.linspace(-1, 2, 100)
+y_array = k * x_array
+inset_ax.plot(x_array, y_array, color='C5', linestyle='--', linewidth=line_width)
+alpha = k[0]*1.28**2
+print(f'alpha={alpha:.3f}')
 
-inset_ax.set_xlim(0.8, 3.2)
-inset_ax.set_ylim(0.5, 3.8)
+
+inset_ax.set_xlim(-0.1, 0.9)
+inset_ax.set_ylim(-1.4, 0.1)
 inset_ax.xaxis.tick_top()
 inset_ax.xaxis.set_label_position("top")
-inset_ax.set_xlabel('$\\eta_d^\\mathrm{bed}$', fontsize=label_size, labelpad=10)
-inset_ax.set_ylabel('$d^\\mathrm{bed}/d^\\mathrm{air}$', fontsize=label_size)
+inset_ax.set_xlabel('$(\\ln\\eta_d)^2$', fontsize=label_size, labelpad=10)
+inset_ax.set_ylabel('$\\ln(d_{90}^{\\mathrm{air}}/d_{90})$', fontsize=label_size)
 inset_ax.tick_params(axis='both', labelsize=ticks_size)
-inset_ax.legend(fontsize=ticks_size,
-				loc='lower left',
-				bbox_to_anchor=(-1.05, 0),
-				frameon=True,
-				framealpha=1,
-				)
+#inset_ax.legend(fontsize=ticks_size,
+#				loc='lower left',
+#				bbox_to_anchor=(-0.9, -0.05),
+#				frameon=True,
+#				framealpha=1,
+#				)
 
 
 fig = plt.figure(3, figsize=(8, 6), constrained_layout=True)
@@ -1687,6 +1901,56 @@ vx31_50 = Q_rslt[f"d321stdd100_{tailin}"]['y'] / M_rslt[f"d321stdd100_{tailin}"]
 vx40_50 = Q_rslt[f"d240stdd50_{tailin}"]['y'] / M_rslt[f"d240stdd50_{tailin}"]['y']
 vx41_50 = Q_rslt[f"d400stdd50_{tailin}"]['y'] / M_rslt[f"d400stdd50_{tailin}"]['y']
 
+M_load900 = np.load(f"M_d300stdd50_{"dair90"}.npz")
+M_load901 = np.load(f"M_d300stdd100_{"dair90"}.npz")
+M_load902 = np.load(f"M_d300stdd200_{"dair90"}.npz")
+M_load903 = np.load(f"M_d300stdd300_{"dair90"}.npz")
+M_load9010 = np.load(f"M_d250stdd25_{"dair90"}.npz")
+M_load9011 = np.load(f"M_d271stdd121_{"dair90"}.npz")
+M_load9012 = np.load(f"M_d317stdd252_{"dair90"}.npz")
+M_load9013 = np.load(f"M_d347stdd537_{"dair90"}.npz")
+M_load9020 = np.load(f"M_d167stdd100_{"dair90"}.npz")
+M_load9021 = np.load(f"M_d197stdd65_{"dair90"}.npz")
+M_load9022 = np.load(f"M_d290stdd97_{"dair90"}.npz")
+M_load9023 = np.load(f"M_d430stdd100_{"dair90"}.npz")
+M_load9030 = np.load(f"M_d269stdd100_{"dair90"}.npz")
+M_load9031 = np.load(f"M_d321stdd100_{"dair90"}.npz")
+M_load9040 = np.load(f"M_d240stdd50_{"dair90"}.npz")
+M_load9041 = np.load(f"M_d400stdd50_{"dair90"}.npz")
+Q_load900 = np.load(f"Q_d300stdd50_{"dair90"}.npz")
+Q_load901 = np.load(f"Q_d300stdd100_{"dair90"}.npz")
+Q_load902 = np.load(f"Q_d300stdd200_{"dair90"}.npz")
+Q_load903 = np.load(f"Q_d300stdd300_{"dair90"}.npz")
+Q_load9010 = np.load(f"Q_d250stdd25_{"dair90"}.npz")
+Q_load9011 = np.load(f"Q_d271stdd121_{"dair90"}.npz")
+Q_load9012 = np.load(f"Q_d317stdd252_{"dair90"}.npz")
+Q_load9013 = np.load(f"Q_d347stdd537_{"dair90"}.npz")
+Q_load9020 = np.load(f"Q_d167stdd100_{"dair90"}.npz")
+Q_load9021 = np.load(f"Q_d197stdd65_{"dair90"}.npz")
+Q_load9022 = np.load(f"Q_d290stdd97_{"dair90"}.npz")
+Q_load9023 = np.load(f"Q_d430stdd100_{"dair90"}.npz")
+Q_load9030 = np.load(f"Q_d269stdd100_{"dair90"}.npz")
+Q_load9031 = np.load(f"Q_d321stdd100_{"dair90"}.npz")
+Q_load9040 = np.load(f"Q_d240stdd50_{"dair90"}.npz")
+Q_load9041 = np.load(f"Q_d400stdd50_{"dair90"}.npz")
+
+vx00_air90 = Q_load900['y'] / M_load900['y']
+vx01_air90 = Q_load901['y'] / M_load901['y']
+vx02_air90 = Q_load902['y'] / M_load902['y']
+vx03_air90 = Q_load903['y'] / M_load903['y']
+vx10_air90 = Q_load9010['y'] / M_load9010['y']
+vx11_air90 = Q_load9011['y'] / M_load9011['y']
+vx12_air90 = Q_load9012['y'] / M_load9012['y']
+vx13_air90 = Q_load9013['y'] / M_load9013['y']
+vx20_air90 = Q_load9020['y'] / M_load9020['y']
+vx21_air90 = Q_load9021['y'] / M_load9021['y']
+vx22_air90 = Q_load9022['y'] / M_load9022['y']
+vx23_air90 = Q_load9023['y'] / M_load9023['y']
+vx30_air90 = Q_load9030['y'] / M_load9030['y']
+vx31_air90 = Q_load9031['y'] / M_load9031['y']
+vx40_air90 = Q_load9040['y'] / M_load9040['y']
+vx41_air90 = Q_load9041['y'] / M_load9041['y']
+
 vxm0 = np.mean(vx0)
 vxm1 = np.mean(vx1)
 vxm2 = np.mean(vx2)
@@ -1724,6 +1988,23 @@ vxm30_50 = np.mean(vx30_50)
 vxm31_50 = np.mean(vx31_50)
 vxm40_50 = np.mean(vx40_50)
 vxm41_50 = np.mean(vx41_50)
+
+vxm00_air90 = np.mean(vx00_air90)
+vxm01_air90 = np.mean(vx01_air90)
+vxm02_air90 = np.mean(vx02_air90)
+vxm03_air90 = np.mean(vx03_air90)
+vxm10_air90 = np.mean(vx10_air90)
+vxm11_air90 = np.mean(vx11_air90)
+vxm12_air90 = np.mean(vx12_air90)
+vxm13_air90 = np.mean(vx13_air90)
+vxm20_air90 = np.mean(vx20_air90)
+vxm21_air90 = np.mean(vx21_air90)
+vxm22_air90 = np.mean(vx22_air90)
+vxm23_air90 = np.mean(vx23_air90)
+vxm30_air90 = np.mean(vx30_air90)
+vxm31_air90 = np.mean(vx31_air90)
+vxm40_air90 = np.mean(vx40_air90)
+vxm41_air90 = np.mean(vx41_air90)
 
 vxs0 = np.std(vx0)
 vxs1 = np.std(vx1)
@@ -1763,6 +2044,23 @@ vxs31_50 = np.std(vx31_50)
 vxs40_50 = np.std(vx40_50)
 vxs41_50 = np.std(vx41_50)
 
+vxs00_air90 = np.std(vx00_air90)
+vxs01_air90 = np.std(vx01_air90)
+vxs02_air90 = np.std(vx02_air90)
+vxs03_air90 = np.std(vx03_air90)
+vxs10_air90 = np.std(vx10_air90)
+vxs11_air90 = np.std(vx11_air90)
+vxs12_air90 = np.std(vx12_air90)
+vxs13_air90 = np.std(vx13_air90)
+vxs20_air90 = np.std(vx20_air90)
+vxs21_air90 = np.std(vx21_air90)
+vxs22_air90 = np.std(vx22_air90)
+vxs23_air90 = np.std(vx23_air90)
+vxs30_air90 = np.std(vx30_air90)
+vxs31_air90 = np.std(vx31_air90)
+vxs40_air90 = np.std(vx40_air90)
+vxs41_air90 = np.std(vx41_air90)
+
 vxm_mb_array = np.array([vxm0, vxm1, vxm2, vxm3])
 vxs_mb_array = np.array([vxs0, vxs1, vxs2, vxs3])
 
@@ -1775,6 +2073,11 @@ vxm_array_50 = np.array([vxm00_50, vxm01_50, vxm02_50, vxm03_50, vxm10_50, vxm11
 						 vxm20_50, vxm21_50, vxm22_50, vxm23_50, vxm30_50, vxm31_50, vxm40_50, vxm41_50])
 vxs_array_50 = np.array([vxs00_50, vxs01_50, vxs02_50, vxs03_50, vxs10_50, vxs11_50, vxs12_50, vxs13_50,
 						 vxs20_50, vxs21_50, vxs22_50, vxs23_50, vxs30_50, vxs31_50, vxs40_50, vxs41_50])
+
+vxm_array_air90 = np.array([vxm00_air90, vxm01_air90, vxm02_air90, vxm03_air90, vxm10_air90, vxm11_air90,
+							vxm12_air90, vxm13_air90, vxm20_air90, vxm21_air90, vxm22_air90, vxm23_air90, vxm30_air90, vxm31_air90, vxm40_air90, vxm41_air90])
+vxs_array_air90 = np.array([vxs00_air90, vxs01_air90, vxs02_air90, vxs03_air90, vxs10_air90, vxs11_air90,
+							vxs12_air90, vxs13_air90, vxs20_air90, vxs21_air90, vxs22_air90, vxs23_air90, vxs30_air90, vxs31_air90, vxs40_air90, vxs41_air90])
 eta_mb_array = d90500
 eta_array = np.concatenate([d90500, d90501, d90502, d90503, d90504])
 
@@ -1784,7 +2087,7 @@ ax.errorbar(eta_array, vxm_array, yerr=vxs_array,
 			markersize=marker_size,
 			markeredgewidth=marker_width,
 			capsize=marker_size*0.6,
-			label='Nondimensionlized by $d_{90}$')
+			label='$d^*=d_{90}$')
 ax.errorbar(eta_array, vxm_array_50, yerr=vxs_array_50,
 			fmt='^',
 			color='C1',
@@ -1792,19 +2095,19 @@ ax.errorbar(eta_array, vxm_array_50, yerr=vxs_array_50,
 			markerfacecolor='none',
 			markeredgewidth=marker_width,
 			capsize=marker_size*0.6,
-			label='Nondimensionlized by $d_{50}$')
-ax.errorbar(eta_mb_array, vxm_mb_array, yerr=vxs_mb_array,
-			fmt='x-',
+			label='$d^*=d_{50}$')
+ax.errorbar(eta_array, vxm_array_air90, yerr=vxs_array_air90,
+			fmt='s',
 			color='C2',
 			markersize=marker_size,
 			markerfacecolor='none',
 			markeredgewidth=marker_width,
 			capsize=marker_size*0.6,
-			label='Monodisperse Splash Model')
+			label='$d^*=d_{90}^{\\mathrm{air}}$')
 ax.axhline(vxmm, color='k', linestyle='--', linewidth=line_width)
 
 ax.set_xlabel('$\\eta_d$', fontsize=label_size)
-ax.set_ylabel('$\\widetilde{\\overline{v_x}}$', fontsize=label_size)
+ax.set_ylabel('$\\widetilde{\\left\\langle v_x \\right\\rangle }$', fontsize=label_size)
 ax.tick_params(axis='both', labelsize=ticks_size)
 #ax.set_xlim(0.004, 0.3)
 #ax.set_ylim(0.005, 0.3)
@@ -1908,73 +2211,73 @@ ax.legend(fontsize=ticks_size)
 #		  		bbox_to_anchor=(1.0, 2),
 #		  		)
 
-fig = plt.figure(4, figsize=(8, 6), constrained_layout=True)
-ax = fig.gca()
-
-axis_type = "loglog"
-
-dictkey = f"d300stdd50_{tailout}"
-x = np.array(M_rslt[dictkey]["y"])
-y = np.array(Q_rslt[dictkey]["y"])
-ax.plot(x, y, 'o', color='r', label='NR1', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-
-dictkey = f"d300stdd100_{tailout}"
-x = np.array(M_rslt[dictkey]["y"])
-y = np.array(Q_rslt[dictkey]["y"])
-ax.plot(x, y, 'o', color='g', label='NR1', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-
-dictkey = f"d300stdd200_{tailout}"
-x = np.array(M_rslt[dictkey]["y"])
-y = np.array(Q_rslt[dictkey]["y"])
-ax.plot(x, y, 'o', color='b', label='NR1', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-
-dictkey = f"d300stdd300_{tailout}"
-x = np.array(M_rslt[dictkey]["y"])
-y = np.array(Q_rslt[dictkey]["y"])
-ax.plot(x, y, 'o', color='c', label='NR1', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
-
-
-ax.plot(Ca22_data["Sh0"],
-		Ca22_data["Q_star0"],
-		'X',
-		color='red',
-		label='Ca22 0',
-		markersize=marker_size,
-		markerfacecolor='none',
-		markeredgewidth=marker_width
-		)
-ax.plot(Ca22_data["Sh1"],
-		Ca22_data["Q_star1"],
-		'X',
-		color='green',
-		label='Ca22 1',
-		markersize=marker_size,
-		markerfacecolor='none',
-		markeredgewidth=marker_width
-		)
-ax.plot(Ca22_data["Sh3"],
-		Ca22_data["Q_star3"],
-		'X',
-		color='blue',
-		label='Ca22 3',
-		markersize=marker_size,
-		markerfacecolor='none',
-		markeredgewidth=marker_width
-		)
-ax.plot(Ca22_data["Sh5"],
-		Ca22_data["Q_star5"],
-		'X',
-		color='cyan',
-		label='Ca22 5',
-		markersize=marker_size,
-		markerfacecolor='none',
-		markeredgewidth=marker_width
-		)
-ax.legend(fontsize=ticks_size,
-		  		loc='upper right',
-		  		#bbox_to_anchor=(-1.3, -0.05),
-		  		)
-
+#fig = plt.figure(4, figsize=(8, 6), constrained_layout=True)
+#ax = fig.gca()
+#
+#axis_type = "loglog"
+#
+#dictkey = f"d300stdd50_{tailout}"
+#x = np.array(M_rslt[dictkey]["y"])
+#y = np.array(Q_rslt[dictkey]["y"])
+#ax.plot(x, y, 'o', color='r', label='NR1', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+#
+#dictkey = f"d300stdd100_{tailout}"
+#x = np.array(M_rslt[dictkey]["y"])
+#y = np.array(Q_rslt[dictkey]["y"])
+#ax.plot(x, y, 'o', color='g', label='NR1', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+#
+#dictkey = f"d300stdd200_{tailout}"
+#x = np.array(M_rslt[dictkey]["y"])
+#y = np.array(Q_rslt[dictkey]["y"])
+#ax.plot(x, y, 'o', color='b', label='NR1', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+#
+#dictkey = f"d300stdd300_{tailout}"
+#x = np.array(M_rslt[dictkey]["y"])
+#y = np.array(Q_rslt[dictkey]["y"])
+#ax.plot(x, y, 'o', color='c', label='NR1', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+#
+#
+#ax.plot(Ca22_data["Sh0"],
+#		Ca22_data["Q_star0"],
+#		'X',
+#		color='red',
+#		label='Ca22 0',
+#		markersize=marker_size,
+#		markerfacecolor='none',
+#		markeredgewidth=marker_width
+#		)
+#ax.plot(Ca22_data["Sh1"],
+#		Ca22_data["Q_star1"],
+#		'X',
+#		color='green',
+#		label='Ca22 1',
+#		markersize=marker_size,
+#		markerfacecolor='none',
+#		markeredgewidth=marker_width
+#		)
+#ax.plot(Ca22_data["Sh3"],
+#		Ca22_data["Q_star3"],
+#		'X',
+#		color='blue',
+#		label='Ca22 3',
+#		markersize=marker_size,
+#		markerfacecolor='none',
+#		markeredgewidth=marker_width
+#		)
+#ax.plot(Ca22_data["Sh5"],
+#		Ca22_data["Q_star5"],
+#		'X',
+#		color='cyan',
+#		label='Ca22 5',
+#		markersize=marker_size,
+#		markerfacecolor='none',
+#		markeredgewidth=marker_width
+#		)
+#ax.legend(fontsize=ticks_size,
+#		  		loc='upper right',
+#		  		#bbox_to_anchor=(-1.3, -0.05),
+#		  		)
+#
 #rslt_dict_smonod3_ex = np.load('rb_vs_sigma_monod2noiter_ex.npz')
 #rslt_dict_smonod3_ex_sd1 = np.load('rb_vs_sigma_monod2noiter_ex_smalld1.npz')
 #rslt_dict_3D_ex = np.load('rb_vs_sigma_3D_ex.npz')
@@ -2041,7 +2344,7 @@ dictkey = f"d300stdd50_{tailout}"
 vxt = 1 #2.0/0.4*np.sqrt(ks0)
 Qvxt0 = Q_rslt[dictkey]["y"]/vxt
 #Qvxt = Q_rslt[dictkey]["y"]/M_rslt[dictkey]["y"]
-ax.plot(M_rslt[dictkey]["y"], Qvxt0, 'o', color='r', label=legend_str, markersize=marker_size)
+ax.plot(M_rslt[dictkey]["y"], Qvxt0, 'o', color='C0', label=legend_str, markersize=marker_size)
 
 legend_str = "MD1"
 dictkey = f"d300stdd100_{tailout}"
@@ -2051,7 +2354,7 @@ dictkey = f"d300stdd100_{tailout}"
 #rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 vxt = 1 #2.0/0.4*np.sqrt(ks1)
 Qvxt1 = Q_rslt[dictkey]["y"]/vxt
-ax.plot(M_rslt[dictkey]["y"], Qvxt1, '^', color='g', label=legend_str, markersize=marker_size)
+ax.plot(M_rslt[dictkey]["y"], Qvxt1, '^', color='C1', label=legend_str, markersize=marker_size)
 
 legend_str = "WD1"
 dictkey = f"d300stdd200_{tailout}"
@@ -2059,7 +2362,7 @@ dictkey = f"d300stdd200_{tailout}"
 #rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 vxt = 1 #2.0/0.4*np.sqrt(ks2)
 Qvxt2 = Q_rslt[dictkey]["y"]/vxt
-ax.plot(M_rslt[dictkey]["y"], Qvxt2, 's', color='b', label=legend_str, markersize=marker_size)
+ax.plot(M_rslt[dictkey]["y"], Qvxt2, 's', color='C2', label=legend_str, markersize=marker_size)
 
 legend_str = "VWD1"
 dictkey = f"d300stdd300_{tailout}"
@@ -2071,7 +2374,7 @@ dictkey = f"d300stdd300_{tailout}"
 #rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 vxt = 1 #2.0/0.4*np.sqrt(ks3)
 Qvxt3 = Q_rslt[dictkey]["y"]/vxt
-ax.plot(M_rslt[dictkey]["y"], Qvxt3, 'h', color='c', label=legend_str, markersize=marker_size)
+ax.plot(M_rslt[dictkey]["y"], Qvxt3, 'h', color='C3', label=legend_str, markersize=marker_size)
 
 legend_str = "NR2"
 dictkey = f"d250stdd25_{tailout}"
@@ -2081,7 +2384,7 @@ dictkey = f"d250stdd25_{tailout}"
 #rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 vxt = 1 #2.0/0.4*np.sqrt(ks10)
 Qvxt10 = Q_rslt[dictkey]["y"]/vxt
-ax.plot(M_rslt[dictkey]["y"], Qvxt10, 'o', color='r', label=legend_str, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(M_rslt[dictkey]["y"], Qvxt10, 'o', color='C0', label=legend_str, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
 
 legend_str = "MD2"
 dictkey = f"d271stdd121_{tailout}"
@@ -2089,7 +2392,7 @@ dictkey = f"d271stdd121_{tailout}"
 #rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 vxt = 1 #2.0/0.4*np.sqrt(ks11)
 Qvxt11 = Q_rslt[dictkey]["y"]/vxt
-ax.plot(M_rslt[dictkey]["y"], Qvxt11, '^', color='g', label=legend_str, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(M_rslt[dictkey]["y"], Qvxt11, '^', color='C1', label=legend_str, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
 
 legend_str = "WD2"
 dictkey = f"d317stdd252_{tailout}"
@@ -2097,7 +2400,7 @@ dictkey = f"d317stdd252_{tailout}"
 #rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 vxt = 1 #2.0/0.4*np.sqrt(ks12)
 Qvxt12 = Q_rslt[dictkey]["y"]/vxt
-ax.plot(M_rslt[dictkey]["y"], Qvxt12, 's', color='b', label=legend_str, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(M_rslt[dictkey]["y"], Qvxt12, 's', color='C2', label=legend_str, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
 
 legend_str = "VWD2"
 dictkey = f"d347stdd537_{tailout}"
@@ -2105,7 +2408,7 @@ dictkey = f"d347stdd537_{tailout}"
 #rslt_plot(ax, M_rslt, dictkey, legend_str, fitline, arrow, lims, sizes, style, axis_type)
 vxt = 1 #2.0/0.4*np.sqrt(ks13)
 Qvxt13 = Q_rslt[dictkey]["y"]/vxt
-ax.loglog(M_rslt[dictkey]["y"], Qvxt13, 'h', color='c', label=legend_str, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.loglog(M_rslt[dictkey]["y"], Qvxt13, 'h', color='C3', label=legend_str, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
 
 legend_str = "MU1"
 dictkey = f"d167stdd100_{tailout}"
@@ -2174,9 +2477,12 @@ x = np.concatenate([
 					M_rslt[f"d400stdd50_{tailout}"]["y"],
 					])
 y = np.concatenate([Qvxt0, Qvxt1, Qvxt2, Qvxt3, Qvxt10, Qvxt11, Qvxt12, Qvxt13, Q_20, Q_21, Q_22, Q_23, Q_30, Q_31, Q_40, Q_41])
-fit = np.polyfit(x, y, 1)
+# 过原点线性拟合x,y
+k, _, _, _ = np.linalg.lstsq(x.reshape(-1, 1), y, rcond=None)
+#fit = np.polyfit(x, y, 1)
 x_array = np.linspace(lims["x_min"], lims["x_max"], 1000)
-y_array = np.polyval(fit, x_array)
+#y_array = np.polyval(fit, x_array)
+y_array = k[0]*x_array
 ax.plot(x_array, y_array, 'k--', label='fit', linewidth=line_width)
 
 ax.set_xlabel(r'$\widetilde{M}$', fontsize=label_size)
@@ -2194,13 +2500,13 @@ ax.set_yticks([0.005, 0.01, 0.05])
 
 
 proxy_ro = plt.Line2D([0], [0],
-					 color='r',
+					 color='C0',
 					 marker='o',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_ro_h = plt.Line2D([0], [0],
-					 color='r',
+					 color='C0',
 					 marker='o',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -2208,13 +2514,13 @@ proxy_ro_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_gt = plt.Line2D([0], [0],
-					 color='g',
+					 color='C1',
 					 marker='^',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_gt_h = plt.Line2D([0], [0],
-					 color='g',
+					 color='C1',
 					 marker='^',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -2222,13 +2528,13 @@ proxy_gt_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_bs = plt.Line2D([0], [0],
-					 color='b',
+					 color='C2',
 					 marker='s',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_bs_h = plt.Line2D([0], [0],
-					 color='b',
+					 color='C2',
 					 marker='s',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -2236,13 +2542,13 @@ proxy_bs_h = plt.Line2D([0], [0],
 					 markeredgewidth=marker_width
 					)
 proxy_ch = plt.Line2D([0], [0],
-					 color='c',
+					 color='C3',
 					 marker='h',
 					 linestyle='',
 					 markersize=marker_size
 					)
 proxy_ch_h = plt.Line2D([0], [0],
-					 color='c',
+					 color='C3',
 					 marker='h',
 					 linestyle='',
 					 markerfacecolor='none',
@@ -2263,25 +2569,25 @@ proxy_gd_h = plt.Line2D([0], [0],
 					 markersize=marker_size,
 					 markeredgewidth=marker_width
 					)
-Cr_09 = ax.scatter([], [], marker='x', color='purple', s=marker_size**2, linewidths=marker_width)
-Ho_12 = ax.scatter([], [], marker='+', color='brown', s=marker_size**2, linewidths=marker_width)
-Ho_12_c = ax.scatter([], [], marker='.', color='k', s=marker_size**2, linewidths=marker_width)
+Cr_09 = ax.scatter([], [], marker='x', color='C4', s=marker_size**2, linewidths=marker_width)
+Ho_12 = ax.scatter([], [], marker='+', color='C5', s=marker_size**2, linewidths=marker_width)
+Ho_12_c = ax.scatter([], [], marker='.', color='C6', s=marker_size**2, linewidths=marker_width)
 ax.legend([(proxy_ro, proxy_ro_h),
 		   (proxy_gt, proxy_gt_h),
 		   (proxy_bs, proxy_bs_h),
 		   (proxy_ch, proxy_ch_h),
 		   (proxy_gd, proxy_gd_h),
 		   Cr_09,
-		   Ho_12,
+		   #Ho_12,
 		   Ho_12_c],
           ['NR1, NR2',
 		   'MD1, MD2',
 		   'WD1, WD2',
 		   'VWD1, VWD2',
-		   'Other Groups',
-		   'Ho12 Roughness',
-		   'Ma18 TFEM',
-		   'Zh19 Roughness'],
+		   'Other Beds',
+		   'Ho12',
+		   #'Ma18 TFEM',
+		   'Zh19'],
 		  handler_map={tuple: HandlerTuple(ndivide=None)},
           fontsize=ticks_size,
           loc='lower right',
@@ -2310,6 +2616,32 @@ ks31 = -M_rslt[f"d321stdd100_{tailout}"]["fit"][1]/M_rslt[f"d321stdd100_{tailout
 ks40 = -M_rslt[f"d240stdd50_{tailout}"]["fit"][1]/M_rslt[f"d240stdd50_{tailout}"]["fit"][0]
 ks41 = -M_rslt[f"d400stdd50_{tailout}"]["fit"][1]/M_rslt[f"d400stdd50_{tailout}"]["fit"][0]
 
+ksm0 = -M_rslt[f"d300stdd50_{tailin}"]["fit"][1]/M_rslt[f"d300stdd50_{tailin}"]["fit"][0]
+ksm1 = -M_rslt[f"d300stdd100_{tailin}"]["fit"][1]/M_rslt[f"d300stdd100_{tailin}"]["fit"][0]
+ksm2 = -M_rslt[f"d300stdd200_{tailin}"]["fit"][1]/M_rslt[f"d300stdd200_{tailin}"]["fit"][0]
+ksm3 = -M_rslt[f"d300stdd300_{tailin}"]["fit"][1]/M_rslt[f"d300stdd300_{tailin}"]["fit"][0]
+ksm10 = -M_rslt[f"d250stdd25_{tailin}"]["fit"][1]/M_rslt[f"d250stdd25_{tailin}"]["fit"][0]
+ksm11 = -M_rslt[f"d271stdd121_{tailin}"]["fit"][1]/M_rslt[f"d271stdd121_{tailin}"]["fit"][0]
+ksm12 = -M_rslt[f"d317stdd252_{tailin}"]["fit"][1]/M_rslt[f"d317stdd252_{tailin}"]["fit"][0]
+ksm13 = -M_rslt[f"d347stdd537_{tailin}"]["fit"][1]/M_rslt[f"d347stdd537_{tailin}"]["fit"][0]
+ksm20 = -M_rslt[f"d167stdd100_{tailin}"]["fit"][1]/M_rslt[f"d167stdd100_{tailin}"]["fit"][0]
+ksm21 = -M_rslt[f"d197stdd65_{tailin}"]["fit"][1]/M_rslt[f"d197stdd65_{tailin}"]["fit"][0]
+ksm22 = -M_rslt[f"d290stdd97_{tailin}"]["fit"][1]/M_rslt[f"d290stdd97_{tailin}"]["fit"][0]
+ksm23 = -M_rslt[f"d430stdd100_{tailin}"]["fit"][1]/M_rslt[f"d430stdd100_{tailin}"]["fit"][0]
+ksm30 = -M_rslt[f"d269stdd100_{tailin}"]["fit"][1]/M_rslt[f"d269stdd100_{tailin}"]["fit"][0]
+ksm31 = -M_rslt[f"d321stdd100_{tailin}"]["fit"][1]/M_rslt[f"d321stdd100_{tailin}"]["fit"][0]
+ksm40 = -M_rslt[f"d240stdd50_{tailin}"]["fit"][1]/M_rslt[f"d240stdd50_{tailin}"]["fit"][0]
+ksm41 = -M_rslt[f"d400stdd50_{tailin}"]["fit"][1]/M_rslt[f"d400stdd50_{tailin}"]["fit"][0]
+
+ksmb0 = -M_rslt[f"d300stdd50_mb_{tailin}"]["fit"][1]/M_rslt[f"d300stdd50_{tailin}"]["fit"][0]
+ksmb1 = -M_rslt[f"d300stdd100_mb_{tailin}"]["fit"][1]/M_rslt[f"d300stdd100_{tailin}"]["fit"][0]
+ksmb2 = -M_rslt[f"d300stdd200_mb_{tailin}"]["fit"][1]/M_rslt[f"d300stdd200_mb_{tailin}"]["fit"][0]
+ksmb3 = -M_rslt[f"d300stdd300_mb_{tailin}"]["fit"][1]/M_rslt[f"d300stdd300_mb_{tailin}"]["fit"][0]
+ksmb10 = -M_rslt[f"d250stdd25_mb_{tailin}"]["fit"][1]/M_rslt[f"d250stdd25_mb_{tailin}"]["fit"][0]
+ksmb11 = -M_rslt[f"d271stdd121_mb_{tailin}"]["fit"][1]/M_rslt[f"d271stdd121_mb_{tailin}"]["fit"][0]
+ksmb12 = -M_rslt[f"d317stdd252_mb_{tailin}"]["fit"][1]/M_rslt[f"d317stdd252_mb_{tailin}"]["fit"][0]
+ksmb13 = -M_rslt[f"d347stdd537_mb_{tailin}"]["fit"][1]/M_rslt[f"d347stdd537_mb_{tailin}"]["fit"][0]
+
 x0, x1, x2, x3, x4 = d90500, d90501, d90502, d90503, d90504
 
 y0 = np.array([ks0, ks1, ks2, ks3])
@@ -2317,9 +2649,26 @@ y1 = np.array([ks10, ks11, ks12, ks13])
 y2 = np.array([ks20, ks21, ks22, ks23])
 y3 = np.array([ks30, ks31])
 y4 = np.array([ks40, ks41])
+ym0 = np.array([ksm0, ksm1, ksm2, ksm3])
+ym1 = np.array([ksm10, ksm11, ksm12, ksm13])
+ym2 = np.array([ksm20, ksm21, ksm22, ksm23])
+ym3 = np.array([ksm30, ksm31])
+ym4 = np.array([ksm40, ksm41])
+ymb0 = np.array([ksmb0, ksmb1, ksmb2, ksmb3])
+ymb1 = np.array([ksmb10, ksmb11, ksmb12, ksmb13])
 
-c_list0 = ['r', 'g', 'b', 'c']
-c_list1 = ['r', 'g', 'b', 'c']
+xm = np.concatenate([x0, x1, x2, x3, x4])
+ym = np.concatenate([ym0, ym1, ym2, ym3, ym4])
+xmb = np.concatenate([x0, x1])
+ymb = np.concatenate([ymb0, ymb1])
+# 升序
+xm = np.sort(xm)
+ym = np.sort(ym)
+xmb = np.sort(xmb)
+ymb = np.sort(ymb)
+
+c_list0 = ['C0', 'C1', 'C2', 'C3']
+c_list1 = ['C0', 'C1', 'C2', 'C3']
 s_list0 = ['o', '^', 's', 'h']
 s_list1 = ['o', '^', 's', 'h']
 inset_ax.plot(x2, y2, 'd', color='grey', markersize=marker_size_in)
@@ -2329,9 +2678,11 @@ for x, y, s, c in zip(x0, y0, s_list0, c_list0):
     inset_ax.plot(x, y, s, color=c, markersize=marker_size_in)
 for x, y, s, c in zip(x1, y1, s_list1, c_list1):
     inset_ax.plot(x, y, s, color=c, markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width)
-inset_ax.plot([1.63, 2.01], [Shd_ho12, Shd_ho12c], 'x', color='purple', markersize=marker_size_in, markeredgewidth=marker_width, label='Ho12 Roughness')
-inset_ax.plot(Zh19_data["d9050"], Zh19_data["Shd"], '.', color='k', markersize=marker_size_in, markeredgewidth=marker_width, label='Zh19 Roughness')
-inset_ax.semilogy(Ma18_data["d9050"], Ma18_data["Shd"], '+', color='brown', markersize=marker_size_in, markeredgewidth=marker_width, label='Ma18 TFEM')
+inset_ax.plot([1.63, 2.01], [Shd_ho12, Shd_ho12c], 'x', color='C4', markersize=marker_size_in, markeredgewidth=marker_width)
+inset_ax.semilogy(Zh19_data["d9050"], Zh19_data["Shd"], '.', color='C6', markersize=marker_size_in, markeredgewidth=marker_width)
+#inset_ax.semilogy(Ma18_data["d9050"], Ma18_data["Shd"], '+', color='C5', markersize=marker_size_in, markeredgewidth=marker_width)
+#inset_ax.plot(xm, ym, 'k*-', linewidth=line_width, markersize=marker_size_in, label='$d^*=d_{90}^{\\mathrm{air}}$')
+#inset_ax.plot(xmb, ymb, 'k--', linewidth=line_width, markersize=marker_size_in, label='$d^*=d_{90}^{\\mathrm{bed}}$')
 
 inset_ax.set_xlabel('$\\eta_d$', fontsize=label_size)
 inset_ax.set_ylabel('$S_d$', fontsize=label_size)
@@ -2344,10 +2695,235 @@ inset_ax.set_ylim(0.0008, 0.02)
 #inset_ax.legend(
 #          fontsize=ticks_size,
 #          loc='upper right',
-#          bbox_to_anchor=(2.22, 1.1),
+#          bbox_to_anchor=(1.8, 1.0),
 #          frameon=True,
 #		  framealpha=1,
-#		  ncol=2
+#		  ncol=1
 #		  )
+
+fig = plt.figure(7, figsize=(8, 6), constrained_layout=True)
+ax = fig.gca()
+
+ks0 = -M_rslt[f"d300stdd50_{tailout}"]["fit"][1]/M_rslt[f"d300stdd50_{tailout}"]["fit"][0]
+ks1 = -M_rslt[f"d300stdd100_{tailout}"]["fit"][1]/M_rslt[f"d300stdd100_{tailout}"]["fit"][0]
+ks2 = -M_rslt[f"d300stdd200_{tailout}"]["fit"][1]/M_rslt[f"d300stdd200_{tailout}"]["fit"][0]
+ks3 = -M_rslt[f"d300stdd300_{tailout}"]["fit"][1]/M_rslt[f"d300stdd300_{tailout}"]["fit"][0]
+ks10 = -M_rslt[f"d250stdd25_{tailout}"]["fit"][1]/M_rslt[f"d250stdd25_{tailout}"]["fit"][0]
+ks11 = -M_rslt[f"d271stdd121_{tailout}"]["fit"][1]/M_rslt[f"d271stdd121_{tailout}"]["fit"][0]
+ks12 = -M_rslt[f"d317stdd252_{tailout}"]["fit"][1]/M_rslt[f"d317stdd252_{tailout}"]["fit"][0]
+ks13 = -M_rslt[f"d347stdd537_{tailout}"]["fit"][1]/M_rslt[f"d347stdd537_{tailout}"]["fit"][0]
+ks20 = -M_rslt[f"d167stdd100_{tailout}"]["fit"][1]/M_rslt[f"d167stdd100_{tailout}"]["fit"][0]
+ks21 = -M_rslt[f"d197stdd65_{tailout}"]["fit"][1]/M_rslt[f"d197stdd65_{tailout}"]["fit"][0]
+ks22 = -M_rslt[f"d290stdd97_{tailout}"]["fit"][1]/M_rslt[f"d290stdd97_{tailout}"]["fit"][0]
+ks23 = -M_rslt[f"d430stdd100_{tailout}"]["fit"][1]/M_rslt[f"d430stdd100_{tailout}"]["fit"][0]
+ks30 = -M_rslt[f"d269stdd100_{tailout}"]["fit"][1]/M_rslt[f"d269stdd100_{tailout}"]["fit"][0]
+ks31 = -M_rslt[f"d321stdd100_{tailout}"]["fit"][1]/M_rslt[f"d321stdd100_{tailout}"]["fit"][0]
+ks40 = -M_rslt[f"d240stdd50_{tailout}"]["fit"][1]/M_rslt[f"d240stdd50_{tailout}"]["fit"][0]
+ks41 = -M_rslt[f"d400stdd50_{tailout}"]["fit"][1]/M_rslt[f"d400stdd50_{tailout}"]["fit"][0]
+
+ksm0 = -M_rslt[f"d300stdd50_{tailin}"]["fit"][1]/M_rslt[f"d300stdd50_{tailin}"]["fit"][0]
+ksm1 = -M_rslt[f"d300stdd100_{tailin}"]["fit"][1]/M_rslt[f"d300stdd100_{tailin}"]["fit"][0]
+ksm2 = -M_rslt[f"d300stdd200_{tailin}"]["fit"][1]/M_rslt[f"d300stdd200_{tailin}"]["fit"][0]
+ksm3 = -M_rslt[f"d300stdd300_{tailin}"]["fit"][1]/M_rslt[f"d300stdd300_{tailin}"]["fit"][0]
+ksm10 = -M_rslt[f"d250stdd25_{tailin}"]["fit"][1]/M_rslt[f"d250stdd25_{tailin}"]["fit"][0]
+ksm11 = -M_rslt[f"d271stdd121_{tailin}"]["fit"][1]/M_rslt[f"d271stdd121_{tailin}"]["fit"][0]
+ksm12 = -M_rslt[f"d317stdd252_{tailin}"]["fit"][1]/M_rslt[f"d317stdd252_{tailin}"]["fit"][0]
+ksm13 = -M_rslt[f"d347stdd537_{tailin}"]["fit"][1]/M_rslt[f"d347stdd537_{tailin}"]["fit"][0]
+ksm20 = -M_rslt[f"d167stdd100_{tailin}"]["fit"][1]/M_rslt[f"d167stdd100_{tailin}"]["fit"][0]
+ksm21 = -M_rslt[f"d197stdd65_{tailin}"]["fit"][1]/M_rslt[f"d197stdd65_{tailin}"]["fit"][0]
+ksm22 = -M_rslt[f"d290stdd97_{tailin}"]["fit"][1]/M_rslt[f"d290stdd97_{tailin}"]["fit"][0]
+ksm23 = -M_rslt[f"d430stdd100_{tailin}"]["fit"][1]/M_rslt[f"d430stdd100_{tailin}"]["fit"][0]
+ksm30 = -M_rslt[f"d269stdd100_{tailin}"]["fit"][1]/M_rslt[f"d269stdd100_{tailin}"]["fit"][0]
+ksm31 = -M_rslt[f"d321stdd100_{tailin}"]["fit"][1]/M_rslt[f"d321stdd100_{tailin}"]["fit"][0]
+ksm40 = -M_rslt[f"d240stdd50_{tailin}"]["fit"][1]/M_rslt[f"d240stdd50_{tailin}"]["fit"][0]
+ksm41 = -M_rslt[f"d400stdd50_{tailin}"]["fit"][1]/M_rslt[f"d400stdd50_{tailin}"]["fit"][0]
+
+ksmb0 = -M_rslt[f"d300stdd50_mb_{tailin}"]["fit"][1]/M_rslt[f"d300stdd50_{tailin}"]["fit"][0]
+ksmb1 = -M_rslt[f"d300stdd100_mb_{tailin}"]["fit"][1]/M_rslt[f"d300stdd100_{tailin}"]["fit"][0]
+ksmb2 = -M_rslt[f"d300stdd200_mb_{tailin}"]["fit"][1]/M_rslt[f"d300stdd200_mb_{tailin}"]["fit"][0]
+ksmb3 = -M_rslt[f"d300stdd300_mb_{tailin}"]["fit"][1]/M_rslt[f"d300stdd300_mb_{tailin}"]["fit"][0]
+ksmb10 = -M_rslt[f"d250stdd25_mb_{tailin}"]["fit"][1]/M_rslt[f"d250stdd25_mb_{tailin}"]["fit"][0]
+ksmb11 = -M_rslt[f"d271stdd121_mb_{tailin}"]["fit"][1]/M_rslt[f"d271stdd121_mb_{tailin}"]["fit"][0]
+ksmb12 = -M_rslt[f"d317stdd252_mb_{tailin}"]["fit"][1]/M_rslt[f"d317stdd252_mb_{tailin}"]["fit"][0]
+ksmb13 = -M_rslt[f"d347stdd537_mb_{tailin}"]["fit"][1]/M_rslt[f"d347stdd537_mb_{tailin}"]["fit"][0]
+
+
+M_load500 = np.load(f"M_d300stdd50_{"dair50"}.npz")
+M_load501 = np.load(f"M_d300stdd100_{"dair50"}.npz")
+M_load502 = np.load(f"M_d300stdd200_{"dair50"}.npz")
+M_load503 = np.load(f"M_d300stdd300_{"dair50"}.npz")
+M_load5010 = np.load(f"M_d250stdd25_{"dair50"}.npz")
+M_load5011 = np.load(f"M_d271stdd121_{"dair50"}.npz")
+M_load5012 = np.load(f"M_d317stdd252_{"dair50"}.npz")
+M_load5013 = np.load(f"M_d347stdd537_{"dair50"}.npz")
+M_load5020 = np.load(f"M_d167stdd100_{"dair50"}.npz")
+M_load5021 = np.load(f"M_d197stdd65_{"dair50"}.npz")
+M_load5022 = np.load(f"M_d290stdd97_{"dair50"}.npz")
+M_load5023 = np.load(f"M_d430stdd100_{"dair50"}.npz")
+M_load5030 = np.load(f"M_d269stdd100_{"dair50"}.npz")
+M_load5031 = np.load(f"M_d321stdd100_{"dair50"}.npz")
+M_load5040 = np.load(f"M_d240stdd50_{"dair50"}.npz")
+M_load5041 = np.load(f"M_d400stdd50_{"dair50"}.npz")
+ks500 = -M_load500["fit"][1]/M_load500["fit"][0]
+ks501 = -M_load501["fit"][1]/M_load501["fit"][0]
+ks502 = -M_load502["fit"][1]/M_load502["fit"][0]
+ks503 = -M_load503["fit"][1]/M_load503["fit"][0]
+ks5010 = -M_load5010["fit"][1]/M_load5010["fit"][0]
+ks5011 = -M_load5011["fit"][1]/M_load5011["fit"][0]
+ks5012 = -M_load5012["fit"][1]/M_load5012["fit"][0]
+ks5013 = -M_load5013["fit"][1]/M_load5013["fit"][0]
+ks5020 = -M_load5020["fit"][1]/M_load5020["fit"][0]
+ks5021 = -M_load5021["fit"][1]/M_load5021["fit"][0]
+ks5022 = -M_load5022["fit"][1]/M_load5022["fit"][0]
+ks5023 = -M_load5023["fit"][1]/M_load5023["fit"][0]
+ks5030 = -M_load5030["fit"][1]/M_load5030["fit"][0]
+ks5031 = -M_load5031["fit"][1]/M_load5031["fit"][0]
+ks5040 = -M_load5040["fit"][1]/M_load5040["fit"][0]
+ks5041 = -M_load5041["fit"][1]/M_load5041["fit"][0]
+
+M_load900 = np.load(f"M_d300stdd50_{"dair90"}.npz")
+M_load901 = np.load(f"M_d300stdd100_{"dair90"}.npz")
+M_load902 = np.load(f"M_d300stdd200_{"dair90"}.npz")
+M_load903 = np.load(f"M_d300stdd300_{"dair90"}.npz")
+M_load9010 = np.load(f"M_d250stdd25_{"dair90"}.npz")
+M_load9011 = np.load(f"M_d271stdd121_{"dair90"}.npz")
+M_load9012 = np.load(f"M_d317stdd252_{"dair90"}.npz")
+M_load9013 = np.load(f"M_d347stdd537_{"dair90"}.npz")
+M_load9020 = np.load(f"M_d167stdd100_{"dair90"}.npz")
+M_load9021 = np.load(f"M_d197stdd65_{"dair90"}.npz")
+M_load9022 = np.load(f"M_d290stdd97_{"dair90"}.npz")
+M_load9023 = np.load(f"M_d430stdd100_{"dair90"}.npz")
+M_load9030 = np.load(f"M_d269stdd100_{"dair90"}.npz")
+M_load9031 = np.load(f"M_d321stdd100_{"dair90"}.npz")
+M_load9040 = np.load(f"M_d240stdd50_{"dair90"}.npz")
+M_load9041 = np.load(f"M_d400stdd50_{"dair90"}.npz")
+ks900 = -M_load900["fit"][1]/M_load900["fit"][0]
+ks901 = -M_load901["fit"][1]/M_load901["fit"][0]
+ks902 = -M_load902["fit"][1]/M_load902["fit"][0]
+ks903 = -M_load903["fit"][1]/M_load903["fit"][0]
+ks9010 = -M_load9010["fit"][1]/M_load9010["fit"][0]
+ks9011 = -M_load9011["fit"][1]/M_load9011["fit"][0]
+ks9012 = -M_load9012["fit"][1]/M_load9012["fit"][0]
+ks9013 = -M_load9013["fit"][1]/M_load9013["fit"][0]
+ks9020 = -M_load9020["fit"][1]/M_load9020["fit"][0]
+ks9021 = -M_load9021["fit"][1]/M_load9021["fit"][0]
+ks9022 = -M_load9022["fit"][1]/M_load9022["fit"][0]
+ks9023 = -M_load9023["fit"][1]/M_load9023["fit"][0]
+ks9030 = -M_load9030["fit"][1]/M_load9030["fit"][0]
+ks9031 = -M_load9031["fit"][1]/M_load9031["fit"][0]
+ks9040 = -M_load9040["fit"][1]/M_load9040["fit"][0]
+ks9041 = -M_load9041["fit"][1]/M_load9041["fit"][0]
+
+M_loadm0 = np.load(f"M_d300stdd50_{"dair"}.npz")
+M_loadm1 = np.load(f"M_d300stdd100_{"dair"}.npz")
+M_loadm2 = np.load(f"M_d300stdd200_{"dair"}.npz")
+M_loadm3 = np.load(f"M_d300stdd300_{"dair"}.npz")
+M_loadm10 = np.load(f"M_d250stdd25_{"dair"}.npz")
+M_loadm11 = np.load(f"M_d271stdd121_{"dair"}.npz")
+M_loadm12 = np.load(f"M_d317stdd252_{"dair"}.npz")
+M_loadm13 = np.load(f"M_d347stdd537_{"dair"}.npz")
+M_loadm20 = np.load(f"M_d167stdd100_{"dair"}.npz")
+M_loadm21 = np.load(f"M_d197stdd65_{"dair"}.npz")
+M_loadm22 = np.load(f"M_d290stdd97_{"dair"}.npz")
+M_loadm23 = np.load(f"M_d430stdd100_{"dair"}.npz")
+M_loadm30 = np.load(f"M_d269stdd100_{"dair"}.npz")
+M_loadm31 = np.load(f"M_d321stdd100_{"dair"}.npz")
+M_loadm40 = np.load(f"M_d240stdd50_{"dair"}.npz")
+M_loadm41 = np.load(f"M_d400stdd50_{"dair"}.npz")
+ksairm0 = -M_loadm0["fit"][1]/M_loadm0["fit"][0]
+ksairm1 = -M_loadm1["fit"][1]/M_loadm1["fit"][0]
+ksairm2 = -M_loadm2["fit"][1]/M_loadm2["fit"][0]
+ksairm3 = -M_loadm3["fit"][1]/M_loadm3["fit"][0]
+ksairm10 = -M_loadm10["fit"][1]/M_loadm10["fit"][0]
+ksairm11 = -M_loadm11["fit"][1]/M_loadm11["fit"][0]
+ksairm12 = -M_loadm12["fit"][1]/M_loadm12["fit"][0]
+ksairm13 = -M_loadm13["fit"][1]/M_loadm13["fit"][0]
+ksairm20 = -M_loadm20["fit"][1]/M_loadm20["fit"][0]
+ksairm21 = -M_loadm21["fit"][1]/M_loadm21["fit"][0]
+ksairm22 = -M_loadm22["fit"][1]/M_loadm22["fit"][0]
+ksairm23 = -M_loadm23["fit"][1]/M_loadm23["fit"][0]
+ksairm30 = -M_loadm30["fit"][1]/M_loadm30["fit"][0]
+ksairm31 = -M_loadm31["fit"][1]/M_loadm31["fit"][0]
+ksairm40 = -M_loadm40["fit"][1]/M_loadm40["fit"][0]
+ksairm41 = -M_loadm41["fit"][1]/M_loadm41["fit"][0]
+
+x0, x1, x2, x3, x4 = d90500, d90501, d90502, d90503, d90504
+
+y0 = np.array([ks0, ks1, ks2, ks3])
+y1 = np.array([ks10, ks11, ks12, ks13])
+y2 = np.array([ks20, ks21, ks22, ks23])
+y3 = np.array([ks30, ks31])
+y4 = np.array([ks40, ks41])
+ym0 = np.array([ksm0, ksm1, ksm2, ksm3])
+ym1 = np.array([ksm10, ksm11, ksm12, ksm13])
+ym2 = np.array([ksm20, ksm21, ksm22, ksm23])
+ym3 = np.array([ksm30, ksm31])
+ym4 = np.array([ksm40, ksm41])
+ymb0 = np.array([ksmb0, ksmb1, ksmb2, ksmb3])
+ymb1 = np.array([ksmb10, ksmb11, ksmb12, ksmb13])
+y500 = np.array([ks500, ks501, ks502, ks503])
+y501 = np.array([ks5010, ks5011, ks5012, ks5013])
+y502 = np.array([ks5020, ks5021, ks5022, ks5023])
+y503 = np.array([ks5030, ks5031])
+y504 = np.array([ks5040, ks5041])
+y900 = np.array([ks900, ks901, ks902, ks903])
+y901 = np.array([ks9010, ks9011, ks9012, ks9013])
+y902 = np.array([ks9020, ks9021, ks9022, ks9023])
+y903 = np.array([ks9030, ks9031])
+y904 = np.array([ks9040, ks9041])
+yairm0 = np.array([ksairm0, ksairm1, ksairm2, ksairm3])
+yairm1 = np.array([ksairm10, ksairm11, ksairm12, ksairm13])
+yairm2 = np.array([ksairm20, ksairm21, ksairm22, ksairm23])
+yairm3 = np.array([ksairm30, ksairm31])
+yairm4 = np.array([ksairm40, ksairm41])
+
+x90 = np.concatenate([x0, x1, x2, x3, x4])
+y90 = np.concatenate([y0, y1, y2, y3, y4])
+x50 = np.concatenate([x0, x1, x2, x3, x4])
+y50 = np.concatenate([ym0, ym1, ym2, ym3, ym4])
+xair90 = np.concatenate([x0, x1, x2, x3, x4])
+yair90 = np.concatenate([y900, y901, y902, y903, y904])
+xair50 = np.concatenate([x0, x1, x2, x3, x4])
+yair50 = np.concatenate([y500, y501, y502, y503, y504])
+xairm0 = np.concatenate([x0, x1, x2, x3, x4])
+yairm0 = np.concatenate([yairm0, yairm1, yairm2, yairm3, yairm4])
+xmb = np.concatenate([x0, x1])
+ymb = np.concatenate([ymb0, ymb1])
+#xm, ym = zip(*sorted(zip(xm, ym)))
+xmb, ymb = zip(*sorted(zip(xmb, ymb)))
+
+#ax.plot([1.63, 2.01], [Shd_ho12, Shd_ho12c], 'x', color='C2', markersize=marker_size, markeredgewidth=marker_width)
+#ax.plot(Zh19_data["d9050"], Zh19_data["Shd"], '+', color='C3', markersize=marker_size, markeredgewidth=marker_width)
+#ax.semilogy(Ma18_data["d9050"], Ma18_data["Shd"], '+', color='C5', markersize=marker_size_in, markeredgewidth=marker_width)
+ax.plot(x90, y90, 'C0o', linewidth=line_width, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width, label='$d^* = d_{90}$')
+#ax.plot(x50, y50, 'C1^', linewidth=line_width, markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width, label='$d^* = d_{50}^{\\mathrm{bed}}$')
+ax.plot(xair90, yair90, 'C1o', linewidth=line_width, markersize=marker_size, label='$d^*=d_{90}^{\\mathrm{air}}$')
+#ax.plot(xair50, yair50, 'C1^', linewidth=line_width, markersize=marker_size, label='$d^*=d_{50}^{\\mathrm{air}}$')
+#ax.plot(xmb, ymb, 'k--', linewidth=line_width, markersize=marker_size)
+x90, y90 = zip(*sorted(zip(x90, y90)))
+xair90, yair90 = zip(*sorted(zip(xair90, yair90)))
+myair90 = np.mean(yair90[0:11])
+#fit = np.polyfit(xair90[0:11], yair90[0:11], 1)
+x_fit = np.linspace(1, 3, 100)
+#y_fit = np.polyval(fit, x_fit)
+y_fit = [myair90]*len(x_fit)
+yb = myair90*np.exp(-3.2*np.log(x_fit)**2/1.642)
+ax.plot(x_fit, y_fit, 'C1-', linewidth=line_width)
+ax.plot(x_fit, yb, 'C0--', linewidth=line_width)
+
+
+ax.set_xlabel('$\\eta_d$', fontsize=label_size)
+ax.set_ylabel('$S_d$', fontsize=label_size)
+ax.tick_params(axis='both', labelsize=ticks_size)
+ax.set_xlim(1, 2.5)
+ax.set_ylim(0, 0.007)
+ax.legend(
+          fontsize=ticks_size,
+          loc='best',
+          #bbox_to_anchor=(1.8, 1.0),
+          frameon=True,
+		  framealpha=1,
+		  ncol=2
+		  )
 
 plt.show()

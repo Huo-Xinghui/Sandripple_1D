@@ -285,7 +285,7 @@ line_3D = mlines.Line2D([], [], color='k', linestyle='-',linewidth=linewidth, la
 #line_2DPM = mlines.Line2D([], [], color='k', linestyle='-',linewidth=0.8, label='2D-PM')
 #ax.legend([line_2DP, line_2DM, line_3D2D, line_2DPM], ['2D-P', '2D-M', '3D-2D', '2D-PM'], fontsize=ticks_size, loc='best', frameon=True)
 ax.legend([line_3D, line_2D, line_mono],
-          ['3D', '2D', 'Monodisperse'],
+          ['3D NSDP', '2D NSDP', 'Monodisperse'],
           fontsize=ticks_size,
           loc='upper right',
           bbox_to_anchor=(0.9, 1),

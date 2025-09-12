@@ -12,14 +12,14 @@ from get_data import get_model_data_array
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = r'\usepackage{amssymb}'
-A = 1/0.6 # amplification factor
-label_size = 15*A
+A = 1/0.5 # amplification factor
+label_size = 12.5*A
 ticks_size = 10*A
-marker_size = 10*A
+marker_size = 8*A
 marker_size_in = 6*A
-marker_width = 1
-marker_width_in = 1.0
-linewidth = 1.5
+marker_width = 2
+marker_width_in = 2.0
+linewidth = 2
 
 # Mechanical properties
 rho = 2650
@@ -198,29 +198,29 @@ Et_array_mono_2 = rslt_dict_mono['Eej2']*rslt_dict_mono['Nej2']
 fig = plt.figure(1, figsize=(8, 6), constrained_layout=True)
 ax = fig.gca()
 
-ax.plot(sigma_skp, E_array_0/E1_array_0, 'ro', markersize=marker_size)
-ax.plot(sigma_skp, E_array_1/E1_array_1, 'g^', markersize=marker_size)
-ax.plot(sigma_skp, E_array_2/E1_array_2, 'bs', markersize=marker_size)
-ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Eej0']/rslt_dict_mono['E10'], 'r--', linewidth=linewidth)
-ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Eej1']/rslt_dict_mono['E11'], 'g--', linewidth=linewidth)
-ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Eej2']/rslt_dict_mono['E12'], 'b--', linewidth=linewidth)
+ax.plot(sigma_skp, E_array_0/E1_array_0, 'C0o', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(sigma_skp, E_array_1/E1_array_1, 'C1^', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(sigma_skp, E_array_2/E1_array_2, 'C2s', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Eej0']/rslt_dict_mono['E10'], 'C0--', linewidth=linewidth)
+ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Eej1']/rslt_dict_mono['E11'], 'C1--', linewidth=linewidth)
+ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Eej2']/rslt_dict_mono['E12'], 'C2--', linewidth=linewidth)
 
 ax.set_xlim(0, 1)
 #ax.set_ylim(0, 0.6)
 ax.set_xlabel('$\\sigma_d$', fontsize=label_size)
-ax.set_ylabel('$\\overline{E_{ej}}/E_{i}$', fontsize=label_size)
+ax.set_ylabel('$\\overline{E_{ej}}/\\overline{E_{i}}$', fontsize=label_size)
 ax.tick_params(axis='x', labelsize=label_size)
 ax.tick_params(axis='y', labelsize=label_size)
 
 inset_ax = inset_axes(ax, width='50%', height='50%', loc='upper left')
-inset_ax.plot(sigma_skp, Et_array_0/E1_array_0, 'ro', markersize=marker_size_in, markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_skp, Et_array_1/E1_array_1, 'g^', markersize=marker_size_in, markeredgewidth=marker_width_in)
-inset_ax.plot(sigma_skp, Et_array_2/E1_array_2, 'bs', markersize=marker_size_in, markeredgewidth=marker_width_in)
-inset_ax.plot(rslt_dict_mono['sigma'], Et_array_mono_0/rslt_dict_mono['E10'], 'r--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_mono['sigma'], Et_array_mono_1/rslt_dict_mono['E11'], 'g--', linewidth=linewidth)
-inset_ax.plot(rslt_dict_mono['sigma'], Et_array_mono_2/rslt_dict_mono['E12'], 'b--', linewidth=linewidth)
+inset_ax.plot(sigma_skp, Et_array_0/E1_array_0, 'C0o', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+inset_ax.plot(sigma_skp, Et_array_1/E1_array_1, 'C1^', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+inset_ax.plot(sigma_skp, Et_array_2/E1_array_2, 'C2s', markersize=marker_size_in, markerfacecolor='none', markeredgewidth=marker_width_in)
+inset_ax.plot(rslt_dict_mono['sigma'], Et_array_mono_0/rslt_dict_mono['E10'], 'C0--', linewidth=linewidth)
+inset_ax.plot(rslt_dict_mono['sigma'], Et_array_mono_1/rslt_dict_mono['E11'], 'C1--', linewidth=linewidth)
+inset_ax.plot(rslt_dict_mono['sigma'], Et_array_mono_2/rslt_dict_mono['E12'], 'C2--', linewidth=linewidth)
 inset_ax.set_xticks([0, 0.5, 1])
-inset_ax.set_ylabel('$\\overline{E_{ej}} \\cdot  \\overline{N_{ej}}/E_{i}$', fontsize=label_size)
+inset_ax.set_ylabel('$\\overline{E_{ej}} \\cdot  \\overline{N_{ej}}/\\overline{E_{i}}$', fontsize=label_size)
 
 inset_ax.tick_params(axis='x', labelsize=ticks_size)
 inset_ax.tick_params(axis='y', labelsize=ticks_size)
@@ -231,14 +231,14 @@ inset_ax.yaxis.set_label_position("right")
 fig = plt.figure(2, figsize=(8, 6), constrained_layout=True)
 ax = fig.gca()
 
-ax.plot(sigma_skp, N_array_0, 'ro', markersize=marker_size)
-ax.plot(sigma_skp, N_array_1, 'g^', markersize=marker_size)
-ax.plot(sigma_skp, N_array_2, 'bs', markersize=marker_size)
-ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Nej0'], 'r--', linewidth=linewidth)
-ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Nej1'], 'g--', linewidth=linewidth)
-ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Nej2'], 'b--', linewidth=linewidth)
+ax.plot(sigma_skp, N_array_0, 'C0o', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(sigma_skp, N_array_1, 'C1^', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(sigma_skp, N_array_2, 'C2s', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)
+ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Nej0'], 'C0--', linewidth=linewidth)
+ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Nej1'], 'C1--', linewidth=linewidth)
+ax.plot(rslt_dict_mono['sigma'], rslt_dict_mono['Nej2'], 'C2--', linewidth=linewidth)
 # y = 1 等值线
-#ax.axhline(1, color='k', linestyle='-', linewidth=linewidth)
+ax.axhline(1, color='k', linestyle='-', linewidth=linewidth)
 #ax.set_xlim(0, 1)
 #ax.set_ylim(0, 10)
 ax.set_xlabel('$\\sigma_d$', fontsize=label_size)
@@ -246,11 +246,12 @@ ax.set_ylabel('$\\overline{N_{ej}}$', fontsize=label_size)
 ax.tick_params(axis='x', labelsize=label_size)
 ax.tick_params(axis='y', labelsize=label_size)
 # 创建自定义图例句柄
-symbol_1 = mlines.Line2D([], [], color='r', marker='o', markersize=marker_size, markeredgewidth=marker_width)
-symbol_2 = mlines.Line2D([], [], color='g', marker='^', markersize=marker_size, markeredgewidth=marker_width)
-symbol_3 = mlines.Line2D([], [], color='b', marker='s', markersize=marker_size, markeredgewidth=marker_width)
-ax.legend([symbol_1, symbol_2, symbol_3],
-          ['$v_1/\\sqrt{g \\mathbb{E}[d]} = 30$', '$v_1/\\sqrt{g \\mathbb{E}[d]} = 50$', '$v_1/\\sqrt{g \\mathbb{E}[d]} = 100$'],
+symbol_1 = ax.plot([], [], 'C0o', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)[0]
+symbol_2 = ax.plot([], [], 'C1^', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)[0]
+symbol_3 = ax.plot([], [], 'C2s', markersize=marker_size, markerfacecolor='none', markeredgewidth=marker_width)[0]
+line_1 = mlines.Line2D([], [], color='k', linestyle='--', linewidth=linewidth)
+ax.legend([symbol_1, symbol_2, symbol_3, line_1],
+          ['$v_1/\\sqrt{g \\mathbb{E}[d]} = 30$', '$v_1/\\sqrt{g \\mathbb{E}[d]} = 50$', '$v_1/\\sqrt{g \\mathbb{E}[d]} = 100$', 'Monodisperse'],
           fontsize=label_size,
           loc='upper right',
           bbox_to_anchor=(1.0, 0.95),
