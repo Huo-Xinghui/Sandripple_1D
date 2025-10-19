@@ -1,3 +1,5 @@
-//{
+{
+    "python.analysis.typeCheckingMode": "standard"
+} //{
 //    "fortran.fortls.disabled": true
 //}
